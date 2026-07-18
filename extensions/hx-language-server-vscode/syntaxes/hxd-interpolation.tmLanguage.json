@@ -1,0 +1,21 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Heleonix Framework Dictionary Interpolation",
+  "scopeName": "source.hxd.interpolation",
+  "injectionSelector": "L:source.hxd string.quoted.double.json",
+  "patterns": [{ "include": "#interpolation" }],
+  "repository": {
+    "interpolation": {
+      "name": "meta.interpolation.hxd",
+      "begin": "\\{",
+      "end": "\\}",
+      "beginCaptures": { "0": { "name": "entity.name.function.interpolation.hxd" } },
+      "endCaptures": { "0": { "name": "entity.name.function.interpolation.hxd" } },
+      "patterns": [
+        { "match": "@[A-Za-z_][\\w.]*", "name": "string.other.dictionary.hxd" },
+        { "match": "#[A-Za-z_][\\w.]*", "name": "constant.numeric.config.hxd" },
+        { "match": "[A-Za-z_][\\w.]*", "name": "variable.parameter.interpolation.hxd" }
+      ]
+    }
+  }
+}

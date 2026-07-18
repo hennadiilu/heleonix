@@ -1,12 +1,79 @@
 {
-    // See https://go.microsoft.com/fwlink/?LinkId=733558
-    // for the documentation about the tasks.json format
-    "version": "2.0.0",
-    "tasks": [
-        {
-            "label": "start",
-            "type": "npm",
-            "script": "start:sandbox"
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "sandbox: start dev server",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["--filter", "@heleonix/hx-sandbox", "run", "dev"],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "BROWSER": "none"
         }
-    ]
+      },
+      "isBackground": true,
+      "presentation": {
+        "reveal": "silent",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "problemMatcher": {
+        "owner": "webpack",
+        "pattern": {
+          "regexp": "^$"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "(Compiling|compiling|Compilation starting|webpack compilation)",
+          "endsPattern": "(compiled successfully|compiled with|Compiled successfully)"
+        }
+      }
+    },
+    {
+      "label": "extension: build",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["--filter", "@heleonix/hx-language-server", "--filter", "heleonix-hx-language-server-vscode", "run", "build"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "presentation": { "reveal": "silent", "panel": "dedicated", "clear": true }
+    },
+    {
+      "label": "extension: watch",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["--filter", "heleonix-hx-language-server-vscode", "run", "watch"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "esbuild",
+        "pattern": { "regexp": "^✘ \\[ERROR\\] (.*)$", "message": 1 },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "\\[watch\\] build started",
+          "endsPattern": "\\[watch\\] build finished"
+        }
+      },
+      "presentation": { "reveal": "silent", "panel": "dedicated", "clear": true }
+    },
+    {
+      "label": "sandbox: stop dev server",
+      "type": "shell",
+      "command": "echo ${input:terminateSandboxDevServer}",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "never",
+        "close": true
+      }
+    }
+  ],
+  "inputs": [
+    {
+      "id": "terminateSandboxDevServer",
+      "type": "command",
+      "command": "workbench.action.tasks.terminate",
+      "args": "sandbox: start dev server"
+    }
+  ]
 }

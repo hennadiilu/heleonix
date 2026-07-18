@@ -1,0 +1,7 @@
+{
+  "extends": "../../tools/api-extractor.base.json",
+  "projectFolder": ".",
+  "dtsRollup": {
+    "enabled": false
+  }
+}

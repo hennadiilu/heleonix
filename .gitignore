@@ -62,3 +62,9 @@ typings/
 
 #built distributives
 dist/
+
+temp/
+tmp/
+
+# Auto-generated definition-module declarations (HxDefinitionPlugin)
+playground/hx-sandbox/src/hx-virtual.d.ts

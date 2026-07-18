@@ -1,0 +1,55 @@
+{
+  "name": "@heleonix/hx-webpack-plugin",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "./dist/cjs/index.cjs",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/types/index.d.ts",
+  "description": "Webpack loader and plugin that compile Heleonix *.hxm/*.hxd/*.hxc/*.hxs/*.hxt sources into virtual definition-source classes.",
+  "author": "Heleonix - Hennadii Lutsyshyn",
+  "license": "MIT",
+  "homepage": "https://github.com/Heleonix/heleonix",
+  "bugs": "https://github.com/Heleonix/heleonix/issues",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Heleonix/heleonix.git",
+    "directory": "plugins/hx-webpack-plugin"
+  },
+  "keywords": [],
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "clean": "rimraf dist temp",
+    "build": "rollup -c",
+    "dts": "api-extractor run -l"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "require": "./dist/cjs/index.cjs",
+      "import": "./dist/esm/index.js"
+    },
+    "./hxWebpackLoader": {
+      "types": "./dist/types/hxWebpackLoader.d.ts",
+      "require": "./dist/cjs/hxWebpackLoader.cjs",
+      "import": "./dist/esm/hxWebpackLoader.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "peerDependencies": {
+    "webpack": "^5.0.0"
+  },
+  "dependencies": {
+    "@heleonix/hx-language": "workspace:*",
+    "@heleonix/hx-plugin-core": "workspace:*",
+    "webpack-virtual-modules": "^0.6.2"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "webpack": "^5.106.1"
+  }
+}

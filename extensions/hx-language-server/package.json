@@ -1,0 +1,32 @@
+{
+  "name": "@heleonix/hx-language-server",
+  "version": "1.0.0",
+  "main": "./dist/server.js",
+  "description": "Language Server (LSP) for Heleonix source formats (*.hxm, *.hxd, *.hxc).",
+  "author": "Heleonix - Hennadii Lutsyshyn",
+  "license": "MIT",
+  "homepage": "https://github.com/Heleonix/heleonix",
+  "bugs": "https://github.com/Heleonix/heleonix/issues",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Heleonix/heleonix.git",
+    "directory": "extensions/hx-language-server"
+  },
+  "keywords": [],
+  "private": true,
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch"
+  },
+  "dependencies": {
+    "@heleonix/hx-compiler-core": "workspace:*",
+    "@heleonix/hx-language": "workspace:*",
+    "@vscode/web-custom-data": "^0.6.3",
+    "vscode-languageserver": "^9.0.1",
+    "vscode-languageserver-textdocument": "^1.0.12"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0"
+  }
+}

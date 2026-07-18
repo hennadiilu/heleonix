@@ -1,0 +1,1 @@
+export type FQDictionaryEntryName = string

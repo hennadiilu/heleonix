@@ -1,0 +1,3 @@
+<Component>
+  <DemoForm name="form" greeting:Component="FancyGreeting" />
+</Component>

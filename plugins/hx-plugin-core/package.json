@@ -1,0 +1,55 @@
+{
+  "name": "@heleonix/hx-plugin-core",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "./dist/cjs/index.cjs",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/types/index.d.ts",
+  "description": "Bundler-agnostic core for Heleonix definition-source build plugins.",
+  "author": "Heleonix - Hennadii Lutsyshyn",
+  "license": "MIT",
+  "homepage": "https://github.com/Heleonix/heleonix",
+  "bugs": "https://github.com/Heleonix/heleonix/issues",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Heleonix/heleonix.git",
+    "directory": "plugins/hx-plugin-core"
+  },
+  "keywords": [],
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "clean": "rimraf dist temp",
+    "build": "rollup -c",
+    "dts": "api-extractor run -l"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "require": "./dist/cjs/index.cjs",
+      "import": "./dist/esm/index.js"
+    },
+    "./sources": {
+      "types": "./sources.d.ts"
+    }
+  },
+  "files": [
+    "dist/cjs/index.cjs",
+    "dist/esm/index.js",
+    "dist/types/index.d.ts",
+    "sources.d.ts"
+  ],
+  "peerDependencies": {
+    "@heleonix/hx-compiler-components": "workspace:*",
+    "@heleonix/hx-compiler-configs": "workspace:*",
+    "@heleonix/hx-compiler-dictionaries": "workspace:*",
+    "@heleonix/hx-compiler-styles": "workspace:*",
+    "@heleonix/hx-compiler-themes": "workspace:*",
+    "@heleonix/hx-language": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0"
+  }
+}

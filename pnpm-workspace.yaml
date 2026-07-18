@@ -1,0 +1,14 @@
+packages:
+  - "playground/*"
+  - "compilers/*"
+  - "devtools/*"
+  - "extensions/*"
+  - "linting/*"
+  - "platforms/*"
+  - "plugins/*"
+  - "runtime/*"
+  - "common/*"
+  - "ssr/*"
+  - "testing/*"
+  - "cli/*"
+

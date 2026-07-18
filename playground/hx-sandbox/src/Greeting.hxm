@@ -1,0 +1,5 @@
+<Component>
+  <div>
+    <span name="label">@Sandbox.greeting</span>
+  </div>
+</Component>

@@ -1,0 +1,1 @@
+export const DICTIONARY_ENTRY_SEPARATOR = "."

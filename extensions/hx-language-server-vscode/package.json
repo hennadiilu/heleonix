@@ -1,0 +1,171 @@
+{
+  "name": "heleonix-hx-language-server-vscode",
+  "displayName": "Heleonix Framework Language Service",
+  "version": "1.0.0",
+  "description": "Syntax highlighting, diagnostics and autocompletion for Heleonix source files.",
+  "author": "Heleonix - Hennadii Lutsyshyn",
+  "license": "MIT",
+  "publisher": "heleonix",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Heleonix/heleonix.git",
+    "directory": "extensions/hx-language-server-vscode"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onLanguage:heleonix-hx-component",
+    "onLanguage:heleonix-hx-dictionary",
+    "onLanguage:heleonix-hx-config"
+  ],
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "heleonix.reloadDefinitions",
+        "title": "Reload Definitions",
+        "category": "Heleonix"
+      }
+    ],
+    "languages": [
+      {
+        "id": "heleonix-hx-component",
+        "aliases": [
+          "Heleonix Component",
+          "hxm"
+        ],
+        "extensions": [
+          ".hxm"
+        ],
+        "configuration": "./language-configuration/hxm.json"
+      },
+      {
+        "id": "heleonix-hx-dictionary",
+        "aliases": [
+          "Heleonix Dictionary",
+          "hxd"
+        ],
+        "extensions": [
+          ".hxd"
+        ],
+        "configuration": "./language-configuration/hxd.json"
+      },
+      {
+        "id": "heleonix-hx-config",
+        "aliases": [
+          "Heleonix Config",
+          "hxc"
+        ],
+        "extensions": [
+          ".hxc"
+        ],
+        "configuration": "./language-configuration/hxc.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "heleonix-hx-component",
+        "scopeName": "source.hxm",
+        "path": "./syntaxes/hxm.tmLanguage.json"
+      },
+      {
+        "language": "heleonix-hx-dictionary",
+        "scopeName": "source.hxd",
+        "path": "./syntaxes/hxd.tmLanguage.json"
+      },
+      {
+        "language": "heleonix-hx-config",
+        "scopeName": "source.hxc",
+        "path": "./syntaxes/hxc.tmLanguage.json"
+      },
+      {
+        "scopeName": "source.hxd.interpolation",
+        "path": "./syntaxes/hxd-interpolation.tmLanguage.json",
+        "injectTo": [
+          "source.hxd"
+        ]
+      }
+    ],
+    "configuration": {
+      "title": "Heleonix Framework",
+      "properties": {
+        "heleonix.hx.diagnostics.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable syntax/semantic diagnostics for Heleonix files."
+        },
+        "heleonix.hx.diagnostics.unknownReferenceSeverity": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "off"
+          ],
+          "default": "warning",
+          "description": "How to report unresolved @dictionary / #config references. 'off' disables the check."
+        },
+        "heleonix.hx.diagnostics.unusedEntrySeverity": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "information",
+            "hint",
+            "off"
+          ],
+          "default": "information",
+          "description": "How to report dictionary/config entry keys that are never referenced (@Name.key / #Name.key). 'off' disables the check."
+        },
+        "heleonix.hx.exclude": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Additional folder names to exclude when indexing workspace definitions."
+        },
+        "heleonix.hx.dimensionsPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to hx.dimensions.json (relative to a workspace folder). Reserved for future dimension-aware features."
+        },
+        "heleonix.hx.definitionSources": {
+          "type": "array",
+          "default": [],
+          "markdownDescription": "Additional sources of compiled definitions beyond the workspace scan, for components/dictionaries/configs shipped as libraries. Each entry is an installed package specifier (`@acme/widgets`), an `http(s)` URL, a local file/directory path to a compiled-definitions manifest, or a local `.js`/`.mjs`/`.cjs` module exporting a custom `DefinitionLoader`. Paths are relative to the first workspace folder. Custom loader modules run workspace code and are loaded only in a trusted workspace.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "heleonix.hx.trace.server": {
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "description": "Trace communication between VS Code and the Heleonix Framework Language Server."
+        }
+      }
+    }
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@heleonix/hx-language-server": "workspace:*",
+    "@types/node": "^25.6.0",
+    "@types/vscode": "^1.85.0"
+  }
+}

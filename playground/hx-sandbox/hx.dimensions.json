@@ -1,0 +1,5 @@
+[
+  { "name": "customer", "values": ["customer1", "customer2"] },
+  { "name": "culture", "values": ["en-US", "uk-UA"] },
+  { "name": "env", "values": ["dev", "test", "prod"] }
+]

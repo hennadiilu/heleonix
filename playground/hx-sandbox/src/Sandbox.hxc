@@ -1,0 +1,7 @@
+{
+  /**This is input type.*/
+  "inputType": "text",
+  "buttonType": "button",
+  "formClass": "demo-form",
+  "rowClass": "demo-row"
+}

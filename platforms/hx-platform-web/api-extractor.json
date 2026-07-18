@@ -1,0 +1,7 @@
+{
+  "extends": "../../tools/api-extractor.base.json",
+  "projectFolder": ".",
+  "docModel": {
+    "projectFolderUrl": "https://github.com/Heleonix/heleonix/tree/main/runtime/web"
+  }
+}

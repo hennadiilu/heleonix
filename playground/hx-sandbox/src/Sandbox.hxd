@@ -1,0 +1,14 @@
+{
+  /**This is app title.*/
+  "appTitle": "Heleonix - Bindings demo",
+  "nameLabel": "Name (two-way state):",
+  "namePlaceholder": "Type your name...",
+  "actionLabel": "Click me",
+  "eventLabel": "Last button event:",
+  "remoteEventLabel": "Cross-component event payload:",
+  "blurLabel": "Commit on blur (change.target.value):",
+  "blurPlaceholder": "Type and blur to commit",
+  "committedLabel": "Committed value:",
+  "greeting": "HELLO HELLO HELLO!",
+  "fancyGreeting": "✨ Fancy hello (via :Component override) ✨"
+}

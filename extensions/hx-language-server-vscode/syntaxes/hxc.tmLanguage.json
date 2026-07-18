@@ -1,0 +1,33 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Heleonix Framework Config",
+  "scopeName": "source.hxc",
+  "patterns": [
+    { "include": "#frontmatter" },
+    { "include": "source.json.comments" }
+  ],
+  "repository": {
+    "frontmatter": {
+      "name": "meta.frontmatter.hxc",
+      "begin": "\\A\\s*(---)[ \\t]*$",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.frontmatter.begin.hxc" }
+      },
+      "end": "^[ \\t]*(---)[ \\t]*$",
+      "endCaptures": {
+        "1": { "name": "punctuation.definition.frontmatter.end.hxc" }
+      },
+      "patterns": [
+        { "match": "#.*$", "name": "comment.line.number-sign.frontmatter.hxc" },
+        {
+          "match": "^[ \\t]*([A-Za-z_][\\w-]*)[ \\t]*(:)[ \\t]*(.*)$",
+          "captures": {
+            "1": { "name": "entity.name.tag.frontmatter.hxc" },
+            "2": { "name": "punctuation.separator.key-value.hxc" },
+            "3": { "name": "string.unquoted.frontmatter.hxc" }
+          }
+        }
+      ]
+    }
+  }
+}

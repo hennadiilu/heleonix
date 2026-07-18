@@ -1,15 +1,37 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "Chrome",
-            "type": "chrome",
-            "request": "launch",
-            "url": "http://localhost:8080",
-            "webRoot": "${workspaceFolder}/packages/sandbox"
-        }
-    ]
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Sandbox: Launch",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:4000",
+      "webRoot": "${workspaceFolder}",
+      "sourceMaps": true,
+      "sourceMapPathOverrides": {
+        "heleonix:///*": "${workspaceFolder}/*"
+      },
+      "preLaunchTask": "sandbox: start dev server",
+      "postDebugTask": "sandbox: stop dev server"
+    },
+    {
+      "name": "Run Heleonix Framework Language Service",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/extensions/hx-language-server-vscode",
+        "${workspaceFolder}/playground/hx-sandbox"
+      ],
+      "outFiles": ["${workspaceFolder}/extensions/hx-language-server-vscode/dist/**/*.js"],
+      "preLaunchTask": "extension: build"
+    },
+    {
+      "name": "Attach to Heleonix Framework Language Server",
+      "type": "node",
+      "request": "attach",
+      "port": 6009,
+      "restart": true,
+      "outFiles": ["${workspaceFolder}/extensions/hx-language-server-vscode/dist/**/*.js"]
+    }
+  ]
 }

@@ -1,0 +1,7 @@
+{
+  "extends": "../../tools/tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node", "vscode"]
+  },
+  "include": ["src", "esbuild.mjs"]
+}

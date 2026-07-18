@@ -1,0 +1,36 @@
+{
+  "name": "@heleonix/hx-sandbox",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "description": "Sandbox of the Heleonix framework.",
+  "author": "Heleonix - Hennadii Lutsyshyn",
+  "license": "MIT",
+  "homepage": "https://github.com/Heleonix/heleonix",
+  "bugs": "https://github.com/Heleonix/heleonix/issues",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Heleonix/heleonix.git",
+    "directory": "playground/hx-sandbox"
+  },
+  "scripts": {
+    "clean": "rimraf dist temp",
+    "dev": "webpack serve --config webpack.config.js"
+  },
+  "dependencies": {
+    "@heleonix/hx-core": "workspace:*",
+    "@heleonix/hx-language": "workspace:*",
+    "@heleonix/hx-router": "workspace:*",
+    "@heleonix/hx-ui": "workspace:*",
+    "@heleonix/hx-platform-web": "workspace:*",
+    "@heleonix/hx-compiler-components": "workspace:*",
+    "@heleonix/hx-compiler-core": "workspace:*",
+    "@heleonix/hx-compiler-dictionaries": "workspace:*",
+    "@heleonix/hx-compiler-configs": "workspace:*",
+    "@heleonix/hx-compiler-styles": "workspace:*",
+    "@heleonix/hx-compiler-themes": "workspace:*"
+  },
+  "devDependencies": {
+    "@heleonix/hx-webpack-plugin": "workspace:*"
+  }
+}

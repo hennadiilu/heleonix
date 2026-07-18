@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "paths": {
+      "@heleonix/hx-language": ["../common/hx-language/src"],
+      "@heleonix/hx-utils": ["../common/hx-utils/src"],
+      "@heleonix/hx-core": ["../runtime/hx-core/src"],
+      "@heleonix/hx-router": ["../runtime/hx-router/src"],
+      "@heleonix/hx-ui": ["../runtime/hx-ui/src"],
+      "@heleonix/hx-platform-web": ["../platforms/hx-platform-web/src"],
+      "@heleonix/hx-compiler-core": ["../compilers/hx-compiler-core/src"],
+      "@heleonix/hx-compiler-dictionaries": ["../compilers/hx-compiler-dictionaries/src"],
+      "@heleonix/hx-compiler-configs": ["../compilers/hx-compiler-configs/src"],
+      "@heleonix/hx-compiler-components": ["../compilers/hx-compiler-components/src"],
+      "@heleonix/hx-compiler-styles": ["../compilers/hx-compiler-styles/src"],
+      "@heleonix/hx-compiler-themes": ["../compilers/hx-compiler-themes/src"],
+      "@heleonix/hx-plugin-core": ["../plugins/hx-plugin-core/src"],
+      "@heleonix/hx-webpack-plugin": ["../plugins/hx-webpack-plugin/src"]
+    }
+  }
+}

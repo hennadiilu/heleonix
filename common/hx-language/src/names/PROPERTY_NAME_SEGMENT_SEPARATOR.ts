@@ -1,0 +1,1 @@
+export const PROPERTY_NAME_SEGMENT_SEPARATOR = "."
