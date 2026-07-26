@@ -1,4 +1,11 @@
-import { CLOSE, OPEN, REFERENCE_PREFIXES, REFERENCE_SEPARATORS, REFERENCE_TYPES, ReferenceType } from "@heleonix/hx-language"
+import {
+  CLOSE,
+  OPEN,
+  REFERENCE_PREFIXES,
+  REFERENCE_SEPARATORS,
+  REFERENCE_TYPES,
+  ReferenceType,
+} from "@heleonix/hx-language"
 import type { IInterpolationRef } from "./IInterpolationRef"
 
 // Innermost `{ ... }` (no nested braces) so document structure like a JSON

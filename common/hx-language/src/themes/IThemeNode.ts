@@ -1,7 +1,7 @@
-export interface IThemeNode {
-  /** Attributes on this node (typically `value`). */
-  attributes: Record<string, string>
+import type { IThemeGroup } from "./IThemeGroup"
 
-  /** Nested groups / leaves keyed by their tag name. */
-  children?: Record<string, IThemeNode>
-}
+/**
+ * A node in the theme token tree: either a leaf token value (raw CSS text with
+ * `{$...}` aliases / `{prop}` interpolations kept intact) or a nested group.
+ */
+export type IThemeNode = string | IThemeGroup

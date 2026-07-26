@@ -1,8 +1,9 @@
 import { IKeyedEventEmitter } from "./IKeyedEventEmitter"
 
-export class KeyedEventEmitter<TKey, TEventHandler extends (key: TKey, ...args: unknown[]) => void>
-  implements IKeyedEventEmitter<TKey, TEventHandler>
-{
+export class KeyedEventEmitter<
+  TKey,
+  TEventHandler extends (key: TKey, ...args: unknown[]) => void,
+> implements IKeyedEventEmitter<TKey, TEventHandler> {
   public readonly handlers = new Map<TKey, Set<TEventHandler>>()
 
   public constructor(

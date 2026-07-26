@@ -1,10 +1,6 @@
 import { Component, PlatformComponent } from "@heleonix/hx-core"
 import type { IComponentDefinition, IComponentUsage } from "@heleonix/hx-language"
-import {
-  PROPERTY_NAME_SEGMENT_SEPARATOR,
-  getPropertySegments,
-  joinFQPropertyName,
-} from "@heleonix/hx-language"
+import { PROPERTY_NAME_SEGMENT_SEPARATOR, getPropertySegments, joinFQPropertyName } from "@heleonix/hx-language"
 import { WebScheduler } from "./WebScheduler"
 import { WebSchedulerJob } from "./WebSchedulerJob"
 
@@ -39,6 +35,11 @@ export class WebPlatformComponent extends PlatformComponent {
 
   public adoptNative(element: HTMLElement): void {
     this.native = element
+  }
+
+  /** The component's root elements, that styling classes and variables land on. */
+  public get roots(): readonly HTMLElement[] {
+    return this.native ? [this.native] : []
   }
 
   public override setContent(content: string): void {

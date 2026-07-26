@@ -54,7 +54,7 @@ export class ComponentManager extends FrameworkElement<
 
   private readonly componentBuiltEmitter = new EventEmitter<(fq: FQComponentName, instance: Component) => void>()
 
-  private readonly componentDestroyedEmitter = new EventEmitter<(fq: FQComponentName) => void>()
+  private readonly componentDestroyedEmitter = new EventEmitter<(fq: FQComponentName, instance: Component) => void>()
 
   public constructor(diContainer: IDIContainer) {
     super(diContainer)
@@ -70,7 +70,7 @@ export class ComponentManager extends FrameworkElement<
     return this.componentBuiltEmitter
   }
 
-  public get componentDestroyed(): IEventEmitter<(fq: FQComponentName) => void> {
+  public get componentDestroyed(): IEventEmitter<(fq: FQComponentName, instance: Component) => void> {
     return this.componentDestroyedEmitter
   }
 
@@ -107,7 +107,7 @@ export class ComponentManager extends FrameworkElement<
 
     component.destroy()
 
-    this.componentDestroyedEmitter.emit(component.fqName)
+    this.componentDestroyedEmitter.emit(component.fqName, component)
   }
 
   public async reconcileChildren(
@@ -292,6 +292,8 @@ export class ComponentManager extends FrameworkElement<
           this.stateManager.getValue(joinFQPropertyName(scopeFQ, param)),
         )
       }
+      case "literal":
+        return undefined
     }
   }
 

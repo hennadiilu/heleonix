@@ -1,3 +1,4 @@
+import { IMetaDocument } from "@heleonix/hx-language"
 import { IIndexContribution } from "../index/IIndexContribution"
 
 /**
@@ -11,4 +12,12 @@ export interface IDefinitionSource {
   readonly id: string
 
   load(): Promise<IIndexContribution>
+
+  /**
+   * The type-level `hx.meta.json` manifests this source carries, available after
+   * {@link load}. Fed to the analyzer so externally-sourced definitions validate
+   * like workspace ones; sources with no meta (e.g. the workspace file source,
+   * whose files the analyzer reads directly) omit it.
+   */
+  metas?(): readonly IMetaDocument[]
 }

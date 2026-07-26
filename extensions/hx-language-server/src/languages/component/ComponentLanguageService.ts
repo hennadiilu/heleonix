@@ -10,6 +10,7 @@ import {
   CompletionItem,
   Diagnostic,
   Hover,
+  Location,
   Position,
   SemanticTokens,
   SemanticTokensLegend,
@@ -18,6 +19,7 @@ import { TextDocument } from "vscode-languageserver-textdocument"
 import { ILanguageContext } from "../ILanguageContext"
 import { ILanguageService } from "../ILanguageService"
 import { completeComponent } from "./componentCompletion"
+import { completeConverterAction, definitionConverterAction, hoverConverterAction } from "./converterActionFeature"
 import { diagnoseComponent } from "./componentDiagnostics"
 import { hoverComponent } from "./componentHover"
 import { buildComponentSemanticTokens } from "./componentSemanticTokens"
@@ -47,11 +49,29 @@ export class ComponentLanguageService implements ILanguageService {
   }
 
   public completion(doc: TextDocument, position: Position, context: ILanguageContext): CompletionItem[] {
-    return completeComponent(doc, position, context.index, this.scanCache.get(doc))
+    const scan = this.scanCache.get(doc)
+    const registry = completeConverterAction(doc, doc.offsetAt(position), scan, context.converters, context.actions)
+
+    return registry ?? completeComponent(doc, position, context.index, scan, context.components)
   }
 
   public hover(doc: TextDocument, position: Position, context: ILanguageContext): Hover | null {
-    return hoverComponent(doc, position, context.index, this.scanCache.get(doc))
+    const scan = this.scanCache.get(doc)
+
+    return (
+      hoverConverterAction(doc, doc.offsetAt(position), scan, context.converters, context.actions) ??
+      hoverComponent(doc, position, context.index, scan, context.components)
+    )
+  }
+
+  public definition(doc: TextDocument, position: Position, context: ILanguageContext): Location | null {
+    return definitionConverterAction(
+      doc,
+      doc.offsetAt(position),
+      this.scanCache.get(doc),
+      context.converters,
+      context.actions,
+    )
   }
 
   public semanticTokens(doc: TextDocument): SemanticTokens {

@@ -3,14 +3,33 @@ import path from "node:path"
 import { fileURLToPath } from "node:url"
 import VirtualModulesPlugin from "webpack-virtual-modules"
 import type { Compiler, WebpackError } from "webpack"
-import type { IDimensionDefinition, IDocsEntry } from "@heleonix/hx-language"
-import { EXT_DOCS, EXT_KIND, KINDS, type Kind } from "@heleonix/hx-language"
+import type {
+  IComponentDefinition,
+  IComponentHeader,
+  IComponentMetaEntry,
+  IDimensionDefinition,
+  IDocsEntry,
+  IQualifierDefinition,
+  IRegistryMetaEntry,
+  IThemeDefinition,
+} from "@heleonix/hx-language"
+import {
+  EXT_KIND,
+  EXT_TEMPLATE,
+  EXT_THEME,
+  KINDS,
+  collectControlNames,
+  flattenThemeTokens,
+  type Kind,
+} from "@heleonix/hx-language"
 import {
   scan,
   parseAssetFileName,
   compileAsset,
   compileAssetDocs,
-  bundleDocs,
+  compileAssetHeader,
+  buildMeta,
+  loadDependencyMetas,
   generateDefinitionSource,
   generateDefinitionSourceDeclaration,
   generateDefinitionDeclarations,
@@ -18,6 +37,8 @@ import {
   DEFINITION_SOURCE_BASE_CLASS,
   type IAssetFile,
 } from "@heleonix/hx-plugin-core"
+import { Analyzer, createNodeTypeProgramHost, TypeResolver } from "@heleonix/hx-analyzer"
+import type { ITypeProgramHost } from "@heleonix/hx-analyzer"
 import { IHxDefinitionSourceOptions } from "./IHxDefinitionSourceOptions"
 import { IHxWebpackPluginOptions } from "./IHxWebpackPluginOptions"
 import { IHxEmitDefinitionSourcesOptions } from "./IHxEmitDefinitionSourcesOptions"
@@ -51,8 +72,8 @@ export class HxWebpackPlugin {
   private readonly loading: "eager" | "lazy"
   private readonly chunkName?: (file: IAssetFile) => string | undefined
   private readonly emitJson?: boolean | ((file: IAssetFile) => string)
-  private readonly emitDocs?: boolean | ((file: IAssetFile) => string)
-  private readonly emitDocsBundle?: boolean | string
+  private readonly emitMeta?: boolean | string
+  private readonly validate?: { failOnWarnings?: boolean }
   private readonly emitDefinitionSources?: IHxEmitDefinitionSourcesOptions
   private readonly explicitClassNames: Partial<Record<Kind, string>>
 
@@ -65,8 +86,8 @@ export class HxWebpackPlugin {
     this.loading = options.loading ?? "eager"
     this.chunkName = options.chunkName
     this.emitJson = options.emitJson
-    this.emitDocs = options.emitDocs
-    this.emitDocsBundle = options.emitDocsBundle
+    this.emitMeta = options.emitMeta
+    this.validate = options.validate === true ? {} : options.validate || undefined
     this.emitDefinitionSources =
       options.emitDefinitionSources === true ? {} : options.emitDefinitionSources || undefined
     this.explicitClassNames = {}
@@ -270,10 +291,49 @@ export class HxWebpackPlugin {
     //    asset set, not the module graph, so sources are emitted whether or not anything
     //    imports them.
     const ds = this.emitDefinitionSources
-    const docsBundleFile = this.emitDocsBundle === true ? "hx.docs.json" : this.emitDocsBundle || undefined
+    const metaFile = this.emitMeta === true ? "hx.meta.json" : this.emitMeta || undefined
 
-    if (!this.emitJson && !ds && !this.emitDocs && !docsBundleFile) {
+    if (!this.emitJson && !ds && !metaFile && !this.validate) {
       return
+    }
+
+    // The TypeScript program host (project `tsconfig` + `.ts` files) backs both
+    // prop/type validation and converter/action class discovery for the meta
+    // manifest, so it is built once and shared.
+    const typeHost = this.validate || metaFile ? createNodeTypeProgramHost(context) : undefined
+
+    // One analyzer per compiler: it persists across watch rebuilds, and
+    // `analyzerSetFile` feeds it only files whose content actually changed, so
+    // rebuild validation recompiles just the edited sources.
+    const analyzer = this.validate ? new Analyzer() : undefined
+
+    if (analyzer) {
+      if (typeHost) {
+        analyzer.setTypeProgramHost(typeHost)
+      }
+
+      for (const meta of loadDependencyMetas(context)) {
+        analyzer.addMeta(meta)
+      }
+    }
+    const analyzedMtimes = new Map<string, number>()
+    const analyzedPaths = new Set<string>()
+
+    const analyzerSetFile = (absPath: string, ext: string, name: string, dimension: IAssetFile["dimension"]): void => {
+      if (!analyzer) {
+        return
+      }
+
+      analyzedPaths.add(absPath)
+
+      const mtimeMs = fs.statSync(absPath).mtimeMs
+
+      if (analyzedMtimes.get(absPath) === mtimeMs) {
+        return
+      }
+
+      analyzedMtimes.set(absPath, mtimeMs)
+      analyzer.setFile({ path: absPath, ext, name, dimension, source: fs.readFileSync(absPath, "utf8") })
     }
 
     // The definition sources import the `.json` assets, so `emitDefinitionSources`
@@ -284,18 +344,6 @@ export class HxWebpackPlugin {
 
     const jsonName = (file: IAssetFile): string =>
       toPosix(customJsonName ? customJsonName(file) : defaultJsonAssetName(context, file))
-
-    const customDocsName = typeof this.emitDocs === "function" ? this.emitDocs : undefined
-
-    const docsName = (file: IAssetFile): string => {
-      if (customDocsName) {
-        return toPosix(customDocsName(file))
-      }
-
-      const base = jsonName(file)
-
-      return base.endsWith(".json") ? base.slice(0, -".json".length) + EXT_DOCS : base + EXT_DOCS
-    }
 
     const classPrefix = derivePackageClassPrefix(context)
     const emittedClassNames = {} as Record<Kind, string>
@@ -331,6 +379,44 @@ export class HxWebpackPlugin {
       return json
     }
 
+    const compiledThemeTokens = new Map<string, { mtimeMs: number; tokens: Record<string, string> }>()
+
+    const collectThemeTokens = async (asset: IAssetFile): Promise<Record<string, string>> => {
+      const stat = fs.statSync(asset.absPath)
+      const cached = compiledThemeTokens.get(asset.absPath)
+
+      if (cached && cached.mtimeMs === stat.mtimeMs) {
+        return cached.tokens
+      }
+
+      const source = fs.readFileSync(asset.absPath, "utf8")
+      const definition = (await compileAsset(asset.ext, source, asset.dimension, asset.name)) as IThemeDefinition
+      const tokens = flattenThemeTokens(definition.groups)
+
+      compiledThemeTokens.set(asset.absPath, { mtimeMs: stat.mtimeMs, tokens })
+
+      return tokens
+    }
+
+    const compiledControls = new Map<string, { mtimeMs: number; controls: string[] }>()
+
+    const collectComponentControls = async (asset: IAssetFile): Promise<string[]> => {
+      const stat = fs.statSync(asset.absPath)
+      const cached = compiledControls.get(asset.absPath)
+
+      if (cached && cached.mtimeMs === stat.mtimeMs) {
+        return cached.controls
+      }
+
+      const source = fs.readFileSync(asset.absPath, "utf8")
+      const definition = (await compileAsset(asset.ext, source, asset.dimension, asset.name)) as IComponentDefinition
+      const controls = collectControlNames(definition.children ?? [])
+
+      compiledControls.set(asset.absPath, { mtimeMs: stat.mtimeMs, controls })
+
+      return controls
+    }
+
     const compiledDocs = new Map<string, { mtimeMs: number; entry: IDocsEntry | undefined }>()
 
     const compileDocsEntry = (asset: IAssetFile): IDocsEntry | undefined => {
@@ -349,7 +435,25 @@ export class HxWebpackPlugin {
       return entry
     }
 
-    const packageInfo = docsBundleFile ? readPackageInfo(context) : undefined
+    const compiledHeaders = new Map<string, { mtimeMs: number; header: IComponentHeader | undefined }>()
+
+    const compileHeaderEntry = (asset: IAssetFile): IComponentHeader | undefined => {
+      const stat = fs.statSync(asset.absPath)
+      const cached = compiledHeaders.get(asset.absPath)
+
+      if (cached && cached.mtimeMs === stat.mtimeMs) {
+        return cached.header
+      }
+
+      const source = fs.readFileSync(asset.absPath, "utf8")
+      const header = compileAssetHeader(asset.ext, source)
+
+      compiledHeaders.set(asset.absPath, { mtimeMs: stat.mtimeMs, header })
+
+      return header
+    }
+
+    const packageInfo = metaFile ? readPackageInfo(context) : undefined
 
     const { webpack } = compiler
 
@@ -357,8 +461,18 @@ export class HxWebpackPlugin {
       compilation.hooks.processAssets.tapPromise(
         { name: PLUGIN_NAME, stage: webpack.Compilation.PROCESS_ASSETS_STAGE_ADDITIONAL },
         async () => {
+          analyzedPaths.clear()
+
           const byKind = {} as Record<Kind, IAssetFile[]>
           const docsEntries: IDocsEntry[] = []
+          const themeTokens: Record<string, string> = {}
+          const componentControls = new Map<string, Set<string>>()
+          const rawComponents: {
+            name: string
+            dimension: IAssetFile["dimension"]
+            dir: string
+            header: IComponentHeader
+          }[] = []
 
           for (const kind of this.kinds) {
             byKind[kind] = []
@@ -370,22 +484,44 @@ export class HxWebpackPlugin {
             compilation.fileDependencies.add(asset.absPath)
 
             try {
+              analyzerSetFile(asset.absPath, asset.ext, asset.name, asset.dimension)
+            } catch {
+              // Unreadable sources surface through the loader/emit paths.
+            }
+
+            try {
               if (emitDefinitionJson) {
                 compilation.emitAsset(jsonName(asset), new webpack.sources.RawSource(await compileJson(asset)))
               }
 
-              if (this.emitDocs || docsBundleFile) {
+              if (metaFile) {
                 const entry = compileDocsEntry(asset)
 
                 if (entry) {
                   docsEntries.push(entry)
+                }
 
-                  if (this.emitDocs) {
-                    compilation.emitAsset(
-                      docsName(asset),
-                      new webpack.sources.RawSource(JSON.stringify({ entries: [entry] })),
-                    )
+                if (asset.ext === EXT_TEMPLATE) {
+                  const header = compileHeaderEntry(asset)
+
+                  if (header) {
+                    rawComponents.push({
+                      name: asset.name,
+                      dimension: asset.dimension,
+                      dir: path.dirname(asset.absPath),
+                      header,
+                    })
                   }
+
+                  const controls = componentControls.get(asset.name) ?? new Set<string>()
+
+                  for (const control of await collectComponentControls(asset)) {
+                    controls.add(control)
+                  }
+
+                  componentControls.set(asset.name, controls)
+                } else if (asset.ext === EXT_THEME) {
+                  Object.assign(themeTokens, await collectThemeTokens(asset))
                 }
               }
             } catch (error) {
@@ -399,14 +535,78 @@ export class HxWebpackPlugin {
             }
           }
 
-          if (docsBundleFile) {
-            // Deterministic order so the emitted bundle doesn't churn with scan order.
-            docsEntries.sort((a, b) => a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name))
+          if (metaFile) {
+            const converterEntries: IRegistryMetaEntry[] = []
+            const actionEntries: IRegistryMetaEntry[] = []
+            const qualifierEntries: IQualifierDefinition[] = []
+
+            if (typeHost) {
+              const resolver = new TypeResolver(typeHost)
+
+              for (const found of resolver.discover()) {
+                if (found.suffixOk) {
+                  ;(found.base === "Converter" ? converterEntries : actionEntries).push({
+                    name: found.name,
+                    params: found.params,
+                  })
+                }
+              }
+
+              for (const found of resolver.qualifiers()) {
+                if (found.suffixOk) {
+                  qualifierEntries.push({ name: found.name, args: found.args })
+                }
+              }
+            }
 
             compilation.emitAsset(
-              toPosix(docsBundleFile),
-              new webpack.sources.RawSource(JSON.stringify(bundleDocs([{ entries: docsEntries }], packageInfo))),
+              toPosix(metaFile),
+              new webpack.sources.RawSource(
+                JSON.stringify(
+                  buildMeta(
+                    {
+                      docs: docsEntries,
+                      components: resolveComponentEntries(rawComponents, componentControls, typeHost),
+                      converters: converterEntries,
+                      actions: actionEntries,
+                      themeTokens,
+                      qualifiers: qualifierEntries,
+                    },
+                    packageInfo,
+                  ),
+                ),
+              ),
             )
+          }
+
+          if (analyzer) {
+            for (const knownPath of [...analyzedMtimes.keys()]) {
+              if (!analyzedPaths.has(knownPath)) {
+                analyzer.removeFile(knownPath)
+                analyzedMtimes.delete(knownPath)
+              }
+            }
+
+            // Per-file compile errors of kind sources already surface from the
+            // loader; the analyzer contributes the cross-file findings.
+            const loaderCoveredPaths = new Set([...assets.values()].map((entry) => entry.asset.absPath))
+
+            for (const finding of await analyzer.analyze()) {
+              if (finding.code.startsWith("HX_COMPILER_") && loaderCoveredPaths.has(finding.file)) {
+                continue
+              }
+
+              const report = new HeleonixWebpackPluginError(
+                Errors.validation,
+                `${finding.code}: ${finding.message} (${locate(finding.file, finding.subject)})`,
+              ) as unknown as WebpackError
+
+              if (finding.severity === "error" || this.validate?.failOnWarnings) {
+                compilation.errors.push(report)
+              } else {
+                compilation.warnings.push(report)
+              }
+            }
           }
 
           if (!ds) {
@@ -457,6 +657,56 @@ export class HxWebpackPlugin {
 
 function toArray<T>(value: T | T[]): T[] {
   return Array.isArray(value) ? value : [value]
+}
+
+/**
+ * Resolves each component's props/events header text into member facts for the
+ * meta manifest, so a consuming package validates usages without re-resolving
+ * this package's TypeScript sources. Without a type host (no TS project), or for
+ * an unresolvable type, only the summary docs are shipped for that component.
+ */
+function resolveComponentEntries(
+  raws: readonly { name: string; dimension: IAssetFile["dimension"]; dir: string; header: IComponentHeader }[],
+  controls: ReadonlyMap<string, Set<string>>,
+  typeHost: ITypeProgramHost | undefined,
+): IComponentMetaEntry[] {
+  const requests: { id: string; dir: string; typeText: string }[] = []
+
+  raws.forEach((raw, index) => {
+    for (const kind of ["props", "events"] as const) {
+      const text = raw.header[kind]
+
+      if (text) {
+        requests.push({ id: `${index}|${kind}`, dir: raw.dir, typeText: text })
+      }
+    }
+  })
+
+  const resolved = typeHost && requests.length > 0 ? new TypeResolver(typeHost).resolve(requests) : undefined
+
+  return raws.map((raw, index) => {
+    const entry: IComponentMetaEntry = { name: raw.name, dimension: raw.dimension }
+
+    if (raw.header.docs) {
+      entry.docs = raw.header.docs
+    }
+
+    for (const kind of ["props", "events"] as const) {
+      const result = resolved?.get(`${index}|${kind}`)
+
+      if (result?.resolved && result.members.length > 0) {
+        entry[kind] = result.members
+      }
+    }
+
+    const names = controls.get(raw.name)
+
+    if (names && names.size > 0) {
+      entry.controls = [...names]
+    }
+
+    return entry
+  })
 }
 
 function toPosix(filePath: string): string {
@@ -541,4 +791,31 @@ function writeIfChanged(file: string, content: string): void {
 
   fs.mkdirSync(path.dirname(file), { recursive: true })
   fs.writeFileSync(file, content)
+}
+
+/** `file:line:column` of the finding's subject in the source, or the bare file. */
+function locate(file: string, subject: string | undefined): string {
+  if (!subject) {
+    return file
+  }
+
+  let text: string
+
+  try {
+    text = fs.readFileSync(file, "utf8")
+  } catch {
+    return file
+  }
+
+  const offset = text.indexOf(subject)
+
+  if (offset === -1) {
+    return file
+  }
+
+  const before = text.slice(0, offset)
+  const line = before.split("\n").length
+  const column = offset - before.lastIndexOf("\n")
+
+  return `${file}:${line}:${column}`
 }

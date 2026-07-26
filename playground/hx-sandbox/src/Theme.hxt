@@ -1,0 +1,15 @@
+Colors {
+  Text {
+    primary: #0f62fe;
+  }
+  Bg {
+    canvas: #f4f4f4;
+  }
+}
+
+Typography {
+  Heading {
+    font-size: 2rem;
+    font-weight: 700;
+  }
+}

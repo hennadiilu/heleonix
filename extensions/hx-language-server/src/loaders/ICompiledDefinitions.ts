@@ -1,4 +1,10 @@
-import { IComponentDefinition, IConfigDefinition, IDictionaryDefinition, IDocsEntry } from "@heleonix/hx-language"
+import {
+  IComponentDefinition,
+  IConfigDefinition,
+  IDictionaryDefinition,
+  IDocsEntry,
+  IMetaDocument,
+} from "@heleonix/hx-language"
 
 /**
  * The public artifact a {@link CompiledDefinitionSource} consumes: the compiled
@@ -25,4 +31,12 @@ export interface ICompiledDefinitions {
   configs?: IConfigDefinition[]
 
   docs?: IDocsEntry[]
+
+  /**
+   * The type-level `hx.meta.json` manifests the source ships (resolved
+   * props/events/controls, converters, actions, theme tokens, qualifiers). Fed
+   * to the analyzer so a definition from any provenance - package, `http(s)`
+   * endpoint, custom loader - validates like a workspace one.
+   */
+  metas?: IMetaDocument[]
 }

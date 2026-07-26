@@ -16,11 +16,11 @@ shape consumed by `@heleonix/hx-core`'s `ComponentDefinitionProvider`.
 
 Attribute values and inner text content are parsed as binding expressions:
 
-| Form                              | Binding type   |
-| --------------------------------- | -------------- |
-| `propName`, `data.user`           | `state`        |
-| `@Dict.key`, `@Dict.Sub.k`        | `dictionary`   |
-| `#Config.key`, `#Config.Sub.k`    | `config`       |
+| Form                              | Binding type    |
+| --------------------------------- | --------------- |
+| `propName`, `data.user`           | `state`         |
+| `@Dict.key`, `@Dict.Sub.k`        | `dictionary`    |
+| `#Config.key`, `#Config.Sub.k`    | `config`        |
 | `... \| converterA \| converterB` | adds converters |
 
 The root `<Component>` element is a compile-time wrapper only. Its children become

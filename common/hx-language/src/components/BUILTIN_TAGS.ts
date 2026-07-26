@@ -15,6 +15,9 @@ export const BUILTIN_TAGS: ReadonlySet<string> = new Set([
   "Raise",
   "Execute",
   "If",
+  "Unless",
   "Switch",
+  "Case",
+  "Default",
   "List",
 ])

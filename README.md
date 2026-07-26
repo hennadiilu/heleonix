@@ -158,6 +158,62 @@ usage: extend
 }
 ```
 
+### METADATA: hx.meta.json
+
+Each package ships **one** compiled metadata manifest under the `hxmeta` export condition — the compile-time channel
+consumed by build validation, editors and docs generation. It is never a runtime payload, and there are no per-file
+sidecars: metadata's consumers always need the whole package index, and one artifact cannot drift against itself.
+
+```jsonc
+{
+  "schemaVersion": 1,
+  "package": "@acme/ui",
+  "version": "1.0.0",
+  // doc comments of every kind, joined to definitions by kind + name + dimension
+  "docs": [{ "kind": "component", "name": "Greeting", "dimension": {}, "docs": { "summary": "..." } }],
+  // component contracts: props/events resolved to member facts (see below), per dimension file.
+  // `open` marks a component that also accepts attributes beyond its enumerated set (native elements).
+  "components": [
+    {
+      "name": "Greeting",
+      "dimension": {},
+      "docs": "* Greets the current user.",
+      "props": [
+        {
+          "name": "variant",
+          "optional": true,
+          "kind": "enum",
+          "enumValues": ["primary", "default"],
+          "isFunction": false,
+        },
+      ],
+    },
+  ],
+  // converter/action contracts from discovered TypeScript classes: name + resolved params
+  "converters": [
+    { "name": "Truncate", "params": [{ "name": "length", "optional": false, "kind": "number", "isFunction": false }] },
+  ],
+  "actions": [
+    { "name": "Submit", "params": [{ "name": "id", "optional": false, "kind": "number", "isFunction": false }] },
+  ],
+}
+```
+
+- Every section is optional; consumers read the facets they understand. `schemaVersion` is first so consumers can
+  detect incompatible manifests.
+- **Member facts** (`props`/`events`/`params` entries) are resolved from the TypeScript types at the _producing_
+  package's build time — `{ name, optional, kind, enumValues?, isFunction, readonly?, docs? }` where `kind` is one of
+  `string | number | boolean | enum | object | array | unknown`. Shipping resolved facts (not raw type text) lets a
+  consuming package validate usages without re-resolving the library's TypeScript sources.
+- Authority is per-facet: contracts validate at error grade, docs never affect compilation — stripping any facet only
+  degrades tooling, never behavior.
+- Emitted by the build plugin (`emitMeta: true` -> `hx.meta.json` in `output.path`); sections are sorted so the
+  artifact doesn't churn with scan order.
+
+Shared, reusable prop/param types are ordinary **TypeScript** types in `.ts` modules (enums, string-literal unions,
+interfaces), referenced from a component/converter/action — there is no separate DSL type format. See _Typings
+frontmatter_ under COMPONENTS and the CONVERTERS/ACTIONS sections.
+
 ### STYLES (Mergeable): \*.hxs
 
 Style is applied as class="auto generated classes" to the root native html elements only, i.e.:
@@ -178,14 +234,18 @@ OR
 <li class="auto generated classes">three</li>
 ```
 
-`*.hxs` uses a **custom CSS-subset syntax** (not XML), parsed by a dependency-free grammar shared with `*.hxt`. The
-`{$Spacing.xs}` syntax references a theme token; `{someProp}` references the component's property. When a referenced
-property changes, its CSS variable is updated and the style re-renders automatically.
+`*.hxs` uses a **custom CSS-subset syntax** (not XML), parsed by a dependency-free grammar shared with `*.hxt`. A
+`{...}` interpolation is a **binding source** — the same grammar as `*.hxm` attribute values, plus theme tokens:
+`{someProp}` (a component property / state path), `{@Dictionary.key}` (a dictionary reference), `{#Config.path}` (a
+config reference) and `{$Theme.token}` (a theme token). Both **CSS declaration values and qualifier arguments** use it.
+When a bound source changes — a property, or a dictionary/config/theme under a culture/dimension switch — the style
+re-renders automatically.
 
 Syntax rules:
 
-- **Declarations are CSS**: `padding: {$Spacing.xs};`. Values are raw CSS values with optional `{prop}` (component
-  property) / `{$Theme.token}` (theme) interpolations.
+- **Declarations are CSS**: `padding: {$Spacing.xs};`. Values are raw CSS text with optional `{...}` binding-source
+  interpolations — `{prop}` (state), `{@Dict.key}` (dictionary), `{#Config.path}` (config), `{$Theme.token}` (theme);
+  the surrounding text is literal.
 - **Native CSS spelling for what CSS already has**: pseudo-classes/elements (`:hover`, `::before`), media
   (`@media (...)`), keyframes (`@keyframes`). They are recognized and compiled to platform-neutral signatures.
 - **`@hx-*(named: args)` blocks for framework qualifiers** - concepts CSS has no syntax for: `@hx-if` (property
@@ -194,10 +254,18 @@ Syntax rules:
 - A block is introduced by a pseudo (`:hover`) or an at-rule (`@media (...)`, `@hx-*(...)`); after an identifier `:`
   begins a declaration and `{` begins a block, so the two never clash.
 - Nesting means AND: `:hover { @media (...) { ... } }` applies on hover AND matching media.
-- `@hx-if(is: isInvalid)` applies its declarations while the property is truthy; `@hx-if(not: isValid)` while falsy.
-  Both may combine (`is: a, not: b` means a AND not b), compiling to one segment `If(is:a,not:b)`. On web the runtime
-  toggles a `data-` attribute on the root element, selected via `[data-...]` - no class regeneration. Property paths use
-  `*.hxm` addressing (`sub.subsub:isInvalid`).
+- `@hx-if(value: {subject})` applies its declarations while the subject is truthy; `@hx-unless(value: {subject})`
+  while it is falsy or unset. The subject is the `value:` argument — a `{...}` binding source, with `*.hxm` addressing
+  (`{sub.subsub:isInvalid}`) — the same argument name as the `<If value="...">` / `<Switch value="...">` builtins in
+  \*.hxm, so the condition grammar is identical across both formats. Comparison arguments test it against an operand:
+  `@hx-if(value: {variant}, is: {'primary'})`, `@hx-if(value: {variant}, isNot: {'danger'})`. Operands are one value
+  expression each: a literal (`3`, `true`, a string literal `'primary'` checked against the subject's enum, raw CSS
+  text — equality is strict lexical/numeric, never unit-aware, so `12px` != `1em`), or any `{...}` binding source —
+  `{other.prop}` (another property, for selected-item/active-state styling), `{@Dict.key}`, `{#Config.path}` or
+  `{$Theme.token}` (the rule re-evaluates when the bound dictionary/config/theme changes). `@hx-unless` takes no
+  comparison arguments — combined negation is `isNot:`. One subject per qualifier; multiple conditions nest (nesting means AND). No operators or
+  expressions inside braces — anything more is computed state authored in \*.hxm. On web the runtime toggles a `data-`
+  attribute on the root element, selected via `[data-...]` - no class regeneration.
 - `@hx-style(for: path)` scopes declarations to child components, with the same name resolution as in \*.hxm. Each path
   segment steps one definition level and is either a control name (a specific instance) or a component type (every
   instance assignable to that type - is-a matching, so a type also covers components derived from it), so instances and
@@ -370,7 +438,7 @@ Animations:
   to   { transform: scale(1); }
 }
 
-@hx-if(is: isSaving) { animation: pulse {$Motion.slow} {$Motion.easeOut} infinite; }
+@hx-if(value: {isSaving}) { animation: pulse {$Motion.slow} {$Motion.easeOut} infinite; }
 ```
 
 Compiled into:
@@ -378,7 +446,7 @@ Compiled into:
 ```json
 {
   "rules": {
-    "If(is:isSaving)": { "animation": "pulse {$Motion.slow} {$Motion.easeOut} infinite" }
+    "If(value:{isSaving})": { "animation": "pulse {$Motion.slow} {$Motion.easeOut} infinite" }
   },
   "keyframes": {
     "pulse": {
@@ -393,7 +461,7 @@ Compiled into:
 Reusable styling (shared through the theme - see also THEMES for `@keyframes` / `@font-face` / `@counter-style`):
 
 - `@hx-apply(token: Type.Body);` expands a theme group as declarations. The group's leaf names are read as CSS property
-  names *at the apply site* (the theme itself stays semantics-free), so groups meant for applying use CSS property
+  names _at the apply site_ (the theme itself stays semantics-free), so groups meant for applying use CSS property
   names as leaf names: `Type { Body { font-family: {$FontFamilies.sans}; font-size: {$FontSizes.md}; } }` - a leaf name
   that is not a valid CSS property is a compile/LSP error at the apply site. Values ride the usual `var()` chains, and
   expansion happens at class-generation time against the merged theme, so a dimension overlay that changes or adds
@@ -421,19 +489,21 @@ claim hundreds).
 
 - Signatures are mechanical, produced by the compiler without qualifier code: each construct serializes to one segment
   - `Name` with no arguments, `Name(name:value,...)` for named args (sorted, comma-joined), or `Name(value,...)` for
-  the positional args of native functional pseudos - and nesting (AND) joins segments with `&`. `:hover` -> `Hover`,
-  `@media (...)` -> `Media(query:...)`, `@hx-if(is: a, not: b)` -> `If(is:a,not:b)`, `@hx-style(for: x.y)` ->
-  `Style(for:x.y)`, `@hx-style(for: Component)` -> `Style(for:Component)`. Rule keys are the merge identity across dimension files,
-  platform-neutral and free of CSS syntax.
+    the positional args of native functional pseudos - and nesting (AND) joins segments with `&`. `:hover` -> `Hover`,
+    `@media (...)` -> `Media(query:...)`, `@hx-if(value: {variant}, is: {'primary'})` -> `If(is:{'primary'},value:{variant})`,
+    `@hx-unless(value: {loading})` -> `Unless(value:{loading})`, `@hx-style(for: x.y)` ->
+    `Style(for:x.y)`, `@hx-style(for: Component)` -> `Style(for:Component)`. Rule keys are the merge identity across dimension files,
+    platform-neutral and free of CSS syntax.
 - Values are opaque and may contain `:` `,` `/` `()` (a media query is `Media(query:(400px <= width <= 700px),print)`,
   an aspect ratio is `16/9`), so keys are read paren-depth-aware: only a top-level `&` separates segments (`&` never
   occurs in canonical CSS value text, unlike `/`), only a
   top-level `,` separates a segment's arguments, and the first `:` of each named argument splits its name from the
   value - anything inside balanced parens is value text.
-- `@hx-*` arguments are named-only, so each maps 1:1 to a typed parameter and canonicalizes by sorting on name;
-  positional arguments exist only in native functional pseudos (`:nth-child(2n+1)`), which are CSS, not `@hx-*`. There
-  are no reserved arguments: every argument of every qualifier is signature material. Merge `usage` exists only in file
-  frontmatter, like the other mergeable formats.
+- `@hx-*` arguments are named-only, so each maps 1:1 to a typed parameter and canonicalizes by sorting on name — the
+  condition qualifiers' subject is the ordinary named argument `value:`, same as the `<If value="...">` builtin in
+  \*.hxm. Positional arguments exist only in native functional pseudos (`:nth-child(2n+1)`), which are CSS, not
+  `@hx-*`. There are no reserved arguments: every argument of every qualifier is signature material. Merge `usage`
+  exists only in file frontmatter, like the other mergeable formats.
 - Canonicalization that affects merge identity stays in the compiler as built-in normalizers driven by metadata flags
   (e.g. media query normalization) - not qualifier code.
 - Tooling comes from the qualifier's TypeScript surface, split by concern:
@@ -452,7 +522,7 @@ claim hundreds).
     `@media (...)`; another platform maps the same signatures to its own state/viewport mechanisms.
   - Runtime qualifiers attach per component instance: they receive the component, the compiled rule group and an
     apply/remove API (toggle the generated class or a `data-*` attribute, set CSS variables). `@hx-if` is one: it
-    subscribes to its properties and toggles `data-*` attributes.
+    subscribes to its properties (and to the theme when a `{$...}` operand is used) and toggles `data-*` attributes.
 - There is one code path: the definition -> styling generator is a pure isomorphic function over the registered
   qualifiers. It runs at app startup on the client, on the server for SSR, and in Node during build for static CSS
   extraction - "build-time CSS" is the same runtime generator executed early, not a second qualifier API.
@@ -480,7 +550,9 @@ box-shadow: 10px {someProp}px {$Colors.Roles.Primary.bg};
 
 @media (max-width: {$Breakpoints.mobile}) { width: 4px; }
 
-@hx-if(is: isInvalid) { border-color: {$Colors.Border.danger}; }
+@hx-if(value: {isInvalid}) { border-color: {$Colors.Border.danger}; }
+
+@hx-if(value: {variant}, is: {'primary'}) { background-color: {$Colors.Roles.Primary.bg}; }
 
 :hover { @media (max-width: 600px) { color: #123; } }
 
@@ -504,7 +576,7 @@ box-shadow: 10px {someProp}px {$Colors.Roles.Primary.bg};
 ```
 
 Compiled into rules keyed by a canonical qualifier signature (`""` root, `Hover`, `Media(query:...)`,
-`If(is:property)` / `If(not:property)`, `Style(for:component.path)` scope, `Style(for:Component)` all first-level children,
+`If(value:{property})` / `Unless(value:{property})` / `If(is:{'member'},value:{property})`, `Style(for:component.path)` scope, `Style(for:Component)` all first-level children,
 joined with `&` for AND; no CSS syntax in definitions), so dimension overlays merge per-declaration with the same
 deep-merge as dictionaries and configs:
 
@@ -524,7 +596,7 @@ deep-merge as dictionaries and configs:
     },
     "Visited": { "background-color": "red" },
     "Media(query:(max-width:{$Breakpoints.mobile}))": { "width": "4px" },
-    "If(is:isInvalid)": { "border-color": "{$Colors.Border.danger}" },
+    "If(value:{isInvalid})": { "border-color": "{$Colors.Border.danger}" },
     "Hover&Media(query:(max-width:600px))": { "color": "#123" },
     "Style(for:CustomSubCmpnt.Button)": { "background-color": "{$Colors.Roles.Primary.bg}" },
     "Style(for:CustomSubCmpnt.Button)&Media(query:(max-width:600px))": { "color": "#123" },
@@ -610,12 +682,12 @@ same **block-style CSS-subset syntax** as `*.hxs` (shared parser); only the form
   token (see DOCUMENTATION COMMENTS).
 - **Bare identifier blocks are the arbitrary token tree; `@`-blocks are well-known CSS artifacts** with fixed semantics
   - the same two-namespace split as \*.hxs. Supported: `@keyframes` (animation timelines), `@font-face` (font
-  registrations), `@counter-style` (counter styles). They are theme-owned and dimension-mergeable like everything else
-  (`@keyframes` per frame, the others per descriptor), compiled into the theme definition beside `groups`, and emitted
-  once per application. Styles reference them by name (`animation: pulse ...`, `font-family: 'Inter'`,
-  `list-style: my-counter`); a component-local `@keyframes` shadows a theme timeline of the same name.
+    registrations), `@counter-style` (counter styles). They are theme-owned and dimension-mergeable like everything else
+    (`@keyframes` per frame, the others per descriptor), compiled into the theme definition beside `groups`, and emitted
+    once per application. Styles reference them by name (`animation: pulse ...`, `font-family: 'Inter'`,
+    `list-style: my-counter`); a component-local `@keyframes` shadows a theme timeline of the same name.
 - Theme timelines may be parametrized with `{prop}` interpolation: the property resolves against each component
-  instance that *plays* the animation (on web, `var()` inside keyframes resolves per animated element, so one shared
+  instance that _plays_ the animation (on web, `var()` inside keyframes resolves per animated element, so one shared
   timeline serves per-instance values). Parameters are the timeline's API - document them with `/** @param ... */`;
   the LSP warns when a consuming component does not provide the property, because an unset parameter invalidates that
   frame's declaration at computed-value time - there is no implicit default.
@@ -634,7 +706,7 @@ Merge rules:
   file a token sits in.
 - Within the same specificity and the same source, two partials defining the same **leaf token** (or the same
   `@`-artifact name) is a compile error - there is no principled order between sibling files, so collisions are
-  ambiguity, not intent. Contributing to the same *group* from several files is fine as long as leaves stay disjoint.
+  ambiguity, not intent. Contributing to the same _group_ from several files is fine as long as leaves stay disjoint.
 - Across sources, the later-registered source wins per leaf: packages ship default tokens, applications override them
   without needing a dimension - same "defaults first, overrides later" direction as the DI bootstrap.
 
@@ -649,7 +721,7 @@ not a structure the framework prescribes. It organizes tokens into two tiers:
    styles or components directly.
 2. **Semantic tokens** - roles with meaning (surfaces, text, borders, color roles, type roles, elevation). Reference
    primitives via `{$...}` aliases. This is the tier styles consume and the tier a brand (dimension) overlay swaps;
-   the dark/light scheme lives *inside* values via `light-dark()`.
+   the dark/light scheme lives _inside_ values via `light-dark()`.
 
 There is no component-token tier: per-component overrides are `*.hxs` overlays (styles merge per-declaration across
 dimensions and layer across package/app sources), so structural/rule changes go into a style overlay and value
@@ -665,35 +737,150 @@ Primitives.hxt (tier 1):
 ```css
 Palette {
   /* one block per ramp; referenced as {$Palette.Blue.t60} */
-  Neutral { t0: #ffffff; t10: #f4f4f5; t20: #e4e4e7; t30: #d4d4d8; t40: #a1a1aa; t50: #71717a; t60: #52525b; t70: #3f3f46; t80: #27272a; t90: #18181b; t100: #09090b; }
-  Blue    { t10: #edf5ff; t20: #d0e2ff; t30: #a6c8ff; t40: #78a9ff; t50: #4589ff; t60: #0f62fe; t70: #0043ce; t80: #002d9c; t90: #001d6c; t100: #001141; }
-  Red     { t10: #fff1f1; t60: #da1e28; t70: #a2191f; t90: #520408; }
-  Green   { t10: #defbe6; t60: #198038; t70: #0e6027; t90: #022d0d; }
-  Amber   { t10: #fff8e1; t60: #b28600; t70: #8e6a00; t90: #3d2f00; }
+  Neutral {
+    t0: #ffffff;
+    t10: #f4f4f5;
+    t20: #e4e4e7;
+    t30: #d4d4d8;
+    t40: #a1a1aa;
+    t50: #71717a;
+    t60: #52525b;
+    t70: #3f3f46;
+    t80: #27272a;
+    t90: #18181b;
+    t100: #09090b;
+  }
+  Blue {
+    t10: #edf5ff;
+    t20: #d0e2ff;
+    t30: #a6c8ff;
+    t40: #78a9ff;
+    t50: #4589ff;
+    t60: #0f62fe;
+    t70: #0043ce;
+    t80: #002d9c;
+    t90: #001d6c;
+    t100: #001141;
+  }
+  Red {
+    t10: #fff1f1;
+    t60: #da1e28;
+    t70: #a2191f;
+    t90: #520408;
+  }
+  Green {
+    t10: #defbe6;
+    t60: #198038;
+    t70: #0e6027;
+    t90: #022d0d;
+  }
+  Amber {
+    t10: #fff8e1;
+    t60: #b28600;
+    t70: #8e6a00;
+    t90: #3d2f00;
+  }
 }
 
-FontFamilies { sans: 'Inter', system-ui, sans-serif; serif: Georgia, serif; mono: 'JetBrains Mono', monospace; }
-FontSizes    { xs: 0.75rem; sm: 0.875rem; md: 1rem; lg: 1.125rem; xl: 1.375rem; xxl: 1.75rem; xxxl: 2.25rem; }
-FontWeights  { regular: 400; medium: 500; semibold: 600; bold: 700; }
-LineHeights  { tight: 1.2; snug: 1.35; normal: 1.5; relaxed: 1.65; }
+FontFamilies {
+  sans: "Inter", system-ui, sans-serif;
+  serif: Georgia, serif;
+  mono: "JetBrains Mono", monospace;
+}
+FontSizes {
+  xs: 0.75rem;
+  sm: 0.875rem;
+  md: 1rem;
+  lg: 1.125rem;
+  xl: 1.375rem;
+  xxl: 1.75rem;
+  xxxl: 2.25rem;
+}
+FontWeights {
+  regular: 400;
+  medium: 500;
+  semibold: 600;
+  bold: 700;
+}
+LineHeights {
+  tight: 1.2;
+  snug: 1.35;
+  normal: 1.5;
+  relaxed: 1.65;
+}
 
-Spacing { none: 0; xxs: 2px; xs: 4px; sm: 8px; md: 12px; lg: 16px; xl: 24px; xxl: 32px; xxxl: 48px; gutter: 64px; }
-Sizing  { controlSm: 24px; controlMd: 32px; controlLg: 40px; iconSm: 16px; iconMd: 20px; iconLg: 24px; }
-Radii   { none: 0; sm: 3px; md: 6px; lg: 12px; full: 9999px; }
-BorderWidths { thin: 1px; medium: 2px; thick: 3px; }
+Spacing {
+  none: 0;
+  xxs: 2px;
+  xs: 4px;
+  sm: 8px;
+  md: 12px;
+  lg: 16px;
+  xl: 24px;
+  xxl: 32px;
+  xxxl: 48px;
+  gutter: 64px;
+}
+Sizing {
+  controlsm: 24px;
+  controlmd: 32px;
+  controllg: 40px;
+  iconsm: 16px;
+  iconmd: 20px;
+  iconlg: 24px;
+}
+Radii {
+  none: 0;
+  sm: 3px;
+  md: 6px;
+  lg: 12px;
+  full: 9999px;
+}
+BorderWidths {
+  thin: 1px;
+  medium: 2px;
+  thick: 3px;
+}
 
-Shadows { raised: 0 1px 2px rgba(0,0,0,0.12); overlay: 0 4px 12px rgba(0,0,0,0.16); modal: 0 12px 32px rgba(0,0,0,0.24); }
-ZIndex  { sticky: 100; dropdown: 200; overlay: 300; modal: 400; toast: 500; }
+Shadows {
+  raised: 0 1px 2px rgba(0, 0, 0, 0.12);
+  overlay: 0 4px 12px rgba(0, 0, 0, 0.16);
+  modal: 0 12px 32px rgba(0, 0, 0, 0.24);
+}
+ZIndex {
+  sticky: 100;
+  dropdown: 200;
+  overlay: 300;
+  modal: 400;
+  toast: 500;
+}
 
-Motion  { instant: 0ms; fast: 100ms; normal: 200ms; slow: 400ms; easeOut: cubic-bezier(0.2,0,0,1); easeIn: cubic-bezier(0.4,0,1,1); spring: cubic-bezier(0.2,0,0,1.2); }
-Opacity { disabled: 0.4; muted: 0.65; scrim: 0.5; }
+Motion {
+  instant: 0ms;
+  fast: 100ms;
+  normal: 200ms;
+  slow: 400ms;
+  easeout: cubic-bezier(0.2, 0, 0, 1);
+  easein: cubic-bezier(0.4, 0, 1, 1);
+  spring: cubic-bezier(0.2, 0, 0, 1.2);
+}
+Opacity {
+  disabled: 0.4;
+  muted: 0.65;
+  scrim: 0.5;
+}
 
-Breakpoints { mobile: 480px; tablet: 768px; desktop: 1024px; wide: 1440px; }
+Breakpoints {
+  mobile: 480px;
+  tablet: 768px;
+  desktop: 1024px;
+  wide: 1440px;
+}
 
 /* fonts are primitives too: registered once, referenced from FontFamilies */
 @font-face {
-  font-family: 'Inter';
-  src: url('/fonts/Inter.woff2') format('woff2');
+  font-family: "Inter";
+  src: url("/fonts/Inter.woff2") format("woff2");
   font-weight: 400 700;
 }
 ```
@@ -761,12 +948,12 @@ Elevation {
 In this design system, styles and components reference **semantic tokens only, never primitives**.
 
 **Dark/light is a styling concern, not a dimension**: the scheme is a per-user browser/OS setting that can flip
-mid-session, so it is expressed *inside* token values via native `light-dark(lightValue, darkValue)` rather than as an
+mid-session, so it is expressed _inside_ token values via native `light-dark(lightValue, darkValue)` rather than as an
 overlay file. Both values ship in the CSS and the browser resolves them - SSR-safe by construction (the server never
 needs to know the visitor's preference), no duplicated token set (unlike Material/Carbon dark themes), and the merged
 theme stays a flat single-value map.
 
-A brand overlay (e.g. `Primitives.customer2.hxt`) *is* a dimension - a build-level choice: it overrides just the brand
+A brand overlay (e.g. `Primitives.customer2.hxt`) _is_ a dimension - a build-level choice: it overrides just the brand
 ramp in `Palette` and maybe `Radii`, and every semantic token downstream follows.
 
 Rule of thumb: **dimensions for build-level variation** (brand, culture, env); **`light-dark()` + `color-scheme` for
@@ -788,7 +975,7 @@ Runtime/compilation:
   a dimension at runtime swaps only the overridden variables, scoped to the application's root host element - no style
   recomputation, and DevTools shows the token chain. Since `@keyframes` frames reference tokens through the same
   `var()` chains, a dimension switch retunes running animations too.
-- Registering `--hx-*` variables via CSS `@property` (typed tokens: enables smoothly *transitioning* a token's value,
+- Registering `--hx-*` variables via CSS `@property` (typed tokens: enables smoothly _transitioning_ a token's value,
   e.g. animated dark-mode color changes) is reserved as a web-codegen enhancement - it is derivable from the theme, not
   theme syntax.
 
@@ -811,7 +998,7 @@ Runtime/compilation:
 
 <Component>
     <FromToList name="roleSelector"
-        isReadonly="#UIConfig.isReadonly | converter1"
+        isReadonly="#UIConfig.isReadonly | Converter1"
         from2:items="availableItems"
         from2.Item:Component=""
         to:items="selectedItems"
@@ -819,7 +1006,7 @@ Runtime/compilation:
         Button:Component="@MyComponents.CustomAddButtonTemplateName - for all buttons used in FromToList.hxm component definition file, but not definitions of its child components. If there is a control with name 'Button' and Button component, handle it as an error"
         subComponentName.Button:Component="@MyComponents.CustomAddButtonTemplateName - for all buttons in the 'subComponentName' instance component definition"
         subComponentName.Button.text:Component="@MyComponents.CustomTextTemplateName - for named 'text' component inside all Button components in the 'subComponentName' instance component definition"
-        add:text="@Buttons.add | converter1"
+        add:text="@Buttons.add | Converter1"
         add:extraValueForCustomComponents="extraValue"
     >
         <from:Component>
@@ -879,14 +1066,14 @@ resolves to inside the used component's definition. It comes in two forms:
 component's definition file:
 
 - The **last** segment matches either a named control (`add`) or a component tag
-  (`Button`, i.e. *all* usages of that component at that level — but not inside
+  (`Button`, i.e. _all_ usages of that component at that level — but not inside
   nested component definitions).
 - Every **earlier** segment must name a control and descends one definition
   scope deeper: `subComponentName.Button:Component` targets all `Button`s inside
   the `subComponentName` instance's definition; `subComponentName.Button.text`
   targets the `text` component inside those buttons.
 
-A `name` match takes precedence over a `tag` match. A segment that names *both* a
+A `name` match takes precedence over a `tag` match. A segment that names _both_ a
 control and a component tag at the same level is an error. Overrides are resolved
 at build time and are not stored in state, so they do not swap dynamically as
 state changes; use the dictionary/config value form for dimension-driven
@@ -903,24 +1090,121 @@ Home.hxm
 <Login loginUsername="data.user" loginPassword="data.password"/>
 ```
 
+#### Component roots: declarative vs programmatic
+
+An `*.hxm` file is **always a declarative component** — a template. A **programmatic component** is a TypeScript
+class extending the framework's `Component` base; it has no `*.hxm` file at all. The two are distinguished by file
+type, not by a root attribute: `<Component>` roots a template, a `Component` subclass is code. Both share one tag
+namespace (a declarative `Button.hxm` and a `class Button` collide — a duplicate-definition error).
+
+#### Typings frontmatter
+
+Component prop and event contracts are **TypeScript types**, not a DSL type grammar. The analyzer reads them at
+build/dev-time through the TypeScript compiler; compilers stay per-file and TS-free, and runtime/on-the-fly
+compilation is unaffected (typings never reach compiled definitions). A component declares its contract in a
+frontmatter header via `props:` / `events:`, whose value is a TypeScript type — **either** a reference to a named
+type **or** an inline type literal:
+
+```
+---
+props: DataTableProps
+---
+<Component>...</Component>
+```
+
+```
+---
+props: {
+  /** Visual emphasis of the table. @default 'default' */
+  variant?: 'primary' | 'secondary' | 'default'
+  fullWidth?: boolean
+  columns: ColumnDef[]
+}
+events: {
+  /** Raised after a row is committed. */
+  rowSaved: RowData
+}
+---
+<Component>...</Component>
+```
+
+Rules:
+
+- **The DSL never parses the TypeScript.** The frontmatter parser captures a `props:` / `events:` / `params:` value
+  as opaque text (a bare type name or a brace-balanced `{ … }` body) and hands it to the TypeScript compiler, which
+  resolves and checks it. This is the line between _delegating to TypeScript_ (supported) and a fake-TypeScript
+  subset grammar (never).
+- **Reference vs inline.** `props: SomeType` resolves the named type through the TS program, including whatever it
+  imports — use it for shared or imported types. An inline `props: { … }` body has no imports, so any named type it
+  mentions (`ColumnDef`) must be **ambient/global**; a module-exported type belongs in the reference form (a `.ts`
+  module that imports it). Inline is for self-contained or global contracts, co-located with the component.
+- **Props are data.** Component prop types must be data-like — the analyzer rejects function-typed members. Provenance
+  is not part of the type: a prop typed `string` accepts a dictionary reference, a config value, a literal or state,
+  and the analyzer checks the _resolved value type_ of whatever source is bound against the declared type, regardless
+  of source. (The framework no longer constrains a prop to be dictionary-sourced; inline string values are allowed.)
+- **Enums** are ordinary TypeScript string or numeric enums / unions (`'a' | 'b'`), inline or referenced. An inline
+  string value at a usage site (`variant="'primary'"`) is checked against the prop's union/enum.
+- **Docs are TSDoc.** Prose and `@default` / `@example` / `@deprecated` live in `/** */` TSDoc on the type's members,
+  read back through the TS symbol API — one docs source shared with converters and actions. There is no separate
+  frontmatter doc convention for props.
+- **Defaults** are documented with TSDoc `@default` and applied by the implementation (a template that seeds the
+  value when unset, or the component class); the type itself carries no default value.
+
+The same applies to `events:` (payload types). Converter and action parameter types are not declared in a header at
+all — they come directly from the implementing TypeScript class's `TParams` (see CONVERTERS and ACTIONS).
+
+#### Binding sources
+
+Every attribute value is a binding expression. The source grammar, shared by attributes, converter arguments and
+`@hx-*` qualifier arguments:
+
+- a bare identifier/path is a **property path**: `value="loginUsername"`, `value="data.user"`;
+- `@Dictionary.key` is a dictionary reference, `#Config.path` a config reference;
+- `true`, `false` and numbers (`0`, `1.5`, `-2`) are **inline literals**: `fullWidth="true"`, `min="0"`. Booleans and
+  numbers may be literal because their type cannot carry content — they never need translation and never vary by
+  customer;
+- a **single-quoted string** is a **string literal**: `variant="'primary'"`. Unlike a bare unquoted string — always a
+  reference — a string literal is valid only where the target declares an enum/union type (an inline `'a' | 'b'` union
+  or a referenced TypeScript enum/union), and it is type-checked against that type's members. This keeps arbitrary
+  hardcoded translations inexpressible (a free-form string prop has nowhere to land) while letting enum values be
+  written inline;
+- converters chain with `|` (see CONVERTERS).
+
+Compiled binding sources are discriminated by type — `{ "type": "state" | "dictionary" | "config" | "literal", ... }`
+— with literals carrying valid JSON in `value` (a string literal is normalized to its JSON form, `'primary'` →
+`"primary"`, coerced by one `JSON.parse`). All sources keep their reactivity as before; literals are static.
+
 Switch:
 
 ```xml
-TODO
+<Switch value="variant">
+    <Case is="'primary'">...</Case>
+    <Case is="'danger'">...</Case>
+    <Default>...</Default>
+</Switch>
 ```
 
 If:
 
 ```xml
-TODO
+<If value="isSaving">...</If>
+<Unless value="isSaving">...</Unless>
+<If value="variant" is="'primary'">...</If>
+<If value="rows" is="3">...</If>
 ```
 
+The condition vocabulary is identical to `@hx-if` in \*.hxs: the subject is the `value` argument in both formats,
+comparison arguments are the same `is`/`isNot` names with the same operand grammar (binding sources — properties,
+enum string literals, boolean/number literals), truthiness is the subject alone, and `Unless` mirrors `@hx-unless` (it takes
+no comparison arguments). Learn the condition grammar once, use it in both formats.
+
 List:
+
 ```js
 users = [
   { id: 1, fullname: "full name 1" },
   { id: 2, fullname: "full name 2" },
-  { id: 3, fullname: "full name 3" }
+  { id: 3, fullname: "full name 3" },
 ]
 ```
 
@@ -931,6 +1215,7 @@ users = [
 ```
 
 CustomListItem.hxm:
+
 ```xml
 <Component>
   <div> <!--Dynamic name="<id value>" is the value of the "key" or index 0, 1, 2 etc if key="id" is not specified-->
@@ -958,16 +1243,17 @@ Create a package "web" with implementation of PlatformComponent for web
 
 ### DOCUMENTATION COMMENTS
 
-All source formats except \*.hxs support doc comments: markdown text plus a small tag set (`@prop`, `@param`,
-`@example`, `@deprecated`, `@see`). A doc comment is a regular comment whose inner text starts with `*`:
-
-- XML format (`*.hxm`): `<!--* ... -->`
-- JSONC formats (`*.hxd`, `*.hxc`) and the CSS-subset format (`*.hxt`): `/** ... */`
+All source formats except \*.hxs support doc comments: markdown text plus a small tag set (`@param`,
+`@example`, `@deprecated`, `@see`). A doc comment is `/** ... */` — a regular comment whose inner text starts with
+`*` — everywhere: JSONC bodies, the CSS-like format, and frontmatter headers. XML bodies carry no doc comments;
+everything documentable about a component lives in its header.
 
 Placement per format:
 
-- `*.hxm`: one doc comment above the root `<Component>` documents the component; its incoming properties are
-  documented with `@prop name text` tags (properties are implicit in the DSL, so there is no per-property node).
+- `*.hxm`: the leading `/** */` in the frontmatter header documents the component. Per-member prose is **TSDoc** on
+  the `props:` / `events:` type members (`/** */` inside the type text, read back through the TS symbol API), the same
+  one docs source shared with converter and action parameters — there is no separate frontmatter doc convention for
+  props.
 - `*.hxs`: no doc comments for now - styles are bound to their component by filename and are never referenced by
   name, so there is no reference site to surface docs at. Plain `/* */` and `//` comments annotate sections and
   rules; editor tooling derives hover/override info from the rules themselves. Revisit if named reusable style
@@ -979,13 +1265,17 @@ Placement per format:
 - `*.hxd` / `*.hxc`: inline doc comments above individual entries; `@param name text` documents an entry's
   interpolation `{param}`s; a comment above the root `{` documents the file's definition.
 
-```xml
-<!--*
-  A confirmation dialog with OK/Cancel actions.
-  @prop title Text shown in the dialog header.
-  @prop onAccept Raised when the user confirms.
-  @example <ConfirmDialog title="@Dialogs.DeleteTitle" />
--->
+```
+---
+/**
+ * A confirmation dialog with OK/Cancel actions.
+ * @example <ConfirmDialog title="@Dialogs.DeleteTitle" />
+ */
+props: {
+  /** Text shown in the dialog header. */
+  title: string
+}
+---
 <Component>...</Component>
 ```
 
@@ -1028,9 +1318,32 @@ HttpService - provides many scenarios with requests:
 
 ### CONVERTERS
 
-Classes with `format`, `parse` functions, registered in DI like other framework elements. A converter transforms a
-bound value on its way to the view (`format`) and back to the state (`parse`), so one chain serves two-way bindings.
-Can inject services and providers.
+A converter is a plain **TypeScript class** `extends Converter<TValue, TReturn, TParams>`, with `async format`
+(value → view) and `async parse` (view → state), so one chain serves two-way bindings. It is registered in DI like
+other framework elements and may inject other converters and providers. There is no DSL header file: the analyzer
+discovers converter classes by their base type and reads the parameter contract straight from `TParams`
+(`Parameters<Class["format"]>[1]`).
+
+- **Binding name** = the class name minus the required `Converter` suffix — `TruncateConverter` → `Truncate` (the DI
+  token is the full class name). A class missing the suffix is a diagnostic.
+- **`TParams` must be data.** It is constrained by `DataParams<TParams>`, which rejects function-typed members at any
+  depth (callbacks are events, not data). Nested data objects and arrays are allowed; methodful objects (`Date`,
+  `Map`, class instances) are not, since converter arguments are bound from the DSL's data sources.
+
+```ts
+interface TruncateParams {
+  /** Maximum number of characters to keep. */
+  length: number
+  /** Appended when the value is shortened. */
+  ellipsis?: "dots" | "none"
+}
+
+export class TruncateConverter extends Converter<string, string, TruncateParams> {
+  async format(value: string, params: TruncateParams): Promise<string> {
+    return value.length > params.length ? value.slice(0, params.length) : value
+  }
+}
+```
 
 Converters are applied to a binding source with the pipe syntax:
 
@@ -1038,16 +1351,18 @@ Converters are applied to a binding source with the pipe syntax:
 source | converter | converter(name: value, ...) | ...
 ```
 
-- The source is any binding form: a property path, `@Dictionary.key`, `#Config.path`.
-- A converter without arguments is written bare: `| converter1`. Empty parens are a compile error — there is one
+- The source is any binding form: a property path, `@Dictionary.key`, `#Config.path`, a boolean, number or
+  enum string literal (see Binding sources in COMPONENTS).
+- A converter without arguments is written bare: `| Truncate`. Empty parens are a compile error — there is one
   canonical spelling.
 - Arguments are named-only `name: value` pairs, the same convention as `@hx-*` qualifiers in \*.hxs: each argument
   maps 1:1 to a typed parameter of the converter class. Positional arguments do not exist.
 - Argument values use the binding-source grammar: a bare identifier is a property path, `@...` is a dictionary
-  reference, `#...` is a config reference.
+  reference, `#...` is a config reference, `true`/`false`/numbers are literals, and a single-quoted `'text'` is a
+  string literal type-checked against the parameter's declared enum/union type — e.g. `Pad(side: 'left')`.
 - Reactivity falls out of the argument kind: a property argument re-evaluates the binding when the property changes,
-  dictionary/config arguments follow culture/dimension switches. There are no special semantics
-  per argument — they are ordinary binding sources.
+  dictionary/config arguments follow culture/dimension switches, literals are static. There are no
+  special semantics per argument — they are ordinary binding sources.
 - The chain runs left-to-right for `format` (state → view) and right-to-left for `parse` (view → state). Each
   converter receives its resolved arguments as one plain object in both directions: `format(value, args)` /
   `parse(value, args)`.
@@ -1056,10 +1371,10 @@ source | converter | converter(name: value, ...) | ...
 
 ```xml
 <Button
-    price="data.price | round(digits: #UIConfig.digits) | currency(code: #UIConfig.currency)"
-    title="@Products.title | truncate(length: #UIConfig.len, ellipsis: #UIConfig.ellipsis)"
-    created="data.createdAt | date(format: @Formats.shortDate)"
-    width="#SomeConfig.value | scale(by: zoomLevel)"
+    price="data.price | Round(digits: #UIConfig.digits) | Currency(code: #UIConfig.currency)"
+    title="@Products.title | Truncate(length: #UIConfig.len, ellipsis: #UIConfig.ellipsis)"
+    created="data.createdAt | DateFormat(format: @Formats.shortDate)"
+    width="#SomeConfig.value | Scale(by: zoomLevel)"
 />
 ```
 
@@ -1070,8 +1385,8 @@ The `price` binding compiles into:
   "type": "state",
   "value": "data.price",
   "converters": [
-    { "name": "round", "args": { "digits": { "type": "config", "value": "UIConfig.digits" } } },
-    { "name": "currency", "args": { "code": { "type": "config", "value": "UIConfig.currency" } } }
+    { "name": "Round", "args": { "digits": { "type": "config", "value": "UIConfig.digits" } } },
+    { "name": "Currency", "args": { "code": { "type": "config", "value": "UIConfig.currency" } } }
   ]
 }
 ```
@@ -1079,15 +1394,53 @@ The `price` binding compiles into:
 Parsing happens in the compiler; the runtime binder consumes structured data only — it resolves argument sources,
 subscribes to the reactive ones and passes the resolved args object into `format`/`parse`.
 
-Tooling follows the qualifier model: completion and validation (unknown converter, unknown/missing/duplicate
-argument names) come from the converter's `.d.ts` and docs hover come from JSDoc. Without a `.d.ts` a
-converter still compiles mechanically, and typos surface at runtime instead of in the editor.
+Typings and docs come straight from the TypeScript class — no header file. `TParams`'s members are the argument
+contract, and their prose comes from TSDoc on those members, read back through the TS symbol API. Contracts ship in
+the package's `hx.meta.json` (`converters` section) so a consuming package validates calls without re-scanning the
+library's sources.
+
+The analyzer validates converter chains with the same codes in builds and editors: unknown converter, unknown and
+missing argument names, and each argument value through the ordinary binding-source machinery — the declared params
+act as the argument's contract, so string-literal arguments check against a param's enum/union and other literals
+kind-check exactly like component props.
 
 ### ACTIONS
 
-- Have "execute" function and an object with all passed properties
-- Can inject services
-- Can inject ConfigProvider
+An action is a plain **TypeScript class** `extends Action<TParams>` with a single `async Execute(params): Promise<void>`;
+it may inject services and the `ConfigProvider`. Like converters, it is discovered by its base type (no header), the
+**registry name** is the class name minus the required `Action` suffix (`SubmitAction` → `Submit`, DI token = the full
+class name), and `TParams` is `DataParams`-constrained (no functions at any depth).
+
+An action is run by the builtin `<Execute>` component. Its `action` attribute is a registry reference naming the
+action class; the **sibling attributes are the action's named parameters** (not `param1`/`param2`), validated
+dependently against `TParams` — unknown action, unknown/missing argument, and value-kind checks, exactly like
+converter arguments.
+
+```xml
+<Execute action="Submit" id="123" result="savedId" />
+```
+
+Parameter direction is expressed with TypeScript's native `readonly`:
+
+- a **`readonly` parameter** is an **input** — any binding source may be bound (dictionary, config, literal, state,
+  prop) and its value is kind-checked against the parameter type;
+- a **mutable parameter** is **in-out** — the action writes back to it, so it must bind a **writable state/prop path**
+  (a literal, dictionary or config there is an error); it is not value-checked, since state is gradual.
+
+```ts
+interface SubmitParams {
+  /** Row id to submit (input). */
+  readonly id: number
+  /** Receives the saved id (in-out — must bind a writable state path). */
+  result: number
+}
+
+export class SubmitAction extends Action<SubmitParams> {
+  async Execute(params: SubmitParams): Promise<void> {
+    /* ...perform the side effect, write params.result... */
+  }
+}
+```
 
 ### PROVIDERS
 

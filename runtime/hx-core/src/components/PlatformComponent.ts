@@ -1,9 +1,5 @@
 import { Component } from "./Component"
-import type {
-  IComponentDefinition,
-  IComponentProperty,
-  IComponentUsage,
-} from "@heleonix/hx-language"
+import type { IComponentDefinition, IComponentProperty, IComponentUsage } from "@heleonix/hx-language"
 import { ComponentManager } from "./ComponentManager"
 import { StateManager } from "../state/StateManager"
 import { StateChangedHandler } from "../state/StateChangedHandler"
@@ -130,6 +126,9 @@ export abstract class PlatformComponent extends Component {
         break
       case "config":
         await this.configManager.bind(targetFQPropertyName, property.binding.value)
+        break
+      case "literal":
+        this.stateManager.setValue(targetFQPropertyName, JSON.parse(property.binding.value))
         break
     }
   }

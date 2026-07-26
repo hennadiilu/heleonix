@@ -1,0 +1,55 @@
+{
+  "name": "@heleonix/hx-analyzer",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "./dist/cjs/index.cjs",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/types/index.d.ts",
+  "description": "Heleonix cross-file analyzer: index, reference resolution and contract validation shared by build plugins and editors.",
+  "author": "Heleonix - Hennadii Lutsyshyn",
+  "license": "MIT",
+  "homepage": "https://github.com/Heleonix/heleonix",
+  "bugs": "https://github.com/Heleonix/heleonix/issues",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Heleonix/heleonix.git",
+    "directory": "compilers/hx-analyzer"
+  },
+  "keywords": [],
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "clean": "rimraf dist temp",
+    "build": "rollup -c",
+    "dts": "api-extractor run -l",
+    "test": "node --experimental-strip-types spec/run.ts"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "require": "./dist/cjs/index.cjs",
+      "import": "./dist/esm/index.js"
+    }
+  },
+  "files": [
+    "dist/cjs/index.cjs",
+    "dist/esm/index.js",
+    "dist/types/index.d.ts"
+  ],
+  "peerDependencies": {
+    "@heleonix/hx-compiler-components": "workspace:*",
+    "@heleonix/hx-compiler-configs": "workspace:*",
+    "@heleonix/hx-compiler-core": "workspace:*",
+    "@heleonix/hx-compiler-dictionaries": "workspace:*",
+    "@heleonix/hx-compiler-styles": "workspace:*",
+    "@heleonix/hx-compiler-themes": "workspace:*",
+    "@heleonix/hx-language": "workspace:*",
+    "typescript": ">=5"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.2",
+    "@types/node": "^25.6.0"
+  }
+}

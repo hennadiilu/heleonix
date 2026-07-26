@@ -2,6 +2,7 @@ import {
   CompletionItem,
   Diagnostic,
   Hover,
+  Location,
   Position,
   SemanticTokens,
   SemanticTokensLegend,
@@ -30,6 +31,9 @@ export interface ILanguageService {
   completion?(doc: TextDocument, position: Position, context: ILanguageContext): CompletionItem[]
 
   hover?(doc: TextDocument, position: Position, context: ILanguageContext): Hover | null
+
+  /** Go-to-definition the service resolves itself (e.g. a converter/action to its class), or null to fall back. */
+  definition?(doc: TextDocument, position: Position, context: ILanguageContext): Location | null
 
   semanticTokens?(doc: TextDocument): SemanticTokens
 

@@ -1,7 +1,7 @@
 import { promises as fsp } from "node:fs"
 import { createRequire } from "node:module"
 import path from "node:path"
-import { DOCS_CONDITION, EXT_KIND, IDocsEntry, IDocsManifest, Kind } from "@heleonix/hx-language"
+import { META_CONDITION, EXT_KIND, IDocsEntry, IMetaDocument, Kind } from "@heleonix/hx-language"
 import { DefinitionLoader } from "./DefinitionLoader"
 import { ICompiledDefinitions } from "./ICompiledDefinitions"
 
@@ -25,7 +25,7 @@ const KIND_BY_CONDITION: ReadonlyMap<string, Kind> = new Map(
  *
  * Only the kinds the index currently consumes (component/dictionary/config) are
  * collected; `style`/`theme` are recognized but skipped until the server indexes
- * them. Docs ship under the `hxdocs` condition as `IDocsManifest` files (per-file
+ * them. Docs ship inside the `hxmeta` condition manifest (`hx.meta.json`; per-file
  * sidecars or a package bundle - same shape) or bare `IDocsEntry[]` arrays. The
  * assembled {@link ICompiledDefinitions} is projected downstream by
  * {@link CompiledDefinitionSource}.
@@ -56,6 +56,7 @@ export class PackageDefinitionLoader implements DefinitionLoader {
       ["config", []],
     ])
     const docs: IDocsEntry[] = []
+    const metas: IMetaDocument[] = []
 
     if (exports && typeof exports === "object" && !Array.isArray(exports)) {
       for (const target of Object.values(exports)) {
@@ -72,10 +73,10 @@ export class PackageDefinitionLoader implements DefinitionLoader {
           }
         }
 
-        const docsPattern = (target as Record<string, unknown>)[DOCS_CONDITION]
+        const metaPattern = (target as Record<string, unknown>)[META_CONDITION]
 
-        if (typeof docsPattern === "string") {
-          await collectDocs(packageDir, docsPattern, docs)
+        if (typeof metaPattern === "string") {
+          await collectMeta(packageDir, metaPattern, docs, metas)
         }
       }
     }
@@ -85,6 +86,7 @@ export class PackageDefinitionLoader implements DefinitionLoader {
       dictionaries: buckets.get("dictionary"),
       configs: buckets.get("config"),
       docs,
+      metas,
     } as ICompiledDefinitions
   }
 }
@@ -118,11 +120,18 @@ async function collect(packageDir: string, target: string, bucket: object[]): Pr
 }
 
 /**
- * Like {@link collect}, but for the `hxdocs` condition: each matched file is an
- * `IDocsManifest` (sidecar or bundle) or a bare `IDocsEntry[]`, and the entries
- * are what gets accumulated.
+ * Reads the `hxmeta` condition's manifests: each matched file is a full
+ * `IMetaDocument` (collected into `metas` for the analyzer, and its `docs`
+ * section collected for the index), a legacy docs envelope with `entries`, or a
+ * bare `IDocsEntry[]`. The full manifest is what carries type-level facts
+ * (props/events/controls, converters, actions, theme tokens, qualifiers).
  */
-async function collectDocs(packageDir: string, target: string, bucket: IDocsEntry[]): Promise<void> {
+async function collectMeta(
+  packageDir: string,
+  target: string,
+  docs: IDocsEntry[],
+  metas: IMetaDocument[],
+): Promise<void> {
   const pattern = target.replace(/^\.\//, "").replace("*", "**/*")
 
   for await (const match of fsp.glob(pattern, { cwd: packageDir })) {
@@ -131,16 +140,31 @@ async function collectDocs(packageDir: string, target: string, bucket: IDocsEntr
     }
 
     const value = await readJson(path.resolve(packageDir, match))
-    const entries = Array.isArray(value) ? value : (value as Partial<IDocsManifest> | undefined)?.entries
 
-    if (!Array.isArray(entries)) {
+    if (Array.isArray(value)) {
+      pushEntries(value, docs)
+
       continue
     }
 
-    for (const entry of entries) {
-      if (entry && typeof entry === "object") {
-        bucket.push(entry as IDocsEntry)
-      }
+    const manifest = value as (Partial<IMetaDocument> & { entries?: unknown }) | undefined
+
+    if (manifest && typeof manifest.schemaVersion === "number") {
+      metas.push(manifest as IMetaDocument)
+    }
+
+    const entries = manifest?.docs ?? manifest?.entries
+
+    if (Array.isArray(entries)) {
+      pushEntries(entries, docs)
+    }
+  }
+}
+
+function pushEntries(entries: readonly unknown[], bucket: IDocsEntry[]): void {
+  for (const entry of entries) {
+    if (entry && typeof entry === "object") {
+      bucket.push(entry as IDocsEntry)
     }
   }
 }

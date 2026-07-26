@@ -1,3 +1,4 @@
+import { IMetaDocument } from "@heleonix/hx-language"
 import { OccurrenceIndex } from "../index/occurrences/OccurrenceIndex"
 import { DefinitionIndex } from "../index/DefinitionIndex"
 import { IDefinitionSource } from "./IDefinitionSource"
@@ -21,6 +22,23 @@ export class DefinitionRegistry {
 
   public getIndex(): DefinitionIndex {
     return this.index
+  }
+
+  /**
+   * The type-level `hx.meta.json` manifests every source carries, gathered after
+   * a {@link rebuild}/{@link reloadSources}. Fed to the analyzer so definitions
+   * from packages, endpoints and custom loaders validate like workspace ones.
+   */
+  public metas(): IMetaDocument[] {
+    const result: IMetaDocument[] = []
+
+    for (const source of this.sources) {
+      if (source.metas) {
+        result.push(...source.metas())
+      }
+    }
+
+    return result
   }
 
   public getOccurrences(): OccurrenceIndex {

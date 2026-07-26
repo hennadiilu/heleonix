@@ -20,4 +20,10 @@ export const Errors = {
     code: "HX_PLUGIN_0400",
     ...(DEV && { message: "Failed to emit compiled Heleonix asset for '{0}': {1}." }),
   },
+
+  // Validation errors 0500-0599
+  validation: {
+    code: "HX_PLUGIN_0500",
+    ...(DEV && { message: "{0}" }),
+  },
 } as const satisfies Record<string, IErrorInfo>

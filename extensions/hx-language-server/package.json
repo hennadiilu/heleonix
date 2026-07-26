@@ -17,12 +17,14 @@
   "scripts": {
     "clean": "rimraf dist",
     "build": "node esbuild.mjs",
-    "watch": "node esbuild.mjs --watch"
+    "watch": "node esbuild.mjs --watch",
+    "test": "node --experimental-strip-types spec/run.ts"
   },
   "dependencies": {
+    "@heleonix/hx-analyzer": "workspace:*",
     "@heleonix/hx-compiler-core": "workspace:*",
     "@heleonix/hx-language": "workspace:*",
-    "@vscode/web-custom-data": "^0.6.3",
+    "@heleonix/hx-plugin-core": "workspace:*",
     "vscode-languageserver": "^9.0.1",
     "vscode-languageserver-textdocument": "^1.0.12"
   },

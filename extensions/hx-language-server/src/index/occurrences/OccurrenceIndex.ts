@@ -34,7 +34,13 @@ export class OccurrenceIndex {
 
       for (const raw of file.raw) {
         for (const key of keysOf(raw, index)) {
-          const occurrence: IResolvedOccurrence = { filePath: file.filePath, key, role: raw.role, start: raw.start, end: raw.end }
+          const occurrence: IResolvedOccurrence = {
+            filePath: file.filePath,
+            key,
+            role: raw.role,
+            start: raw.start,
+            end: raw.end,
+          }
           resolved.push(occurrence)
           push(this.byKey, key, occurrence)
         }

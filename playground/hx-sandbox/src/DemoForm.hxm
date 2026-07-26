@@ -1,6 +1,8 @@
 <Component>
-  <span name="title">@Sandbox.appTitle</span>
-  <Greeting name="greeting" />
+  <span name="title">@Sandbox.appTitle | Truncate(length: 40)</span>
+  <Greeting name="greeting" variant="'primary'" />
+
+  <span name="litEcho">42</span>
 
   <span name="rowName">@Sandbox.nameLabel</span>
   <input

@@ -1,9 +1,5 @@
 import { Component } from "./Component"
-import type {
-  IComponentDefinition,
-  IComponentProperty,
-  IComponentUsage,
-} from "@heleonix/hx-language"
+import type { IComponentDefinition, IComponentProperty, IComponentUsage } from "@heleonix/hx-language"
 import { ComponentManager } from "./ComponentManager"
 import type { PlatformComponent } from "./PlatformComponent"
 import { StateManager } from "../state/StateManager"
@@ -132,6 +128,9 @@ export class DeclarativeComponent extends Component {
         break
       case "config":
         await this.configManager.bind(targetFQPropertyName, property.binding.value)
+        break
+      case "literal":
+        this.stateManager.setValue(targetFQPropertyName, JSON.parse(property.binding.value))
         break
     }
   }

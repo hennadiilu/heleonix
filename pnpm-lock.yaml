@@ -88,6 +88,37 @@ importers:
 
   common/hx-utils: {}
 
+  compilers/hx-analyzer:
+    dependencies:
+      '@heleonix/hx-compiler-components':
+        specifier: workspace:*
+        version: link:../hx-compiler-components
+      '@heleonix/hx-compiler-configs':
+        specifier: workspace:*
+        version: link:../hx-compiler-configs
+      '@heleonix/hx-compiler-core':
+        specifier: workspace:*
+        version: link:../hx-compiler-core
+      '@heleonix/hx-compiler-dictionaries':
+        specifier: workspace:*
+        version: link:../hx-compiler-dictionaries
+      '@heleonix/hx-compiler-styles':
+        specifier: workspace:*
+        version: link:../hx-compiler-styles
+      '@heleonix/hx-compiler-themes':
+        specifier: workspace:*
+        version: link:../hx-compiler-themes
+      '@heleonix/hx-language':
+        specifier: workspace:*
+        version: link:../../common/hx-language
+    devDependencies:
+      '@types/node':
+        specifier: ^25.6.0
+        version: 25.6.0
+      typescript:
+        specifier: ^6.0.2
+        version: 6.0.2
+
   compilers/hx-compiler-components:
     dependencies:
       '@heleonix/hx-compiler-core':
@@ -138,18 +169,25 @@ importers:
       '@heleonix/hx-language':
         specifier: workspace:*
         version: link:../../common/hx-language
+    devDependencies:
+      '@heleonix/hx-utils':
+        specifier: workspace:*
+        version: link:../../common/hx-utils
 
   extensions/hx-language-server:
     dependencies:
+      '@heleonix/hx-analyzer':
+        specifier: workspace:*
+        version: link:../../compilers/hx-analyzer
       '@heleonix/hx-compiler-core':
         specifier: workspace:*
         version: link:../../compilers/hx-compiler-core
       '@heleonix/hx-language':
         specifier: workspace:*
         version: link:../../common/hx-language
-      '@vscode/web-custom-data':
-        specifier: ^0.6.3
-        version: 0.6.3
+      '@heleonix/hx-plugin-core':
+        specifier: workspace:*
+        version: link:../../plugins/hx-plugin-core
       vscode-languageserver:
         specifier: ^9.0.1
         version: 9.0.1
@@ -177,6 +215,18 @@ importers:
         specifier: ^1.85.0
         version: 1.125.0
 
+  platforms/hx-platform-ssr:
+    dependencies:
+      '@heleonix/hx-core':
+        specifier: workspace:*
+        version: link:../../runtime/hx-core
+      '@heleonix/hx-language':
+        specifier: workspace:*
+        version: link:../../common/hx-language
+      '@heleonix/hx-platform-web':
+        specifier: workspace:*
+        version: link:../hx-platform-web
+
   platforms/hx-platform-web:
     dependencies:
       '@heleonix/hx-core':
@@ -185,6 +235,10 @@ importers:
       '@heleonix/hx-language':
         specifier: workspace:*
         version: link:../../common/hx-language
+    devDependencies:
+      '@vscode/web-custom-data':
+        specifier: ^0.6.3
+        version: 0.6.3
 
   playground/hx-sandbox:
     dependencies:
@@ -253,6 +307,9 @@ importers:
 
   plugins/hx-webpack-plugin:
     dependencies:
+      '@heleonix/hx-analyzer':
+        specifier: workspace:*
+        version: link:../../compilers/hx-analyzer
       '@heleonix/hx-language':
         specifier: workspace:*
         version: link:../../common/hx-language

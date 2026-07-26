@@ -1,0 +1,14 @@
+@hx-apply(token: Typography.Heading);
+color: {$Colors.Text.primary};
+background: {$Colors.Bg.canvas};
+padding: 16px;
+
+:hover {
+  color: {$Colors.Bg.canvas};
+  background: {$Colors.Text.primary};
+}
+
+@hx-style(for: form) {
+  user-select: none;
+  padding: 8px;
+}

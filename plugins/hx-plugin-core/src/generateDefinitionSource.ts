@@ -67,6 +67,10 @@ export class ${className} extends ${baseClass} {
   getDefinitions(name, dimension) {
     return Promise.resolve(groups.get(name) || [])
   }
+
+  getAllDefinitions() {
+    return Promise.resolve([...groups.values()].flat())
+  }
 }
 `
 }
@@ -114,6 +118,12 @@ export class ${className} extends ${baseClass} {
     }
 
     const modules = await Promise.all(loaders.map((load) => load()))
+
+    return modules.map((module) => module.default)
+  }
+
+  async getAllDefinitions() {
+    const modules = await Promise.all([...groups.values()].flat().map((load) => load()))
 
     return modules.map((module) => module.default)
   }

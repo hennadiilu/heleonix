@@ -21,6 +21,13 @@ import { FrameworkElement } from "./FrameworkElement"
 import { DictionaryProvider } from "./dictionaries/DictionaryProvider"
 import { ConfigProvider } from "./configs/ConfigProvider"
 import { IApplicationBootstrap } from "./IApplicationBootstrap"
+import { InjectableConstructor } from "./injection/InjectableConstructor"
+import { StyleManager } from "./styling/StyleManager"
+import { ThemeManager } from "./styling/ThemeManager"
+import { StyleDefinitionProvider } from "./styling/StyleDefinitionProvider"
+import { ThemeDefinitionProvider } from "./styling/ThemeDefinitionProvider"
+import { IStyleDefinitionProviderSettings } from "./styling/IStyleDefinitionProviderSettings"
+import { IThemeDefinitionProviderSettings } from "./styling/IThemeDefinitionProviderSettings"
 import { IDimensionManagerSettings } from "./dimension/IDimensionManagerSettings"
 import { IComponentDefinitionProviderSettings } from "./components/IComponentDefinitionProviderSettings"
 import { IConfigDefinitionProviderSettings } from "./configs/IConfigDefinitionProviderSettings"
@@ -35,6 +42,8 @@ export abstract class Application extends FrameworkElement<
   | PlatformAdapter
   | PlatformRuntime
   | Scheduler
+  | StyleManager
+  | ThemeManager
   // | Action | Converter | Service
 > {
   protected readonly platformAdapter = this.inject(PlatformAdapter)
@@ -51,11 +60,34 @@ export abstract class Application extends FrameworkElement<
 
   private readonly diContainerInstance: DIContainer
 
+  private readonly styleConfigured: boolean
+
+  private readonly themeConfigured: boolean
+
   public constructor(
     protected readonly name: string,
     bootstrap: IApplicationBootstrap,
   ) {
     const diContainer = new DIContainer()
+
+    const styleConfigured = bootstrap.styleDefinition !== undefined
+    const themeConfigured = bootstrap.themeDefinition !== undefined
+    const stylingInjectables: InjectableConstructor[] = []
+
+    if (styleConfigured || themeConfigured) {
+      stylingInjectables.push(bootstrap.themeDefinition?.provider ?? ThemeDefinitionProvider)
+      stylingInjectables.push(...(bootstrap.themeDefinition?.sources ?? []))
+    }
+
+    if (themeConfigured) {
+      stylingInjectables.push(ThemeManager)
+    }
+
+    if (bootstrap.styleDefinition) {
+      stylingInjectables.push(bootstrap.styleDefinition.provider ?? StyleDefinitionProvider)
+      stylingInjectables.push(...bootstrap.styleDefinition.sources)
+      stylingInjectables.push(StyleManager)
+    }
 
     diContainer.registerInjectables([
       //...bootstrap.actions,
@@ -88,6 +120,8 @@ export abstract class Application extends FrameworkElement<
       ConfigManager,
       ConfigProvider,
       DimensionManager,
+
+      ...stylingInjectables,
     ])
 
     diContainer.registerSettings<IDimensionManagerSettings>(DimensionManager.diName, {
@@ -118,9 +152,28 @@ export abstract class Application extends FrameworkElement<
       },
     )
 
+    if (styleConfigured || themeConfigured) {
+      diContainer.registerSettings<IThemeDefinitionProviderSettings>(
+        (bootstrap.themeDefinition?.provider ?? ThemeDefinitionProvider).diName,
+        { sources: bootstrap.themeDefinition?.sources ?? [] },
+      )
+    }
+
+    if (bootstrap.styleDefinition) {
+      diContainer.registerSettings<IStyleDefinitionProviderSettings>(
+        (bootstrap.styleDefinition.provider ?? StyleDefinitionProvider).diName,
+        {
+          sources: bootstrap.styleDefinition.sources,
+          selectionStrategy: bootstrap.styleDefinition.selectionStrategy,
+        },
+      )
+    }
+
     super(diContainer)
 
     this.diContainerInstance = diContainer
+    this.styleConfigured = styleConfigured
+    this.themeConfigured = themeConfigured
 
     this.dimensionManager.dimensionChanged.on(this.handleDimensionChange)
   }
@@ -133,10 +186,24 @@ export abstract class Application extends FrameworkElement<
     try {
       this.platformRuntime.start()
 
+      // Establish the application's root host first, so the theme and style
+      // back-ends anchor their platform state to it (the web appends its
+      // `<style>` sheets under this root, not the shared document head) - keeping
+      // multiple application instances on one page isolated.
       const rootHost = this.platformAdapter.getRootHost(this.rootSelector)
 
       if (!rootHost) {
         throw new HeleonixError(Errors.noRootElement, this.rootSelector)
+      }
+
+      if (this.themeConfigured) {
+        await this.inject(ThemeManager).apply()
+      }
+
+      // Injecting the StyleManager activates its component-lifecycle
+      // subscription, so every component built below (the root included) is styled.
+      if (this.styleConfigured) {
+        this.inject(StyleManager)
       }
 
       const rootUsage = {
@@ -161,6 +228,7 @@ export abstract class Application extends FrameworkElement<
   public stop(): void {
     try {
       if (!this.rootComponent) {
+        this.platformAdapter.dispose()
         this.platformRuntime.stop()
 
         return
@@ -171,6 +239,8 @@ export abstract class Application extends FrameworkElement<
       this.componentManager.destroyComponent(this.rootComponent)
 
       this.rootComponent = undefined
+
+      this.platformAdapter.dispose()
 
       this.platformRuntime.stop()
 

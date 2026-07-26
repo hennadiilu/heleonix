@@ -22,8 +22,9 @@
   },
   "scripts": {
     "clean": "rimraf dist temp",
-    "build": "rollup -c",
-    "dts": "api-extractor run -l"
+    "build": "node tools/generateMeta.mjs && rollup -c",
+    "dts": "api-extractor run -l",
+    "test": "node --experimental-strip-types spec/run.ts"
   },
   "peerDependencies": {
     "@heleonix/hx-core": "workspace:*",
@@ -34,11 +35,19 @@
       "types": "./dist/types/index.d.ts",
       "require": "./dist/cjs/index.cjs",
       "import": "./dist/esm/index.js"
+    },
+    "./hx.meta.json": {
+      "hxmeta": "./hx.meta.json",
+      "default": "./hx.meta.json"
     }
   },
   "files": [
     "dist/cjs/index.cjs",
     "dist/esm/index.js",
-    "dist/types/index.d.ts"
-  ]
+    "dist/types/index.d.ts",
+    "hx.meta.json"
+  ],
+  "devDependencies": {
+    "@vscode/web-custom-data": "^0.6.3"
+  }
 }

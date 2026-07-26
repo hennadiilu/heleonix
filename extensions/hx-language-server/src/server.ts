@@ -10,7 +10,7 @@ import {
   WatchKind,
 } from "vscode-languageserver/node"
 import { DiagnosticSeverity, FileSystemWatcher } from "vscode-languageserver"
-import { EXT_CONFIG, EXT_DICTIONARY, EXT_TEMPLATE } from "@heleonix/hx-language"
+import { EXT_CONFIG, EXT_DICTIONARY, EXT_STYLE, EXT_TEMPLATE, EXT_THEME } from "@heleonix/hx-language"
 import { TextDocument } from "vscode-languageserver-textdocument"
 import { loaderFor } from "./loaders/loaderFor"
 import { CompiledDefinitionSource } from "./sources/CompiledDefinitionSource"
@@ -20,7 +20,9 @@ import { ILanguageContext } from "./languages/ILanguageContext"
 import { LanguageRouter } from "./languages/LanguageRouter"
 import { ILanguageServerSettings } from "./settings/ILanguageServerSettings"
 import { parseReferenceSeverity } from "./settings/parseReferenceSeverity"
+import { AnalyzerHost, ANALYZER_EXTS } from "./analysis/AnalyzerHost"
 import { ComponentLanguageService } from "./languages/component/ComponentLanguageService"
+import { StylingLanguageService } from "./languages/styling/StylingLanguageService"
 import { ConfigLanguageService } from "./languages/config/ConfigLanguageService"
 import { DictionaryLanguageService } from "./languages/dictionary/DictionaryLanguageService"
 
@@ -42,10 +44,15 @@ let externalWatchers: FileSystemWatcher[] = []
 const connection = createConnection(ProposedFeatures.all)
 const documents = new TextDocuments(TextDocument)
 const registry = new DefinitionRegistry()
+const analyzerHost = new AnalyzerHost(() => settings.unknownReferenceSeverity)
+let analyzerRoots: string[] = []
+let analyzerExclude: ReadonlySet<string> = new Set(DEFAULT_EXCLUDE)
 const router = new LanguageRouter([
   new ComponentLanguageService(),
   new DictionaryLanguageService(),
   new ConfigLanguageService(),
+  new StylingLanguageService("style", EXT_STYLE),
+  new StylingLanguageService("theme", EXT_THEME),
 ])
 
 let settings: ILanguageServerSettings = {
@@ -76,6 +83,9 @@ connection.onInitialize((params) => {
   }
 
   const exclude = new Set([...DEFAULT_EXCLUDE, ...settings.exclude])
+
+  analyzerRoots = roots
+  analyzerExclude = exclude
 
   registry.register(new WorkspaceDefinitionSource(roots, exclude))
 
@@ -121,6 +131,11 @@ connection.onInitialize((params) => {
 connection.onExecuteCommand(async (params) => {
   if (params.command === RELOAD_COMMAND) {
     await registry.reloadSources()
+
+    for (const meta of registry.metas()) {
+      analyzerHost.addMeta(meta)
+    }
+
     refreshAllDiagnostics()
   }
 })
@@ -129,6 +144,15 @@ connection.onInitialized(() => void initialize())
 
 async function initialize(): Promise<void> {
   await registry.rebuild()
+  analyzerHost.seed(analyzerRoots, analyzerExclude)
+
+  // Feed the analyzer the type-level meta of every configured source (packages,
+  // endpoints, custom loaders), so their definitions validate like workspace
+  // ones - not only the installed-dependency metas that `seed` auto-discovers.
+  for (const meta of registry.metas()) {
+    analyzerHost.addMeta(meta)
+  }
+
   refreshAllDiagnostics()
 
   // Re-index when hx* files are created/changed/deleted on disk, and reload
@@ -152,7 +176,7 @@ connection.onDidChangeWatchedFiles((params) => {
 
     // hx* files feed the incremental workspace index; anything else we watch (a
     // lockfile, a local manifest) means the external sources should be reloaded.
-    if (!HX_EXTS.has(path.extname(filePath).toLowerCase())) {
+    if (!ANALYZER_EXTS.has(path.extname(filePath).toLowerCase())) {
       scheduleReload()
     } else if (change.type === FileChangeType.Deleted) {
       scheduleRemove(filePath)
@@ -215,6 +239,15 @@ connection.onDefinition((params) => {
     return null
   }
 
+  // A service may resolve go-to-definition itself (a converter/action name to
+  // its TypeScript class); otherwise fall back to the occurrence index.
+  const service = router.forUri(doc.uri)
+  const own = service?.definition?.(doc, params.position, context())
+
+  if (own) {
+    return own
+  }
+
   return registry.getOccurrences().definitionsAt(filePath, doc.offsetAt(params.position))
 })
 
@@ -267,12 +300,20 @@ async function flush(): Promise<void> {
   flushTimer = undefined
 
   for (const filePath of pendingRemove) {
-    registry.removeFile(filePath)
+    if (HX_EXTS.has(path.extname(filePath).toLowerCase())) {
+      registry.removeFile(filePath)
+    }
+
+    analyzerHost.remove(filePath)
   }
   pendingRemove.clear()
 
   for (const [filePath, text] of pendingUpdate) {
-    await registry.updateFile(filePath, text)
+    if (HX_EXTS.has(path.extname(filePath).toLowerCase())) {
+      await registry.updateFile(filePath, text)
+    }
+
+    analyzerHost.update(filePath, text)
   }
   pendingUpdate.clear()
 
@@ -291,13 +332,19 @@ function validate(doc: TextDocument): void {
     return
   }
 
-  const service = router.forUri(doc.uri)
+  void publishDiagnostics(doc)
+}
 
-  if (!service) {
-    return
+async function publishDiagnostics(doc: TextDocument): Promise<void> {
+  const service = router.forUri(doc.uri)
+  const diagnostics = service ? service.diagnostics(doc, context()) : []
+  const filePath = uriToPath(doc.uri)
+
+  if (filePath && ANALYZER_EXTS.has(path.extname(filePath).toLowerCase())) {
+    diagnostics.push(...(await analyzerHost.diagnosticsFor(filePath, doc)))
   }
 
-  void connection.sendDiagnostics({ uri: doc.uri, diagnostics: service.diagnostics(doc, context()) })
+  void connection.sendDiagnostics({ uri: doc.uri, diagnostics })
 }
 
 function refreshAllDiagnostics(): void {
@@ -309,8 +356,18 @@ function refreshAllDiagnostics(): void {
 function context(): ILanguageContext {
   return {
     index: registry.getIndex(),
-    unknownReferenceSeverity: settings.unknownReferenceSeverity,
+    // The unresolved-reference family migrated to the shared analyzer (codes
+    // HX_ANALYZER_0001-0003, severity from the same setting) - the legacy
+    // in-service check stays off so findings are never doubled.
+    unknownReferenceSeverity: undefined,
     unusedEntrySeverity: settings.unusedEntrySeverity,
+    converters: analyzerHost.converters(),
+    actions: analyzerHost.actions(),
+    components: analyzerHost.components(),
+    themeTokens: analyzerHost.themeTokens(),
+    qualifiers: analyzerHost.qualifiers(),
+    controlNames: analyzerHost.controlNames(),
+    themeTokenLocations: analyzerHost.themeTokenLocations(),
   }
 }
 

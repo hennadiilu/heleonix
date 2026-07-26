@@ -8,6 +8,8 @@ import {
 import { CompiledComponentDefinitionSource } from "hx-compiled-components"
 import { CompiledDictionaryDefinitionSource } from "hx-compiled-dictionaries"
 import { CompiledConfigDefinitionSource } from "hx-compiled-configs"
+import { CompiledStyleDefinitionSource } from "hx-compiled-styles"
+import { CompiledThemeDefinitionSource } from "hx-compiled-themes"
 import dimensions from "../hx.dimensions.json"
 
 export class SandboxApplication extends Application {
@@ -22,6 +24,12 @@ export class SandboxApplication extends Application {
       },
       configDefinition: {
         sources: [CompiledConfigDefinitionSource],
+      },
+      styleDefinition: {
+        sources: [CompiledStyleDefinitionSource],
+      },
+      themeDefinition: {
+        sources: [CompiledThemeDefinitionSource],
       },
       platform: {
         adapter: WebPlatformAdapter,

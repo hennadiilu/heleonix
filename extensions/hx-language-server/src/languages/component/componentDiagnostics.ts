@@ -2,7 +2,6 @@ import {
   BUILTIN_TAGS,
   COMPONENT_NAME_SEGMENT_SEPARATOR,
   NAME_ATTRIBUTE,
-  PROPERTY_NAME_SEGMENT_SEPARATOR,
   REFERENCE_SEPARATORS,
   ReferenceType,
   ROOT_TAG,
@@ -15,7 +14,6 @@ import { Diagnostic, DiagnosticSeverity } from "vscode-languageserver"
 import { TextDocument } from "vscode-languageserver-textdocument"
 import { DefinitionIndex } from "../../index/DefinitionIndex"
 import { makeDiagnostic } from "../../lsp/makeDiagnostic"
-import { PLATFORM_DATA } from "../../platform/PLATFORM_DATA"
 import { definitionName } from "../jsonc/definitionName"
 import { headSegment } from "../../references/headSegment"
 import { inlineOverrideScopes, scopeOwnerAt } from "../../references/inlineOverrideScopes"
@@ -234,8 +232,9 @@ function validatePropertyName(
     return
   }
 
+  // Native/unknown tags are validated by the shared analyzer (an open
+  // component's known attributes are value-checked, the rest allowed).
   if (!index.isComponent(tagName)) {
-    validatePlatformAttribute(doc, tagName, attrName, start, end, severity, out)
     return
   }
 
@@ -403,39 +402,6 @@ function validateOverrideValue(
 
   if (severity !== undefined && /^[A-Z]/.test(expression.value) && !index.isComponent(expression.value)) {
     out.push(makeDiagnostic(doc, start, end, COMPONENT_MESSAGES.unknownOverrideComponent(expression.value), severity))
-  }
-}
-
-/**
- * An attribute on a platform component (a lowercase HTML tag on the web
- * platform) must be one the platform actually supports - the DSL spec rules
- * out unsupported native properties. The platform data owns the whole validity
- * policy (including author-defined families like `data-*`/`aria-*`);
- * `ctrl:`-prefixed and dotted names are framework constructs left to the
- * component checks; tags no platform knows (custom elements, ...) are not
- * validated at all.
- */
-function validatePlatformAttribute(
-  doc: TextDocument,
-  tagName: string,
-  attrName: string,
-  start: number,
-  end: number,
-  severity: DiagnosticSeverity,
-  out: Diagnostic[],
-): void {
-  if (!PLATFORM_DATA.hasTag(tagName)) {
-    return
-  }
-
-  const { prefix, path } = splitComponentPrefix(attrName)
-
-  if (prefix || path.includes(PROPERTY_NAME_SEGMENT_SEPARATOR)) {
-    return
-  }
-
-  if (!PLATFORM_DATA.hasAttribute(tagName, path)) {
-    out.push(makeDiagnostic(doc, start, end, COMPONENT_MESSAGES.unknownPlatformAttribute(tagName, path), severity))
   }
 }
 

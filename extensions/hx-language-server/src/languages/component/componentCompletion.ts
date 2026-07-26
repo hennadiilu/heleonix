@@ -11,13 +11,14 @@ import {
 } from "@heleonix/hx-language"
 import { IXmlAttribute } from "@heleonix/hx-compiler-core"
 import { IXmlScan } from "@heleonix/hx-compiler-core"
+import type { IComponentInfo } from "@heleonix/hx-analyzer"
 import { CompletionItem, CompletionItemKind, Position, Range } from "vscode-languageserver"
 import { TextDocument } from "vscode-languageserver-textdocument"
 import { DefinitionIndex } from "../../index/DefinitionIndex"
 import { completionItem } from "../../lsp/completionItem"
 import { replaceRange } from "../../lsp/replaceRange"
-import { PLATFORM_DATA } from "../../platform/PLATFORM_DATA"
 import { referenceCompletion } from "../../references/referenceCompletion"
+import { byName, componentSummary, memberSummary } from "./componentInfoLookup"
 import { currentComponents } from "./currentComponents"
 
 // XML tag/attribute names (allow `.`, `:`, `-`) - container syntax, not a bare
@@ -35,11 +36,13 @@ export function completeComponent(
   position: Position,
   index: DefinitionIndex,
   scan: IXmlScan,
+  components: readonly IComponentInfo[],
 ): CompletionItem[] {
   const offset = doc.offsetAt(position)
   const text = doc.getText()
   const before = text.slice(0, offset)
   const line = before.slice(before.lastIndexOf("\n") + 1)
+  const registry = byName(components)
 
   const references = referenceCompletion(doc, offset, line, index)
 
@@ -66,22 +69,21 @@ export function completeComponent(
 
   if (tag) {
     const range = replaceRange(doc, offset, (tag[1] ?? "").length)
-    const items = index
-      .componentTags()
-      .map((name) => completionItem(name, CompletionItemKind.Class, range, index.componentDocs(name)?.summary))
+
+    // Component tags (workspace and native alike) come from the analyzer; the
+    // framework builtins are keywords.
+    const items = components.map((info) =>
+      completionItem(info.name, CompletionItemKind.Class, range, componentSummary(info)),
+    )
 
     for (const name of [...BUILTIN_TAGS].sort()) {
       items.push(completionItem(name, CompletionItemKind.Keyword, range))
     }
 
-    for (const name of PLATFORM_DATA.tags()) {
-      items.push(completionItem(name, CompletionItemKind.Property, range, PLATFORM_DATA.tagDocs(name)?.summary))
-    }
-
     return items
   }
 
-  return propertyItems(doc, offset, before, text, index)
+  return propertyItems(doc, offset, before, text, index, registry)
 }
 
 /** The attribute (and its value start) the cursor sits inside, excluding `name`, or `undefined`. */
@@ -174,6 +176,7 @@ function propertyItems(
   before: string,
   text: string,
   index: DefinitionIndex,
+  registry: Map<string, IComponentInfo>,
 ): CompletionItem[] {
   const lt = before.lastIndexOf("<")
   const gt = before.lastIndexOf(">")
@@ -204,16 +207,7 @@ function propertyItems(
   if (colon >= 0) {
     const targets = resolveTargets([tagName], token.slice(0, colon), index)
     const range = replaceRange(doc, offset, offset - (tokenStart + colon + 1))
-    const items = propertyItems2(
-      targets,
-      (component) => index.consumedProperties(component),
-      CompletionItemKind.Property,
-      range,
-    )
-
-    // A chain target can be a platform control (`<button name="add">`), whose
-    // settable pool is the platform's attribute set.
-    pushPlatformAttributeItems(targets, range, items)
+    const items = memberItems(registry, targets, range)
 
     // `target:Component` overrides the component at that target.
     items.push(completionItem(OVERRIDE_PROPERTY, CompletionItemKind.Keyword, range))
@@ -222,12 +216,7 @@ function propertyItems(
   }
 
   const range = replaceRange(doc, offset, token.length)
-  const propertyDocs = index.componentDocs(tagName)?.props
-  const items = index
-    .componentProperties(tagName)
-    .map((name) => completionItem(name, CompletionItemKind.Property, range, propertyDocs?.[name]))
-
-  pushPlatformAttributeItems([tagName], range, items)
+  const items = memberItems(registry, [tagName], range)
 
   for (const control of index.controlNames(tagName)) {
     items.push(completionItem(control, CompletionItemKind.Variable, range))
@@ -238,25 +227,21 @@ function propertyItems(
   return items
 }
 
-/** Adds the platform attributes (with W3C/MDN docs) of every platform tag among `tags`, deduplicated. */
-function pushPlatformAttributeItems(tags: Iterable<string>, range: Range, items: CompletionItem[]): void {
-  const seen = new Set(items.map((item) => item.label))
+/** Settable-property completions: the union of the analyzer's members for the given tags, deduplicated. */
+function memberItems(registry: Map<string, IComponentInfo>, tags: Iterable<string>, range: Range): CompletionItem[] {
+  const items: CompletionItem[] = []
+  const seen = new Set<string>()
 
   for (const tag of tags) {
-    for (const attribute of PLATFORM_DATA.attributes(tag)) {
-      if (!seen.has(attribute)) {
-        seen.add(attribute)
-        items.push(
-          completionItem(
-            attribute,
-            CompletionItemKind.Property,
-            range,
-            PLATFORM_DATA.attributeDocs(tag, attribute)?.summary,
-          ),
-        )
+    for (const member of registry.get(tag)?.members ?? []) {
+      if (!seen.has(member.name)) {
+        seen.add(member.name)
+        items.push(completionItem(member.name, CompletionItemKind.Property, range, memberSummary(member)))
       }
     }
   }
+
+  return items
 }
 
 /** Components a `ctrl.nested` prefix resolves to from `starts` (empty when it names no known control). */

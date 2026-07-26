@@ -1,0 +1,3542 @@
+{
+  "schemaVersion": 1,
+  "package": "@heleonix/hx-platform-web",
+  "components": [
+    {
+      "name": "a",
+      "dimension": {},
+      "open": true,
+      "docs": "* If the a element has an href attribute, then it represents a hyperlink (a hypertext anchor) labeled by its contents. ",
+      "props": [
+        {
+          "name": "download",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This attribute instructs browsers to download a URL instead of navigating to it, so the user will be prompted to save it as a local file. If the attribute has a value, it is used as the pre-filled file name in the Save prompt (the user c..."
+        },
+        {
+          "name": "href",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Contains a URL or a URL fragment that the hyperlink points to. A URL fragment is a name preceded by a hash mark (`#`), which specifies an internal target location (an [`id`](https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attrib..."
+        },
+        {
+          "name": "hreflang",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This attribute indicates the human language of the linked resource. It is purely advisory, with no built-in functionality. Allowed values are determined by [BCP47](https://www.ietf.org/rfc/bcp/bcp47.txt \"Tags for Identifying Languages\")."
+        },
+        {
+          "name": "ping",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Contains a space-separated list of URLs to which, when the hyperlink is followed, [`POST`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/POST \"The HTTP POST method sends data to the server. The type of the body of the request..."
+        },
+        {
+          "name": "referrerpolicy",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Indicates which [referrer](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Referer) to send when fetching the URL:"
+        },
+        {
+          "name": "rel",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Specifies the relationship of the target object to the link object. The value is a space-separated list of [link types](https://developer.mozilla.org/en-US/docs/Web/HTML/Link_types)."
+        },
+        {
+          "name": "target",
+          "optional": true,
+          "kind": "enum",
+          "enumValues": [
+            "_self",
+            "_blank",
+            "_parent",
+            "_top"
+          ],
+          "isFunction": false,
+          "docs": "Specifies where to display the linked URL. It is a name of, or keyword for, a _browsing context_: a tab, window, or `<iframe>`. The following keywords have special meanings:"
+        },
+        {
+          "name": "type",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Specifies the media type in the form of a [MIME type](https://developer.mozilla.org/en-US/docs/Glossary/MIME_type \"MIME type: A MIME type (now properly called \"media type\", but also sometimes \"content type\") is a string sent along with a..."
+        }
+      ]
+    },
+    {
+      "name": "abbr",
+      "dimension": {},
+      "open": true,
+      "docs": "* The abbr element represents an abbreviation or acronym, optionally with its expansion. The title attribute may be used to provide an expansion of the abbreviation. The attribute, if specified, must contain an expansion of the abbreviatio... "
+    },
+    {
+      "name": "address",
+      "dimension": {},
+      "open": true,
+      "docs": "* The address element represents the contact information for its nearest article or body element ancestor. If that is the body element, then the contact information applies to the document as a whole. "
+    },
+    {
+      "name": "area",
+      "dimension": {},
+      "open": true,
+      "docs": "* The area element represents either a hyperlink with some text and a corresponding area on an image map, or a dead area on an image map. ",
+      "props": [
+        {
+          "name": "accesskey",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Specifies a keyboard navigation accelerator for the element. Pressing ALT or a similar key in association with the specified character selects the form control correlated with that key sequence. Page designers are forewarned to avoid key..."
+        },
+        {
+          "name": "alt",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "coords",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "download",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "href",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "hreflang",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "ping",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "rel",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "shape",
+          "optional": true,
+          "kind": "enum",
+          "enumValues": [
+            "circle",
+            "default",
+            "poly",
+            "rect"
+          ],
+          "isFunction": false
+        },
+        {
+          "name": "target",
+          "optional": true,
+          "kind": "enum",
+          "enumValues": [
+            "_self",
+            "_blank",
+            "_parent",
+            "_top"
+          ],
+          "isFunction": false
+        },
+        {
+          "name": "type",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        }
+      ]
+    },
+    {
+      "name": "article",
+      "dimension": {},
+      "open": true,
+      "docs": "* The article element represents a complete, or self-contained, composition in a document, page, application, or site and that is, in principle, independently distributable or reusable, e.g. in syndication. This could be a forum post, a ma... "
+    },
+    {
+      "name": "aside",
+      "dimension": {},
+      "open": true,
+      "docs": "* The aside element represents a section of a page that consists of content that is tangentially related to the content around the aside element, and which could be considered separate from that content. Such sections are often represented... "
+    },
+    {
+      "name": "audio",
+      "dimension": {},
+      "open": true,
+      "docs": "* An audio element represents a sound or audio stream. ",
+      "props": [
+        {
+          "name": "autoplay",
+          "optional": true,
+          "kind": "boolean",
+          "isFunction": false,
+          "docs": "A Boolean attribute: if specified, the audio will automatically begin playback as soon as it can do so, without waiting for the entire audio file to finish downloading."
+        },
+        {
+          "name": "controls",
+          "optional": true,
+          "kind": "boolean",
+          "isFunction": false,
+          "docs": "If this attribute is present, the browser will offer controls to allow the user to control audio playback, including volume, seeking, and pause/resume playback."
+        },
+        {
+          "name": "crossorigin",
+          "optional": true,
+          "kind": "enum",
+          "enumValues": [
+            "anonymous",
+            "use-credentials"
+          ],
+          "isFunction": false,
+          "docs": "This enumerated attribute indicates whether to use CORS to fetch the related image. [CORS-enabled resources](https://developer.mozilla.org/en-US/docs/CORS_Enabled_Image) can be reused in the [`<canvas>`](https://developer.mozilla.org/en-..."
+        },
+        {
+          "name": "loop",
+          "optional": true,
+          "kind": "boolean",
+          "isFunction": false,
+          "docs": "A Boolean attribute: if specified, the audio player will automatically seek back to the start upon reaching the end of the audio."
+        },
+        {
+          "name": "mediagroup",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "muted",
+          "optional": true,
+          "kind": "boolean",
+          "isFunction": false,
+          "docs": "A Boolean attribute that indicates whether the audio will be initially silenced. Its default value is `false`."
+        },
+        {
+          "name": "preload",
+          "optional": true,
+          "kind": "enum",
+          "enumValues": [
+            "none",
+            "metadata",
+            "auto"
+          ],
+          "isFunction": false,
+          "docs": "This enumerated attribute is intended to provide a hint to the browser about what the author thinks will lead to the best user experience. It may have one of the following values:"
+        },
+        {
+          "name": "src",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The URL of the audio to embed. This is subject to [HTTP access controls](https://developer.mozilla.org/en-US/docs/HTTP_access_control). This is optional; you may instead use the [`<source>`](https://developer.mozilla.org/en-US/docs/Web/H..."
+        }
+      ]
+    },
+    {
+      "name": "b",
+      "dimension": {},
+      "open": true,
+      "docs": "* The b element represents a span of text to which attention is being drawn for utilitarian purposes without conveying any extra importance and with no implication of an alternate voice or mood, such as key words in a document abstract, pr... "
+    },
+    {
+      "name": "base",
+      "dimension": {},
+      "open": true,
+      "docs": "* The base element allows authors to specify the document base URL for the purposes of resolving relative URLs, and the name of the default browsing context for the purposes of following hyperlinks. The element does not represent any conte... ",
+      "props": [
+        {
+          "name": "href",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The base URL to be used throughout the document for relative URL addresses. If this attribute is specified, this element must come before any other elements with attributes whose values are URLs. Absolute and relative URLs are allowed."
+        },
+        {
+          "name": "target",
+          "optional": true,
+          "kind": "enum",
+          "enumValues": [
+            "_self",
+            "_blank",
+            "_parent",
+            "_top"
+          ],
+          "isFunction": false,
+          "docs": "A name or keyword indicating the default location to display the result when hyperlinks or forms cause navigation, for elements that do not have an explicit target reference. It is a name of, or keyword for, a _browsing context_ (for exa..."
+        }
+      ]
+    },
+    {
+      "name": "bdi",
+      "dimension": {},
+      "open": true,
+      "docs": "* The bdi element represents a span of text that is to be isolated from its surroundings for the purposes of bidirectional text formatting. [BIDI] "
+    },
+    {
+      "name": "bdo",
+      "dimension": {},
+      "open": true,
+      "docs": "* The bdo element represents explicit text directionality formatting control for its children. It allows authors to override the Unicode bidirectional algorithm by explicitly specifying a direction override. [BIDI] ",
+      "props": [
+        {
+          "name": "dir",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The direction in which text should be rendered in this element's contents. Possible values are:"
+        }
+      ]
+    },
+    {
+      "name": "blockquote",
+      "dimension": {},
+      "open": true,
+      "docs": "* The blockquote element represents content that is quoted from another source, optionally with a citation which must be within a footer or cite element, and optionally with in-line changes such as annotations and abbreviations. ",
+      "props": [
+        {
+          "name": "cite",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "A URL that designates a source document or message for the information quoted. This attribute is intended to point to information explaining the context or the reference for the quote."
+        }
+      ]
+    },
+    {
+      "name": "body",
+      "dimension": {},
+      "open": true,
+      "docs": "* The body element represents the content of the document. ",
+      "props": [
+        {
+          "name": "alink",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Color of text for hyperlinks when selected. _This method is non-conforming, use CSS [`color`](https://developer.mozilla.org/en-US/docs/Web/CSS/color \"The color CSS property sets the foreground color value of an element's text and text de..."
+        },
+        {
+          "name": "background",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "URI of a image to use as a background. _This method is non-conforming, use CSS [`background`](https://developer.mozilla.org/en-US/docs/Web/CSS/background \"The background shorthand CSS property sets all background style properties at once..."
+        },
+        {
+          "name": "bgcolor",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Background color for the document. _This method is non-conforming, use CSS [`background-color`](https://developer.mozilla.org/en-US/docs/Web/CSS/background-color \"The background-color CSS property sets the background color of an element...."
+        },
+        {
+          "name": "bottommargin",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The margin of the bottom of the body. _This method is non-conforming, use CSS [`margin-bottom`](https://developer.mozilla.org/en-US/docs/Web/CSS/margin-bottom \"The margin-bottom CSS property sets the margin area on the bottom of an eleme..."
+        },
+        {
+          "name": "leftmargin",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The margin of the left of the body. _This method is non-conforming, use CSS [`margin-left`](https://developer.mozilla.org/en-US/docs/Web/CSS/margin-left \"The margin-left CSS property sets the margin area on the left side of an element. A..."
+        },
+        {
+          "name": "link",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Color of text for unvisited hypertext links. _This method is non-conforming, use CSS [`color`](https://developer.mozilla.org/en-US/docs/Web/CSS/color \"The color CSS property sets the foreground color value of an element's text and text d..."
+        },
+        {
+          "name": "onafterprint",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Function to call after the user has printed the document."
+        },
+        {
+          "name": "onbeforeprint",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Function to call when the user requests printing of the document."
+        },
+        {
+          "name": "onbeforeunload",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Function to call when the document is about to be unloaded."
+        },
+        {
+          "name": "onblur",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Function to call when the document loses focus."
+        },
+        {
+          "name": "onerror",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Function to call when the document fails to load properly."
+        },
+        {
+          "name": "onfocus",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Function to call when the document receives focus."
+        },
+        {
+          "name": "onhashchange",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Function to call when the fragment identifier part (starting with the hash (`'#'`) character) of the document's current address has changed."
+        },
+        {
+          "name": "onlanguagechange",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Function to call when the preferred languages changed."
+        },
+        {
+          "name": "onload",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Function to call when the document has finished loading."
+        },
+        {
+          "name": "onmessage",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Function to call when the document has received a message."
+        },
+        {
+          "name": "onoffline",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Function to call when network communication has failed."
+        },
+        {
+          "name": "ononline",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Function to call when network communication has been restored."
+        },
+        {
+          "name": "onpagehide",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "onpageshow",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "onpopstate",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Function to call when the user has navigated session history."
+        },
+        {
+          "name": "onredo",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Function to call when the user has moved forward in undo transaction history."
+        },
+        {
+          "name": "onresize",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Function to call when the document has been resized."
+        },
+        {
+          "name": "onstorage",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Function to call when the storage area has changed."
+        },
+        {
+          "name": "onundo",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Function to call when the user has moved backward in undo transaction history."
+        },
+        {
+          "name": "onunload",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Function to call when the document is going away."
+        },
+        {
+          "name": "rightmargin",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The margin of the right of the body. _This method is non-conforming, use CSS [`margin-right`](https://developer.mozilla.org/en-US/docs/Web/CSS/margin-right \"The margin-right CSS property sets the margin area on the right side of an eleme..."
+        },
+        {
+          "name": "text",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Foreground color of text. _This method is non-conforming, use CSS [`color`](https://developer.mozilla.org/en-US/docs/Web/CSS/color \"The color CSS property sets the foreground color value of an element's text and text decorations, and set..."
+        },
+        {
+          "name": "topmargin",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The margin of the top of the body. _This method is non-conforming, use CSS [`margin-top`](https://developer.mozilla.org/en-US/docs/Web/CSS/margin-top \"The margin-top CSS property sets the margin area on the top of an element. A positive ..."
+        },
+        {
+          "name": "vlink",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Color of text for visited hypertext links. _This method is non-conforming, use CSS [`color`](https://developer.mozilla.org/en-US/docs/Web/CSS/color \"The color CSS property sets the foreground color value of an element's text and text dec..."
+        }
+      ]
+    },
+    {
+      "name": "br",
+      "dimension": {},
+      "open": true,
+      "docs": "* The br element represents a line break. ",
+      "props": [
+        {
+          "name": "clear",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Indicates where to begin the next line after the break."
+        }
+      ]
+    },
+    {
+      "name": "button",
+      "dimension": {},
+      "open": true,
+      "docs": "* The button element represents a button labeled by its contents. ",
+      "props": [
+        {
+          "name": "autocomplete",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The use of this attribute on a [`<button>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/button \"The HTML <button> element represents a clickable button, which can be used in forms or anywhere in a document that needs simple..."
+        },
+        {
+          "name": "autofocus",
+          "optional": true,
+          "kind": "boolean",
+          "isFunction": false,
+          "docs": "This Boolean attribute lets you specify that the button should have input focus when the page loads, unless the user overrides it, for example by typing in a different control. Only one form-associated element in a document can have this..."
+        },
+        {
+          "name": "disabled",
+          "optional": true,
+          "kind": "boolean",
+          "isFunction": false,
+          "docs": "This Boolean attribute indicates that the user cannot interact with the button. If this attribute is not specified, the button inherits its setting from the containing element, for example [`<fieldset>`](https://developer.mozilla.org/en-..."
+        },
+        {
+          "name": "form",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The form element that the button is associated with (its _form owner_). The value of the attribute must be the **id** attribute of a [`<form>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/form \"The HTML <form> element repre..."
+        },
+        {
+          "name": "formaction",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The URI of a program that processes the information submitted by the button. If specified, it overrides the [`action`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/form#attr-action) attribute of the button's form owner."
+        },
+        {
+          "name": "formenctype",
+          "optional": true,
+          "kind": "enum",
+          "enumValues": [
+            "application/x-www-form-urlencoded",
+            "multipart/form-data",
+            "text/plain"
+          ],
+          "isFunction": false,
+          "docs": "If the button is a submit button, this attribute specifies the type of content that is used to submit the form to the server. Possible values are:"
+        },
+        {
+          "name": "formmethod",
+          "optional": true,
+          "kind": "enum",
+          "enumValues": [
+            "get",
+            "post"
+          ],
+          "isFunction": false,
+          "docs": "If the button is a submit button, this attribute specifies the HTTP method that the browser uses to submit the form. Possible values are:"
+        },
+        {
+          "name": "formnovalidate",
+          "optional": true,
+          "kind": "boolean",
+          "isFunction": false,
+          "docs": "If the button is a submit button, this Boolean attribute specifies that the form is not to be validated when it is submitted. If this attribute is specified, it overrides the [`novalidate`](https://developer.mozilla.org/en-US/docs/Web/HT..."
+        },
+        {
+          "name": "formtarget",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "If the button is a submit button, this attribute is a name or keyword indicating where to display the response that is received after submitting the form. This is a name of, or keyword for, a _browsing context_ (for example, tab, window,..."
+        },
+        {
+          "name": "name",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The name of the button, which is submitted with the form data."
+        },
+        {
+          "name": "popovertarget",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Turns the button into a popover control button; takes the ID of the popover element to control as its value."
+        },
+        {
+          "name": "popovertargetaction",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Specifies the action to be performed on a popover element being controlled by the button."
+        },
+        {
+          "name": "type",
+          "optional": true,
+          "kind": "enum",
+          "enumValues": [
+            "button",
+            "submit",
+            "reset"
+          ],
+          "isFunction": false,
+          "docs": "The type of the button. Possible values are:"
+        },
+        {
+          "name": "value",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The initial value of the button. It defines the value associated with the button which is submitted with the form data. This value is passed to the server in params when the form is submitted."
+        }
+      ]
+    },
+    {
+      "name": "canvas",
+      "dimension": {},
+      "open": true,
+      "docs": "* The canvas element provides scripts with a resolution-dependent bitmap canvas, which can be used for rendering graphs, game graphics, art, or other visual images on the fly. ",
+      "props": [
+        {
+          "name": "height",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The height of the coordinate space in CSS pixels. Defaults to 150."
+        },
+        {
+          "name": "moz-opaque",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Lets the canvas know whether or not translucency will be a factor. If the canvas knows there's no translucency, painting performance can be optimized. This is only supported by Mozilla-based browsers; use the standardized [`canvas.getCon..."
+        },
+        {
+          "name": "width",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The width of the coordinate space in CSS pixels. Defaults to 300."
+        }
+      ]
+    },
+    {
+      "name": "caption",
+      "dimension": {},
+      "open": true,
+      "docs": "* The caption element represents the title of the table that is its parent, if it has a parent and that is a table element. ",
+      "props": [
+        {
+          "name": "align",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This enumerated attribute indicates how the caption must be aligned with respect to the table. It may have one of the following values:"
+        }
+      ]
+    },
+    {
+      "name": "cite",
+      "dimension": {},
+      "open": true,
+      "docs": "* The cite element represents a reference to a creative work. It must include the title of the work or the name of the author(person, people or organization) or an URL reference, or a reference in abbreviated form as per the conventions us... "
+    },
+    {
+      "name": "code",
+      "dimension": {},
+      "open": true,
+      "docs": "* The code element represents a fragment of computer code. This could be an XML element name, a file name, a computer program, or any other string that a computer would recognize. "
+    },
+    {
+      "name": "col",
+      "dimension": {},
+      "open": true,
+      "docs": "* If a col element has a parent and that is a colgroup element that itself has a parent that is a table element, then the col element represents one or more columns in the column group represented by that colgroup. ",
+      "props": [
+        {
+          "name": "align",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This enumerated attribute specifies how horizontal alignment of each column cell content will be handled. Possible values are:"
+        },
+        {
+          "name": "span",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        }
+      ]
+    },
+    {
+      "name": "colgroup",
+      "dimension": {},
+      "open": true,
+      "docs": "* The colgroup element represents a group of one or more columns in the table that is its parent, if it has a parent and that is a table element. ",
+      "props": [
+        {
+          "name": "align",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This enumerated attribute specifies how horizontal alignment of each column cell content will be handled. Possible values are:"
+        },
+        {
+          "name": "span",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        }
+      ]
+    },
+    {
+      "name": "data",
+      "dimension": {},
+      "open": true,
+      "docs": "* The data element links a given piece of content with a machine-readable translation. ",
+      "props": [
+        {
+          "name": "value",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This attribute specifies the machine-readable translation of the content of the element."
+        }
+      ]
+    },
+    {
+      "name": "datalist",
+      "dimension": {},
+      "open": true,
+      "docs": "* The datalist element represents a set of option elements that represent predefined options for other controls. In the rendering, the datalist element represents nothing and it, along with its children, should be hidden. "
+    },
+    {
+      "name": "dd",
+      "dimension": {},
+      "open": true,
+      "docs": "* The dd element represents the description, definition, or value, part of a term-description group in a description list (dl element). ",
+      "props": [
+        {
+          "name": "nowrap",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "If the value of this attribute is set to `yes`, the definition text will not wrap. The default value is `no`."
+        }
+      ]
+    },
+    {
+      "name": "del",
+      "dimension": {},
+      "open": true,
+      "docs": "* The del element represents a removal from the document. ",
+      "props": [
+        {
+          "name": "cite",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "A URI for a resource that explains the change (for example, meeting minutes)."
+        },
+        {
+          "name": "datetime",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This attribute indicates the time and date of the change and must be a valid date string with an optional time. If the value cannot be parsed as a date with an optional time string, the element does not have an associated time stamp. For..."
+        }
+      ]
+    },
+    {
+      "name": "details",
+      "dimension": {},
+      "open": true,
+      "docs": "* The details element represents a disclosure widget from which the user can obtain additional information or controls. ",
+      "props": [
+        {
+          "name": "name",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This attribute enables multiple `<details>` elements to be connected, with only one open at a time. This allows developers to easily create UI features such as accordions without scripting."
+        },
+        {
+          "name": "open",
+          "optional": true,
+          "kind": "boolean",
+          "isFunction": false,
+          "docs": "This Boolean attribute indicates whether or not the details — that is, the contents of the `<details>` element — are currently visible. The default, `false`, means the details are not visible."
+        }
+      ]
+    },
+    {
+      "name": "dfn",
+      "dimension": {},
+      "open": true,
+      "docs": "* The dfn element represents the defining instance of a term. The paragraph, description list group, or section that is the nearest ancestor of the dfn element must also contain the definition(s) for the term given by the dfn element. "
+    },
+    {
+      "name": "dialog",
+      "dimension": {},
+      "open": true,
+      "docs": "* The dialog element represents a part of an application that a user interacts with to perform a task, for example a dialog box, inspector, or window. ",
+      "props": [
+        {
+          "name": "open",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Indicates that the dialog is active and available for interaction. When the `open` attribute is not set, the dialog shouldn't be shown to the user."
+        }
+      ]
+    },
+    {
+      "name": "div",
+      "dimension": {},
+      "open": true,
+      "docs": "* The div element has no special meaning at all. It represents its children. It can be used with the class, lang, and title attributes to mark up semantics common to a group of consecutive elements. "
+    },
+    {
+      "name": "dl",
+      "dimension": {},
+      "open": true,
+      "docs": "* The dl element represents an association list consisting of zero or more name-value groups (a description list). A name-value group consists of one or more names (dt elements) followed by one or more values (dd elements), ignoring any no... "
+    },
+    {
+      "name": "dt",
+      "dimension": {},
+      "open": true,
+      "docs": "* The dt element represents the term, or name, part of a term-description group in a description list (dl element). "
+    },
+    {
+      "name": "em",
+      "dimension": {},
+      "open": true,
+      "docs": "* The em element represents stress emphasis of its contents. "
+    },
+    {
+      "name": "embed",
+      "dimension": {},
+      "open": true,
+      "docs": "* The embed element provides an integration point for an external (typically non-HTML) application or interactive content. ",
+      "props": [
+        {
+          "name": "height",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The displayed height of the resource, in [CSS pixels](https://drafts.csswg.org/css-values/#px). This must be an absolute value; percentages are _not_ allowed."
+        },
+        {
+          "name": "src",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The URL of the resource being embedded."
+        },
+        {
+          "name": "type",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The MIME type to use to select the plug-in to instantiate."
+        },
+        {
+          "name": "width",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The displayed width of the resource, in [CSS pixels](https://drafts.csswg.org/css-values/#px). This must be an absolute value; percentages are _not_ allowed."
+        }
+      ]
+    },
+    {
+      "name": "fencedframe",
+      "dimension": {},
+      "open": true,
+      "docs": "* The fencedframe element represents a nested browsing context, embedding another HTML page into the current one. ",
+      "props": [
+        {
+          "name": "allow",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "height",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "width",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        }
+      ]
+    },
+    {
+      "name": "fieldset",
+      "dimension": {},
+      "open": true,
+      "docs": "* The fieldset element represents a set of form controls optionally grouped under a common name. ",
+      "props": [
+        {
+          "name": "disabled",
+          "optional": true,
+          "kind": "boolean",
+          "isFunction": false,
+          "docs": "If this Boolean attribute is set, all form controls that are descendants of the `<fieldset>`, are disabled, meaning they are not editable and won't be submitted along with the `<form>`. They won't receive any browsing events, like mouse ..."
+        },
+        {
+          "name": "form",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This attribute takes the value of the `id` attribute of a [`<form>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/form \"The HTML <form> element represents a document section that contains interactive controls for submitting ..."
+        },
+        {
+          "name": "name",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The name associated with the group."
+        }
+      ]
+    },
+    {
+      "name": "figcaption",
+      "dimension": {},
+      "open": true,
+      "docs": "* The figcaption element represents a caption or legend for the rest of the contents of the figcaption element's parent figure element, if any. "
+    },
+    {
+      "name": "figure",
+      "dimension": {},
+      "open": true,
+      "docs": "* The figure element represents some flow content, optionally with a caption, that is self-contained (like a complete sentence) and is typically referenced as a single unit from the main flow of the document. "
+    },
+    {
+      "name": "footer",
+      "dimension": {},
+      "open": true,
+      "docs": "* The footer element represents a footer for its nearest ancestor sectioning content or sectioning root element. A footer typically contains information about its section such as who wrote it, links to related documents, copyright data, an... "
+    },
+    {
+      "name": "form",
+      "dimension": {},
+      "open": true,
+      "docs": "* The form element represents a collection of form-associated elements, some of which can represent editable values that can be submitted to a server for processing. ",
+      "props": [
+        {
+          "name": "accept",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "A comma-separated list of content types that the server accepts."
+        },
+        {
+          "name": "accept-charset",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "A space- or comma-delimited list of character encodings that the server accepts. The browser uses them in the order in which they are listed. The default value, the reserved string `\"UNKNOWN\"`, indicates the same encoding as that of the ..."
+        },
+        {
+          "name": "action",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The URI of a program that processes the form information. This value can be overridden by a [`formaction`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/button#attr-formaction) attribute on a [`<button>`](https://developer.mo..."
+        },
+        {
+          "name": "autocapitalize",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This is a nonstandard attribute used by iOS Safari Mobile which controls whether and how the text value for textual form control descendants should be automatically capitalized as it is entered/edited by the user. If the `autocapitalize`..."
+        },
+        {
+          "name": "autocomplete",
+          "optional": true,
+          "kind": "enum",
+          "enumValues": [
+            "on",
+            "off"
+          ],
+          "isFunction": false,
+          "docs": "Indicates whether input elements can by default have their values automatically completed by the browser. This setting can be overridden by an `autocomplete` attribute on an element belonging to the form. Possible values are:"
+        },
+        {
+          "name": "enctype",
+          "optional": true,
+          "kind": "enum",
+          "enumValues": [
+            "application/x-www-form-urlencoded",
+            "multipart/form-data",
+            "text/plain"
+          ],
+          "isFunction": false,
+          "docs": "When the value of the `method` attribute is `post`, enctype is the [MIME type](https://en.wikipedia.org/wiki/Mime_type) of content that is used to submit the form to the server. Possible values are:"
+        },
+        {
+          "name": "method",
+          "optional": true,
+          "kind": "enum",
+          "enumValues": [
+            "get",
+            "post",
+            "dialog"
+          ],
+          "isFunction": false,
+          "docs": "The [HTTP](https://developer.mozilla.org/en-US/docs/Web/HTTP) method that the browser uses to submit the form. Possible values are:"
+        },
+        {
+          "name": "name",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The name of the form. In HTML 4, its use is deprecated (`id` should be used instead). It must be unique among the forms in a document and not just an empty string in HTML 5."
+        },
+        {
+          "name": "novalidate",
+          "optional": true,
+          "kind": "boolean",
+          "isFunction": false,
+          "docs": "This Boolean attribute indicates that the form is not to be validated when submitted. If this attribute is not specified (and therefore the form is validated), this default setting can be overridden by a [`formnovalidate`](https://develo..."
+        },
+        {
+          "name": "target",
+          "optional": true,
+          "kind": "enum",
+          "enumValues": [
+            "_self",
+            "_blank",
+            "_parent",
+            "_top"
+          ],
+          "isFunction": false,
+          "docs": "A name or keyword indicating where to display the response that is received after submitting the form. In HTML 4, this is the name/keyword for a frame. In HTML5, it is a name/keyword for a _browsing context_ (for example, tab, window, or..."
+        }
+      ]
+    },
+    {
+      "name": "h1",
+      "dimension": {},
+      "open": true,
+      "docs": "* The h1 element represents a section heading. "
+    },
+    {
+      "name": "h2",
+      "dimension": {},
+      "open": true,
+      "docs": "* The h2 element represents a section heading. "
+    },
+    {
+      "name": "h3",
+      "dimension": {},
+      "open": true,
+      "docs": "* The h3 element represents a section heading. "
+    },
+    {
+      "name": "h4",
+      "dimension": {},
+      "open": true,
+      "docs": "* The h4 element represents a section heading. "
+    },
+    {
+      "name": "h5",
+      "dimension": {},
+      "open": true,
+      "docs": "* The h5 element represents a section heading. "
+    },
+    {
+      "name": "h6",
+      "dimension": {},
+      "open": true,
+      "docs": "* The h6 element represents a section heading. "
+    },
+    {
+      "name": "head",
+      "dimension": {},
+      "open": true,
+      "docs": "* The head element represents a collection of metadata for the Document. ",
+      "props": [
+        {
+          "name": "profile",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The URIs of one or more metadata profiles, separated by white space."
+        }
+      ]
+    },
+    {
+      "name": "header",
+      "dimension": {},
+      "open": true,
+      "docs": "* The header element represents introductory content for its nearest ancestor sectioning content or sectioning root element. A header typically contains a group of introductory or navigational aids. When the nearest ancestor sectioning con... "
+    },
+    {
+      "name": "hgroup",
+      "dimension": {},
+      "open": true,
+      "docs": "* The hgroup element represents a heading and related content. It groups a single h1–h6 element with one or more p. "
+    },
+    {
+      "name": "hr",
+      "dimension": {},
+      "open": true,
+      "docs": "* The hr element represents a paragraph-level thematic break, e.g. a scene change in a story, or a transition to another topic within a section of a reference book. ",
+      "props": [
+        {
+          "name": "align",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Sets the alignment of the rule on the page. If no value is specified, the default value is `left`."
+        },
+        {
+          "name": "color",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Sets the color of the rule through color name or hexadecimal value."
+        },
+        {
+          "name": "noshade",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Sets the rule to have no shading."
+        },
+        {
+          "name": "size",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Sets the height, in pixels, of the rule."
+        },
+        {
+          "name": "width",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Sets the length of the rule on the page through a pixel or percentage value."
+        }
+      ]
+    },
+    {
+      "name": "html",
+      "dimension": {},
+      "open": true,
+      "docs": "* The html element represents the root of an HTML document. ",
+      "props": [
+        {
+          "name": "manifest",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Specifies the URI of a resource manifest indicating resources that should be cached locally. See [Using the application cache](https://developer.mozilla.org/en-US/docs/Web/HTML/Using_the_application_cache) for details."
+        },
+        {
+          "name": "version",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Specifies the version of the HTML [Document Type Definition](https://developer.mozilla.org/en-US/docs/Glossary/DTD \"Document Type Definition: In HTML, the doctype is the required \"<!DOCTYPE html>\" preamble found at the top of all documen..."
+        },
+        {
+          "name": "xmlns",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Specifies the XML Namespace of the document. Default value is `\"http://www.w3.org/1999/xhtml\"`. This is required in documents parsed with XML parsers, and optional in text/html documents."
+        }
+      ]
+    },
+    {
+      "name": "i",
+      "dimension": {},
+      "open": true,
+      "docs": "* The i element represents a span of text in an alternate voice or mood, or otherwise offset from the normal prose in a manner indicating a different quality of text, such as a taxonomic designation, a technical term, an idiomatic phrase f... "
+    },
+    {
+      "name": "iframe",
+      "dimension": {},
+      "open": true,
+      "docs": "* The iframe element represents a nested browsing context. ",
+      "props": [
+        {
+          "name": "allow",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Specifies a [feature policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Feature_Policy) for the `<iframe>`."
+        },
+        {
+          "name": "allowfullscreen",
+          "optional": true,
+          "kind": "boolean",
+          "isFunction": false,
+          "docs": "Set to `true` if the `<iframe>` can activate fullscreen mode by calling the [`requestFullscreen()`](https://developer.mozilla.org/en-US/docs/Web/API/Element/requestFullscreen \"The Element.requestFullscreen() method issues an asynchronous..."
+        },
+        {
+          "name": "allowpaymentrequest",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Set to `true` if a cross-origin `<iframe>` should be allowed to invoke the [Payment Request API](https://developer.mozilla.org/en-US/docs/Web/API/Payment_Request_API)."
+        },
+        {
+          "name": "allowpaymentrequest",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This attribute is considered a legacy attribute and redefined as `allow=\"payment\"`."
+        },
+        {
+          "name": "csp",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "A [Content Security Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP) enforced for the embedded resource. See [`HTMLIFrameElement.csp`](https://developer.mozilla.org/en-US/docs/Web/API/HTMLIFrameElement/csp \"The csp property..."
+        },
+        {
+          "name": "height",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The height of the frame in CSS pixels. Default is `150`."
+        },
+        {
+          "name": "importance",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The download priority of the resource in the `<iframe>`'s `src` attribute. Allowed values:"
+        },
+        {
+          "name": "name",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "A targetable name for the embedded browsing context. This can be used in the `target` attribute of the [`<a>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/a \"The HTML <a> element (or anchor element) creates a hyperlink to o..."
+        },
+        {
+          "name": "referrerpolicy",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Indicates which [referrer](https://developer.mozilla.org/en-US/docs/Web/API/Document/referrer) to send when fetching the frame's resource:"
+        },
+        {
+          "name": "sandbox",
+          "optional": true,
+          "kind": "enum",
+          "enumValues": [
+            "allow-forms",
+            "allow-modals",
+            "allow-pointer-lock",
+            "allow-popups",
+            "allow-popups-to-escape-sandbox",
+            "allow-same-origin",
+            "allow-scripts",
+            "allow-top-navigation"
+          ],
+          "isFunction": false,
+          "docs": "Applies extra restrictions to the content in the frame. The value of the attribute can either be empty to apply all restrictions, or space-separated tokens to lift particular restrictions:"
+        },
+        {
+          "name": "seamless",
+          "optional": true,
+          "kind": "boolean",
+          "isFunction": false
+        },
+        {
+          "name": "src",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The URL of the page to embed. Use a value of `about:blank` to embed an empty page that conforms to the [same-origin policy](https://developer.mozilla.org/en-US/docs/Web/Security/Same-origin_policy#Inherited_origins). Also note that progr..."
+        },
+        {
+          "name": "srcdoc",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Inline HTML to embed, overriding the `src` attribute. If a browser does not support the `srcdoc` attribute, it will fall back to the URL in the `src` attribute."
+        },
+        {
+          "name": "width",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The width of the frame in CSS pixels. Default is `300`."
+        }
+      ]
+    },
+    {
+      "name": "img",
+      "dimension": {},
+      "open": true,
+      "docs": "* An img element represents an image. ",
+      "props": [
+        {
+          "name": "alt",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This attribute defines an alternative text description of the image."
+        },
+        {
+          "name": "crossorigin",
+          "optional": true,
+          "kind": "enum",
+          "enumValues": [
+            "anonymous",
+            "use-credentials"
+          ],
+          "isFunction": false,
+          "docs": "This enumerated attribute indicates if the fetching of the related image must be done using CORS or not. [CORS-enabled images](https://developer.mozilla.org/en-US/docs/CORS_Enabled_Image) can be reused in the [`<canvas>`](https://develop..."
+        },
+        {
+          "name": "decoding",
+          "optional": true,
+          "kind": "enum",
+          "enumValues": [
+            "sync",
+            "async",
+            "auto"
+          ],
+          "isFunction": false,
+          "docs": "Provides an image decoding hint to the browser. The allowed values are: `sync`"
+        },
+        {
+          "name": "fetchpriority",
+          "optional": true,
+          "kind": "enum",
+          "enumValues": [
+            "high",
+            "low",
+            "auto"
+          ],
+          "isFunction": false,
+          "docs": "Provides a hint of the relative priority to use when fetching the image."
+        },
+        {
+          "name": "height",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The intrinsic height of the image in pixels."
+        },
+        {
+          "name": "importance",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Indicates the relative importance of the resource. Priority hints are delegated using the values:"
+        },
+        {
+          "name": "importance",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "`auto`: Indicates **no preference**. The browser may use its own heuristics to decide the priority of the image."
+        },
+        {
+          "name": "intrinsicsize",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This attribute tells the browser to ignore the actual intrinsic size of the image and pretend it’s the size specified in the attribute. Specifically, the image would raster at these dimensions and `naturalWidth`/`naturalHeight` on images..."
+        },
+        {
+          "name": "ismap",
+          "optional": true,
+          "kind": "boolean",
+          "isFunction": false,
+          "docs": "This Boolean attribute indicates that the image is part of a server-side map. If so, the precise coordinates of a click are sent to the server."
+        },
+        {
+          "name": "loading",
+          "optional": true,
+          "kind": "enum",
+          "enumValues": [
+            "eager",
+            "lazy"
+          ],
+          "isFunction": false,
+          "docs": "Indicates how the browser should load the image."
+        },
+        {
+          "name": "referrerpolicy",
+          "optional": true,
+          "kind": "enum",
+          "enumValues": [
+            "no-referrer",
+            "no-referrer-when-downgrade",
+            "origin",
+            "origin-when-cross-origin",
+            "same-origin",
+            "strict-origin",
+            "strict-origin-when-cross-origin",
+            "unsafe-url"
+          ],
+          "isFunction": false,
+          "docs": "A string indicating which referrer to use when fetching the resource:"
+        },
+        {
+          "name": "sizes",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "A list of one or more strings separated by commas indicating a set of source sizes. Each source size consists of:"
+        },
+        {
+          "name": "src",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The image URL. This attribute is mandatory for the `<img>` element. On browsers supporting `srcset`, `src` is treated like a candidate image with a pixel density descriptor `1x` unless an image with this pixel density descriptor is alrea..."
+        },
+        {
+          "name": "srcset",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "A list of one or more strings separated by commas indicating a set of possible image sources for the user agent to use. Each string is composed of:"
+        },
+        {
+          "name": "usemap",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The partial URL (starting with '#') of an [image map](https://developer.mozilla.org/en-US/docs/HTML/Element/map) associated with the element."
+        },
+        {
+          "name": "width",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The intrinsic width of the image in pixels."
+        }
+      ]
+    },
+    {
+      "name": "input",
+      "dimension": {},
+      "open": true,
+      "docs": "* The input element represents a typed data field, usually with a form control to allow the user to edit the data. ",
+      "props": [
+        {
+          "name": "accept",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "alt",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "autocomplete",
+          "optional": true,
+          "kind": "enum",
+          "enumValues": [
+            "additional-name",
+            "address-level1",
+            "address-level2",
+            "address-level3",
+            "address-level4",
+            "address-line1",
+            "address-line2",
+            "address-line3",
+            "bday",
+            "bday-year",
+            "bday-day",
+            "bday-month",
+            "billing",
+            "cc-additional-name",
+            "cc-csc",
+            "cc-exp",
+            "cc-exp-month",
+            "cc-exp-year",
+            "cc-family-name",
+            "cc-given-name",
+            "cc-name",
+            "cc-number",
+            "cc-type",
+            "country",
+            "country-name",
+            "current-password",
+            "email",
+            "family-name",
+            "fax",
+            "given-name",
+            "home",
+            "honorific-prefix",
+            "honorific-suffix",
+            "impp",
+            "language",
+            "mobile",
+            "name",
+            "new-password",
+            "nickname",
+            "off",
+            "on",
+            "organization",
+            "organization-title",
+            "pager",
+            "photo",
+            "postal-code",
+            "sex",
+            "shipping",
+            "street-address",
+            "tel-area-code",
+            "tel",
+            "tel-country-code",
+            "tel-extension",
+            "tel-local",
+            "tel-local-prefix",
+            "tel-local-suffix",
+            "tel-national",
+            "transaction-amount",
+            "transaction-currency",
+            "url",
+            "username",
+            "work"
+          ],
+          "isFunction": false
+        },
+        {
+          "name": "autofocus",
+          "optional": true,
+          "kind": "boolean",
+          "isFunction": false
+        },
+        {
+          "name": "checked",
+          "optional": true,
+          "kind": "boolean",
+          "isFunction": false
+        },
+        {
+          "name": "dirname",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "disabled",
+          "optional": true,
+          "kind": "boolean",
+          "isFunction": false
+        },
+        {
+          "name": "form",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "formaction",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "formenctype",
+          "optional": true,
+          "kind": "enum",
+          "enumValues": [
+            "application/x-www-form-urlencoded",
+            "multipart/form-data",
+            "text/plain"
+          ],
+          "isFunction": false
+        },
+        {
+          "name": "formmethod",
+          "optional": true,
+          "kind": "enum",
+          "enumValues": [
+            "get",
+            "post"
+          ],
+          "isFunction": false
+        },
+        {
+          "name": "formnovalidate",
+          "optional": true,
+          "kind": "boolean",
+          "isFunction": false
+        },
+        {
+          "name": "formtarget",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "height",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "inputmode",
+          "optional": true,
+          "kind": "enum",
+          "enumValues": [
+            "verbatim",
+            "latin",
+            "latin-name",
+            "latin-prose",
+            "full-width-latin",
+            "kana",
+            "kana-name",
+            "katakana",
+            "numeric",
+            "tel",
+            "email",
+            "url"
+          ],
+          "isFunction": false
+        },
+        {
+          "name": "list",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "max",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "maxlength",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "min",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "minlength",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "multiple",
+          "optional": true,
+          "kind": "boolean",
+          "isFunction": false
+        },
+        {
+          "name": "name",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "pattern",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "placeholder",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "popovertarget",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "popovertargetaction",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "readonly",
+          "optional": true,
+          "kind": "boolean",
+          "isFunction": false
+        },
+        {
+          "name": "required",
+          "optional": true,
+          "kind": "boolean",
+          "isFunction": false
+        },
+        {
+          "name": "size",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "src",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "step",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "type",
+          "optional": true,
+          "kind": "enum",
+          "enumValues": [
+            "hidden",
+            "text",
+            "search",
+            "tel",
+            "url",
+            "email",
+            "password",
+            "datetime",
+            "date",
+            "month",
+            "week",
+            "time",
+            "datetime-local",
+            "number",
+            "range",
+            "color",
+            "checkbox",
+            "radio",
+            "file",
+            "submit",
+            "image",
+            "reset",
+            "button"
+          ],
+          "isFunction": false
+        },
+        {
+          "name": "value",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "width",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        }
+      ]
+    },
+    {
+      "name": "ins",
+      "dimension": {},
+      "open": true,
+      "docs": "* The ins element represents an addition to the document. ",
+      "props": [
+        {
+          "name": "cite",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This attribute defines the URI of a resource that explains the change, such as a link to meeting minutes or a ticket in a troubleshooting system."
+        },
+        {
+          "name": "datetime",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This attribute indicates the time and date of the change and must be a valid date with an optional time string. If the value cannot be parsed as a date with an optional time string, the element does not have an associated time stamp. For..."
+        }
+      ]
+    },
+    {
+      "name": "kbd",
+      "dimension": {},
+      "open": true,
+      "docs": "* The kbd element represents user input (typically keyboard input, although it may also be used to represent other input, such as voice commands). "
+    },
+    {
+      "name": "label",
+      "dimension": {},
+      "open": true,
+      "docs": "* The label element represents a caption in a user interface. The caption can be associated with a specific form control, known as the label element's labeled control, either using the for attribute, or by putting the form control inside t... ",
+      "props": [
+        {
+          "name": "for",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The [`id`](https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes#attr-id) of a [labelable](https://developer.mozilla.org/en-US/docs/Web/Guide/HTML/Content_categories#Form_labelable) form-related element in the same document..."
+        },
+        {
+          "name": "form",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The [`<form>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/form \"The HTML <form> element represents a document section that contains interactive controls for submitting information to a web server.\") element with which the ..."
+        }
+      ]
+    },
+    {
+      "name": "legend",
+      "dimension": {},
+      "open": true,
+      "docs": "* The legend element represents a caption for the rest of the contents of the legend element's parent fieldset element, if any. "
+    },
+    {
+      "name": "li",
+      "dimension": {},
+      "open": true,
+      "docs": "* The li element represents a list item. If its parent element is an ol, ul, or menu element, then the element is an item of the parent element's list, as defined for those elements. Otherwise, the list item has no defined list-related rel... ",
+      "props": [
+        {
+          "name": "type",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This character attribute indicates the numbering type:"
+        },
+        {
+          "name": "value",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This integer attribute indicates the current ordinal value of the list item as defined by the [`<ol>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/ol \"The HTML <ol> element represents an ordered list of items, typically ren..."
+        }
+      ]
+    },
+    {
+      "name": "link",
+      "dimension": {},
+      "open": true,
+      "docs": "* The link element allows authors to link their document to other resources. ",
+      "props": [
+        {
+          "name": "as",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This attribute is only used when `rel=\"preload\"` or `rel=\"prefetch\"` has been set on the `<link>` element. It specifies the type of content being loaded by the `<link>`, which is necessary for content prioritization, request matching, ap..."
+        },
+        {
+          "name": "crossorigin",
+          "optional": true,
+          "kind": "enum",
+          "enumValues": [
+            "anonymous",
+            "use-credentials"
+          ],
+          "isFunction": false,
+          "docs": "This enumerated attribute indicates whether [CORS](https://developer.mozilla.org/en-US/docs/Glossary/CORS \"CORS: CORS (Cross-Origin Resource Sharing) is a system, consisting of transmitting HTTP headers, that determines whether browsers ..."
+        },
+        {
+          "name": "href",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This attribute specifies the [URL](https://developer.mozilla.org/en-US/docs/Glossary/URL \"URL: Uniform Resource Locator (URL) is a text string specifying where a resource can be found on the Internet.\") of the linked resource. A URL can ..."
+        },
+        {
+          "name": "hreflang",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This attribute indicates the language of the linked resource. It is purely advisory. Allowed values are determined by [BCP47](https://www.ietf.org/rfc/bcp/bcp47.txt). Use this attribute only if the [`href`](https://developer.mozilla.org/..."
+        },
+        {
+          "name": "importance",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Indicates the relative importance of the resource. Priority hints are delegated using the values:"
+        },
+        {
+          "name": "importance",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "**`auto`**: Indicates **no preference**. The browser may use its own heuristics to decide the priority of the resource."
+        },
+        {
+          "name": "integrity",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Contains inline metadata — a base64-encoded cryptographic hash of the resource (file) you’re telling the browser to fetch. The browser can use this to verify that the fetched resource has been delivered free of unexpected manipulation. S..."
+        },
+        {
+          "name": "media",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This attribute specifies the media that the linked resource applies to. Its value must be a media type / [media query](https://developer.mozilla.org/en-US/docs/Web/CSS/Media_queries). This attribute is mainly useful when linking to exter..."
+        },
+        {
+          "name": "referrerpolicy",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "A string indicating which referrer to use when fetching the resource:"
+        },
+        {
+          "name": "rel",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This attribute names a relationship of the linked document to the current document. The attribute must be a space-separated list of the [link types values](https://developer.mozilla.org/en-US/docs/Web/HTML/Link_types)."
+        },
+        {
+          "name": "sizes",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This attribute defines the sizes of the icons for visual media contained in the resource. It must be present only if the [`rel`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/link#attr-rel) contains a value of `icon` or a non..."
+        },
+        {
+          "name": "title",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The `title` attribute has special semantics on the `<link>` element. When used on a `<link rel=\"stylesheet\">` it defines a [preferred or an alternate stylesheet](https://developer.mozilla.org/en-US/docs/Web/CSS/Alternative_style_sheets)...."
+        },
+        {
+          "name": "type",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This attribute is used to define the type of the content linked to. The value of the attribute should be a MIME type such as **text/html**, **text/css**, and so on. The common use of this attribute is to define the type of stylesheet bei..."
+        }
+      ]
+    },
+    {
+      "name": "main",
+      "dimension": {},
+      "open": true,
+      "docs": "* The main element represents the main content of the body of a document or application. The main content area consists of content that is directly related to or expands upon the central topic of a document or central functionality of an a... "
+    },
+    {
+      "name": "map",
+      "dimension": {},
+      "open": true,
+      "docs": "* The map element, in conjunction with an img element and any area element descendants, defines an image map. The element represents its children. ",
+      "props": [
+        {
+          "name": "name",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The name attribute gives the map a name so that it can be referenced. The attribute must be present and must have a non-empty value with no space characters. The value of the name attribute must not be a compatibility-caseless match for ..."
+        }
+      ]
+    },
+    {
+      "name": "mark",
+      "dimension": {},
+      "open": true,
+      "docs": "* The mark element represents a run of text in one document marked or highlighted for reference purposes, due to its relevance in another context. When used in a quotation or other block of text referred to from the prose, it indicates a h... "
+    },
+    {
+      "name": "menu",
+      "dimension": {},
+      "open": true,
+      "docs": "* The menu element represents an unordered list of interactive items. "
+    },
+    {
+      "name": "meta",
+      "dimension": {},
+      "open": true,
+      "docs": "* The meta element represents various kinds of metadata that cannot be expressed using the title, base, link, style, and script elements. ",
+      "props": [
+        {
+          "name": "charset",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This attribute declares the page's character encoding. It must contain a [standard IANA MIME name for character encodings](https://www.iana.org/assignments/character-sets). Although the standard doesn't request a specific encoding, it su..."
+        },
+        {
+          "name": "content",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This attribute contains the value for the [`http-equiv`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/meta#attr-http-equiv) or [`name`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/meta#attr-name) attribute, dep..."
+        },
+        {
+          "name": "http-equiv",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Defines a pragma directive. The attribute is named `**http-equiv**(alent)` because all the allowed values are names of particular HTTP headers:"
+        },
+        {
+          "name": "name",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This attribute defines the name of a piece of document-level metadata. It should not be set if one of the attributes [`itemprop`](https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes#attr-itemprop), [`http-equiv`](https://..."
+        },
+        {
+          "name": "scheme",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This attribute defines the scheme in which metadata is described. A scheme is a context leading to the correct interpretations of the [`content`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/meta#attr-content) value, like a ..."
+        }
+      ]
+    },
+    {
+      "name": "meter",
+      "dimension": {},
+      "open": true,
+      "docs": "* The meter element represents a scalar measurement within a known range, or a fractional value; for example disk usage, the relevance of a query result, or the fraction of a voting population to have selected a particular candidate. ",
+      "props": [
+        {
+          "name": "form",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This attribute associates the element with a `form` element that has ownership of the `meter` element. For example, a `meter` might be displaying a range corresponding to an `input` element of `type` _number_. This attribute is only used..."
+        },
+        {
+          "name": "high",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The lower numeric bound of the high end of the measured range. This must be less than the maximum value (`max` attribute), and it also must be greater than the low value and minimum value (`low` attribute and **min** attribute, respectiv..."
+        },
+        {
+          "name": "low",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The upper numeric bound of the low end of the measured range. This must be greater than the minimum value (`min` attribute), and it also must be less than the high value and maximum value (`high` attribute and `max` attribute, respective..."
+        },
+        {
+          "name": "max",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The upper numeric bound of the measured range. This must be greater than the minimum value (`min` attribute), if specified. If unspecified, the maximum value is 1."
+        },
+        {
+          "name": "min",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The lower numeric bound of the measured range. This must be less than the maximum value (`max` attribute), if specified. If unspecified, the minimum value is 0."
+        },
+        {
+          "name": "optimum",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This attribute indicates the optimal numeric value. It must be within the range (as defined by the `min` attribute and `max` attribute). When used with the `low` attribute and `high` attribute, it gives an indication where along the rang..."
+        },
+        {
+          "name": "value",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The current numeric value. This must be between the minimum and maximum values (`min` attribute and `max` attribute) if they are specified. If unspecified or malformed, the value is 0. If specified, but not within the range given by the ..."
+        }
+      ]
+    },
+    {
+      "name": "nav",
+      "dimension": {},
+      "open": true,
+      "docs": "* The nav element represents a section of a page that links to other pages or to parts within the page: a section with navigation links. "
+    },
+    {
+      "name": "noscript",
+      "dimension": {},
+      "open": true,
+      "docs": "* The noscript element represents nothing if scripting is enabled, and represents its children if scripting is disabled. It is used to present different markup to user agents that support scripting and those that don't support scripting, b... "
+    },
+    {
+      "name": "object",
+      "dimension": {},
+      "open": true,
+      "docs": "* The object element can represent an external resource, which, depending on the type of the resource, will either be treated as an image, as a nested browsing context, or as an external resource to be processed by a plugin. ",
+      "props": [
+        {
+          "name": "archive",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "A space-separated list of URIs for archives of resources for the object."
+        },
+        {
+          "name": "border",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The width of a border around the control, in pixels."
+        },
+        {
+          "name": "classid",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The URI of the object's implementation. It can be used together with, or in place of, the **data** attribute."
+        },
+        {
+          "name": "codebase",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The base path used to resolve relative URIs specified by **classid**, **data**, or **archive**. If not specified, the default is the base URI of the current document."
+        },
+        {
+          "name": "codetype",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The content type of the data specified by **classid**."
+        },
+        {
+          "name": "data",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The address of the resource as a valid URL. At least one of **data** and **type** must be defined."
+        },
+        {
+          "name": "declare",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The presence of this Boolean attribute makes this element a declaration only. The object must be instantiated by a subsequent `<object>` element. In HTML5, repeat the <object> element completely each that that the resource is reused."
+        },
+        {
+          "name": "form",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The form element, if any, that the object element is associated with (its _form owner_). The value of the attribute must be an ID of a [`<form>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/form \"The HTML <form> element rep..."
+        },
+        {
+          "name": "height",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The height of the displayed resource, in [CSS pixels](https://drafts.csswg.org/css-values/#px). -- (Absolute values only. [NO percentages](https://html.spec.whatwg.org/multipage/embedded-content.html#dimension-attributes))"
+        },
+        {
+          "name": "name",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The name of valid browsing context (HTML5), or the name of the control (HTML 4)."
+        },
+        {
+          "name": "standby",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "A message that the browser can show while loading the object's implementation and data."
+        },
+        {
+          "name": "tabindex",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The position of the element in the tabbing navigation order for the current document."
+        },
+        {
+          "name": "type",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The [content type](https://developer.mozilla.org/en-US/docs/Glossary/Content_type) of the resource specified by **data**. At least one of **data** and **type** must be defined."
+        },
+        {
+          "name": "typemustmatch",
+          "optional": true,
+          "kind": "boolean",
+          "isFunction": false,
+          "docs": "This Boolean attribute indicates if the **type** attribute and the actual [content type](https://developer.mozilla.org/en-US/docs/Glossary/Content_type) of the resource must match to be used."
+        },
+        {
+          "name": "usemap",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "A hash-name reference to a [`<map>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/map \"The HTML <map> element is used with <area> elements to define an image map (a clickable link area).\") element; that is a '#' followed by ..."
+        },
+        {
+          "name": "width",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The width of the display resource, in [CSS pixels](https://drafts.csswg.org/css-values/#px). -- (Absolute values only. [NO percentages](https://html.spec.whatwg.org/multipage/embedded-content.html#dimension-attributes))"
+        }
+      ]
+    },
+    {
+      "name": "ol",
+      "dimension": {},
+      "open": true,
+      "docs": "* The ol element represents a list of items, where the items have been intentionally ordered, such that changing the order would change the meaning of the document. ",
+      "props": [
+        {
+          "name": "compact",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This Boolean attribute hints that the list should be rendered in a compact style. The interpretation of this attribute depends on the user agent and it doesn't work in all browsers."
+        },
+        {
+          "name": "reversed",
+          "optional": true,
+          "kind": "boolean",
+          "isFunction": false,
+          "docs": "This Boolean attribute specifies that the items of the list are specified in reversed order."
+        },
+        {
+          "name": "start",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This integer attribute specifies the start value for numbering the individual list items. Although the ordering type of list elements might be Roman numerals, such as XXXI, or letters, the value of start is always represented as a number..."
+        },
+        {
+          "name": "type",
+          "optional": true,
+          "kind": "enum",
+          "enumValues": [
+            "1",
+            "a",
+            "A",
+            "i",
+            "I"
+          ],
+          "isFunction": false,
+          "docs": "Indicates the numbering type:"
+        }
+      ]
+    },
+    {
+      "name": "optgroup",
+      "dimension": {},
+      "open": true,
+      "docs": "* The optgroup element represents a group of option elements with a common label. ",
+      "props": [
+        {
+          "name": "disabled",
+          "optional": true,
+          "kind": "boolean",
+          "isFunction": false,
+          "docs": "If this Boolean attribute is set, none of the items in this option group is selectable. Often browsers grey out such control and it won't receive any browsing events, like mouse clicks or focus-related ones."
+        },
+        {
+          "name": "label",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The name of the group of options, which the browser can use when labeling the options in the user interface. This attribute is mandatory if this element is used."
+        }
+      ]
+    },
+    {
+      "name": "option",
+      "dimension": {},
+      "open": true,
+      "docs": "* The option element represents an option in a select element or as part of a list of suggestions in a datalist element. ",
+      "props": [
+        {
+          "name": "disabled",
+          "optional": true,
+          "kind": "boolean",
+          "isFunction": false,
+          "docs": "If this Boolean attribute is set, this option is not checkable. Often browsers grey out such control and it won't receive any browsing event, like mouse clicks or focus-related ones. If this attribute is not set, the element can still be..."
+        },
+        {
+          "name": "label",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This attribute is text for the label indicating the meaning of the option. If the `label` attribute isn't defined, its value is that of the element text content."
+        },
+        {
+          "name": "selected",
+          "optional": true,
+          "kind": "boolean",
+          "isFunction": false,
+          "docs": "If present, this Boolean attribute indicates that the option is initially selected. If the `<option>` element is the descendant of a [`<select>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/select \"The HTML <select> element..."
+        },
+        {
+          "name": "value",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The content of this attribute represents the value to be submitted with the form, should this option be selected. If this attribute is omitted, the value is taken from the text content of the option element."
+        }
+      ]
+    },
+    {
+      "name": "output",
+      "dimension": {},
+      "open": true,
+      "docs": "* The output element represents the result of a calculation performed by the application, or the result of a user action. ",
+      "props": [
+        {
+          "name": "for",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "A space-separated list of other elements’ [`id`](https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/id)s, indicating that those elements contributed input values to (or otherwise affected) the calculation."
+        },
+        {
+          "name": "form",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The [form element](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/form) that this element is associated with (its \"form owner\"). The value of the attribute must be an `id` of a form element in the same document. If this attrib..."
+        },
+        {
+          "name": "name",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The name of the element, exposed in the [`HTMLFormElement`](https://developer.mozilla.org/en-US/docs/Web/API/HTMLFormElement \"The HTMLFormElement interface represents a <form> element in the DOM; it allows access to and in some cases mod..."
+        }
+      ]
+    },
+    {
+      "name": "p",
+      "dimension": {},
+      "open": true,
+      "docs": "* The p element represents a paragraph. "
+    },
+    {
+      "name": "param",
+      "dimension": {},
+      "open": true,
+      "docs": "* The param element defines parameters for plugins invoked by object elements. It does not represent anything on its own. ",
+      "props": [
+        {
+          "name": "name",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Name of the parameter."
+        },
+        {
+          "name": "type",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Only used if the `valuetype` is set to \"ref\". Specifies the MIME type of values found at the URI specified by value."
+        },
+        {
+          "name": "value",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Specifies the value of the parameter."
+        },
+        {
+          "name": "valuetype",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Specifies the type of the `value` attribute. Possible values are:"
+        }
+      ]
+    },
+    {
+      "name": "picture",
+      "dimension": {},
+      "open": true,
+      "docs": "* The picture element is a container which provides multiple sources to its contained img element to allow authors to declaratively control or give hints to the user agent about which image resource to use, based on the screen pixel densit... "
+    },
+    {
+      "name": "pre",
+      "dimension": {},
+      "open": true,
+      "docs": "* The pre element represents a block of preformatted text, in which structure is represented by typographic conventions rather than by elements. ",
+      "props": [
+        {
+          "name": "cols",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Contains the _preferred_ count of characters that a line should have. It was a non-standard synonym of [`width`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/pre#attr-width). To achieve such an effect, use CSS [`width`](http..."
+        },
+        {
+          "name": "width",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Contains the _preferred_ count of characters that a line should have. Though technically still implemented, this attribute has no visual effect; to achieve such an effect, use CSS [`width`](https://developer.mozilla.org/en-US/docs/Web/CS..."
+        },
+        {
+          "name": "wrap",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Is a _hint_ indicating how the overflow must happen. In modern browser this hint is ignored and no visual effect results in its present; to achieve such an effect, use CSS [`white-space`](https://developer.mozilla.org/en-US/docs/Web/CSS/..."
+        }
+      ]
+    },
+    {
+      "name": "progress",
+      "dimension": {},
+      "open": true,
+      "docs": "* The progress element represents the completion progress of a task. The progress is either indeterminate, indicating that progress is being made but that it is not clear how much more work remains to be done before the task is complete (e... ",
+      "props": [
+        {
+          "name": "max",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This attribute describes how much work the task indicated by the `progress` element requires. The `max` attribute, if present, must have a value greater than zero and be a valid floating point number. The default value is 1."
+        },
+        {
+          "name": "value",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This attribute specifies how much of the task that has been completed. It must be a valid floating point number between 0 and `max`, or between 0 and 1 if `max` is omitted. If there is no `value` attribute, the progress bar is indetermin..."
+        }
+      ]
+    },
+    {
+      "name": "q",
+      "dimension": {},
+      "open": true,
+      "docs": "* The q element represents some phrasing content quoted from another source. ",
+      "props": [
+        {
+          "name": "cite",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The value of this attribute is a URL that designates a source document or message for the information quoted. This attribute is intended to point to information explaining the context or the reference for the quote."
+        }
+      ]
+    },
+    {
+      "name": "rb",
+      "dimension": {},
+      "open": true,
+      "docs": "* The rb element marks the base text component of a ruby annotation. When it is the child of a ruby element, it doesn't represent anything itself, but its parent ruby element uses it as part of determining what it represents. "
+    },
+    {
+      "name": "rp",
+      "dimension": {},
+      "open": true,
+      "docs": "* The rp element is used to provide fallback text to be shown by user agents that don't support ruby annotations. One widespread convention is to provide parentheses around the ruby text component of a ruby annotation. "
+    },
+    {
+      "name": "rt",
+      "dimension": {},
+      "open": true,
+      "docs": "* The rt element marks the ruby text component of a ruby annotation. When it is the child of a ruby element or of an rtc element that is itself the child of a ruby element, it doesn't represent anything itself, but its ancestor ruby elemen... "
+    },
+    {
+      "name": "ruby",
+      "dimension": {},
+      "open": true,
+      "docs": "* The ruby element allows one or more spans of phrasing content to be marked with ruby annotations. Ruby annotations are short runs of text presented alongside base text, primarily used in East Asian typography as a guide for pronunciation... "
+    },
+    {
+      "name": "s",
+      "dimension": {},
+      "open": true,
+      "docs": "* The s element represents contents that are no longer accurate or no longer relevant. "
+    },
+    {
+      "name": "samp",
+      "dimension": {},
+      "open": true,
+      "docs": "* The samp element represents sample or quoted output from another program or computing system. "
+    },
+    {
+      "name": "script",
+      "dimension": {},
+      "open": true,
+      "docs": "* The script element allows authors to include dynamic script and data blocks in their documents. The element does not represent content for the user. ",
+      "props": [
+        {
+          "name": "async",
+          "optional": true,
+          "kind": "boolean",
+          "isFunction": false,
+          "docs": "This is a Boolean attribute indicating that the browser should, if possible, load the script asynchronously."
+        },
+        {
+          "name": "charset",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "crossorigin",
+          "optional": true,
+          "kind": "enum",
+          "enumValues": [
+            "anonymous",
+            "use-credentials"
+          ],
+          "isFunction": false,
+          "docs": "Normal `script` elements pass minimal information to the [`window.onerror`](https://developer.mozilla.org/en-US/docs/Web/API/GlobalEventHandlers/onerror \"The onerror property of the GlobalEventHandlers mixin is an EventHandler that proce..."
+        },
+        {
+          "name": "defer",
+          "optional": true,
+          "kind": "boolean",
+          "isFunction": false,
+          "docs": "This Boolean attribute is set to indicate to a browser that the script is meant to be executed after the document has been parsed, but before firing [`DOMContentLoaded`](https://developer.mozilla.org/en-US/docs/Web/Events/DOMContentLoade..."
+        },
+        {
+          "name": "integrity",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This attribute contains inline metadata that a user agent can use to verify that a fetched resource has been delivered free of unexpected manipulation. See [Subresource Integrity](https://developer.mozilla.org/en-US/docs/Web/Security/Sub..."
+        },
+        {
+          "name": "nomodule",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This Boolean attribute is set to indicate that the script should not be executed in browsers that support [ES2015 modules](https://hacks.mozilla.org/2015/08/es6-in-depth-modules/) — in effect, this can be used to serve fallback scripts t..."
+        },
+        {
+          "name": "nonce",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "A cryptographic nonce (number used once) to list the allowed inline scripts in a [script-src Content-Security-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/script-src). The server must generate..."
+        },
+        {
+          "name": "referrerpolicy",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Indicates which [referrer](https://developer.mozilla.org/en-US/docs/Web/API/Document/referrer) to send when fetching the script, or resources fetched by the script:"
+        },
+        {
+          "name": "src",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This attribute specifies the URI of an external script; this can be used as an alternative to embedding a script directly within a document."
+        },
+        {
+          "name": "text",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Like the `textContent` attribute, this attribute sets the text content of the element. Unlike the `textContent` attribute, however, this attribute is evaluated as executable code after the node is inserted into the DOM."
+        },
+        {
+          "name": "type",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This attribute indicates the type of script represented. The value of this attribute will be in one of the following categories:"
+        }
+      ]
+    },
+    {
+      "name": "search",
+      "dimension": {},
+      "open": true,
+      "docs": "* The search element represents the parts of the document or application with form controls or other content related to performing a search or filtering operation. "
+    },
+    {
+      "name": "section",
+      "dimension": {},
+      "open": true,
+      "docs": "* The section element represents a generic section of a document or application. A section, in this context, is a thematic grouping of content. Each section should be identified, typically by including a heading ( h1- h6 element) as a chil... "
+    },
+    {
+      "name": "select",
+      "dimension": {},
+      "open": true,
+      "docs": "* The select element represents a control for selecting amongst a set of options. ",
+      "props": [
+        {
+          "name": "autocomplete",
+          "optional": true,
+          "kind": "enum",
+          "enumValues": [
+            "additional-name",
+            "address-level1",
+            "address-level2",
+            "address-level3",
+            "address-level4",
+            "address-line1",
+            "address-line2",
+            "address-line3",
+            "bday",
+            "bday-year",
+            "bday-day",
+            "bday-month",
+            "billing",
+            "cc-additional-name",
+            "cc-csc",
+            "cc-exp",
+            "cc-exp-month",
+            "cc-exp-year",
+            "cc-family-name",
+            "cc-given-name",
+            "cc-name",
+            "cc-number",
+            "cc-type",
+            "country",
+            "country-name",
+            "current-password",
+            "email",
+            "family-name",
+            "fax",
+            "given-name",
+            "home",
+            "honorific-prefix",
+            "honorific-suffix",
+            "impp",
+            "language",
+            "mobile",
+            "name",
+            "new-password",
+            "nickname",
+            "off",
+            "on",
+            "organization",
+            "organization-title",
+            "pager",
+            "photo",
+            "postal-code",
+            "sex",
+            "shipping",
+            "street-address",
+            "tel-area-code",
+            "tel",
+            "tel-country-code",
+            "tel-extension",
+            "tel-local",
+            "tel-local-prefix",
+            "tel-local-suffix",
+            "tel-national",
+            "transaction-amount",
+            "transaction-currency",
+            "url",
+            "username",
+            "work"
+          ],
+          "isFunction": false,
+          "docs": "A [`DOMString`](https://developer.mozilla.org/en-US/docs/Web/API/DOMString \"DOMString is a UTF-16 String. As JavaScript already uses such strings, DOMString is mapped directly to a String.\") providing a hint for a [user agent's](https://..."
+        },
+        {
+          "name": "autofocus",
+          "optional": true,
+          "kind": "boolean",
+          "isFunction": false,
+          "docs": "This Boolean attribute lets you specify that a form control should have input focus when the page loads. Only one form element in a document can have the `autofocus` attribute."
+        },
+        {
+          "name": "disabled",
+          "optional": true,
+          "kind": "boolean",
+          "isFunction": false,
+          "docs": "This Boolean attribute indicates that the user cannot interact with the control. If this attribute is not specified, the control inherits its setting from the containing element, for example `fieldset`; if there is no containing element ..."
+        },
+        {
+          "name": "form",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This attribute lets you specify the form element to which the select element is associated (that is, its \"form owner\"). If this attribute is specified, its value must be the same as the `id` of a form element in the same document. This e..."
+        },
+        {
+          "name": "multiple",
+          "optional": true,
+          "kind": "boolean",
+          "isFunction": false,
+          "docs": "This Boolean attribute indicates that multiple options can be selected in the list. If it is not specified, then only one option can be selected at a time. When `multiple` is specified, most browsers will show a scrolling list box instea..."
+        },
+        {
+          "name": "name",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This attribute is used to specify the name of the control."
+        },
+        {
+          "name": "required",
+          "optional": true,
+          "kind": "boolean",
+          "isFunction": false,
+          "docs": "A Boolean attribute indicating that an option with a non-empty string value must be selected."
+        },
+        {
+          "name": "size",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "If the control is presented as a scrolling list box (e.g. when `multiple` is specified), this attribute represents the number of rows in the list that should be visible at one time. Browsers are not required to present a select element a..."
+        }
+      ]
+    },
+    {
+      "name": "selectedcontent",
+      "dimension": {},
+      "open": true,
+      "docs": "* The selectedcontent element can be used to display the content of the currently selected option element inside of a closed select element. "
+    },
+    {
+      "name": "slot",
+      "dimension": {},
+      "open": true,
+      "docs": "* The slot element is a placeholder inside a web component that you can fill with your own markup, which lets you create separate DOM trees and present them together. ",
+      "props": [
+        {
+          "name": "name",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The slot's name. A **named slot** is a `<slot>` element with a `name` attribute."
+        }
+      ]
+    },
+    {
+      "name": "small",
+      "dimension": {},
+      "open": true,
+      "docs": "* The small element represents side comments such as small print. "
+    },
+    {
+      "name": "source",
+      "dimension": {},
+      "open": true,
+      "docs": "* The source element allows authors to specify multiple alternative media resources for media elements. It does not represent anything on its own. ",
+      "props": [
+        {
+          "name": "media",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "[Media query](https://developer.mozilla.org/en-US/docs/CSS/Media_queries) of the resource's intended media; this should be used only in a [`<picture>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/picture \"The HTML <picture>..."
+        },
+        {
+          "name": "sizes",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Is a list of source sizes that describes the final rendered width of the image represented by the source. Each source size consists of a comma-separated list of media condition-length pairs. This information is used by the browser to det..."
+        },
+        {
+          "name": "src",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Required for [`<audio>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/audio \"The HTML <audio> element is used to embed sound content in documents. It may contain one or more audio sources, represented using the src attribute..."
+        },
+        {
+          "name": "srcset",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "A list of one or more strings separated by commas indicating a set of possible images represented by the source for the browser to use. Each string is composed of:"
+        },
+        {
+          "name": "type",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The MIME-type of the resource, optionally with a `codecs` parameter. See [RFC 4281](https://tools.ietf.org/html/rfc4281) for information about how to specify codecs."
+        }
+      ]
+    },
+    {
+      "name": "span",
+      "dimension": {},
+      "open": true,
+      "docs": "* The span element doesn't mean anything on its own, but can be useful when used together with the global attributes, e.g. class, lang, or dir. It represents its children. "
+    },
+    {
+      "name": "strong",
+      "dimension": {},
+      "open": true,
+      "docs": "* The strong element represents strong importance, seriousness, or urgency for its contents. "
+    },
+    {
+      "name": "style",
+      "dimension": {},
+      "open": true,
+      "docs": "* The style element allows authors to embed style information in their documents. The style element is one of several inputs to the styling processing model. The element does not represent content for the user. ",
+      "props": [
+        {
+          "name": "media",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This attribute defines which media the style should be applied to. Its value is a [media query](https://developer.mozilla.org/en-US/docs/Web/Guide/CSS/Media_queries), which defaults to `all` if the attribute is missing."
+        },
+        {
+          "name": "nonce",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "A cryptographic nonce (number used once) used to allow inline styles in a [style-src Content-Security-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/style-src). The server must generate a unique..."
+        },
+        {
+          "name": "scoped",
+          "optional": true,
+          "kind": "boolean",
+          "isFunction": false
+        },
+        {
+          "name": "title",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This attribute specifies [alternative style sheet](https://developer.mozilla.org/en-US/docs/Web/CSS/Alternative_style_sheets) sets."
+        },
+        {
+          "name": "type",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This attribute defines the styling language as a MIME type (charset should not be specified). This attribute is optional and defaults to `text/css` if it is not specified — there is very little reason to include this in modern web docume..."
+        }
+      ]
+    },
+    {
+      "name": "sub",
+      "dimension": {},
+      "open": true,
+      "docs": "* The sub element represents a subscript. "
+    },
+    {
+      "name": "summary",
+      "dimension": {},
+      "open": true,
+      "docs": "* The summary element represents a summary, caption, or legend for the rest of the contents of the summary element's parent details element, if any. "
+    },
+    {
+      "name": "sup",
+      "dimension": {},
+      "open": true,
+      "docs": "* The sup element represents a superscript. "
+    },
+    {
+      "name": "table",
+      "dimension": {},
+      "open": true,
+      "docs": "* The table element represents data with more than one dimension, in the form of a table. ",
+      "props": [
+        {
+          "name": "align",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This enumerated attribute indicates how the table must be aligned inside the containing document. It may have the following values:"
+        },
+        {
+          "name": "border",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        }
+      ]
+    },
+    {
+      "name": "tbody",
+      "dimension": {},
+      "open": true,
+      "docs": "* The tbody element represents a block of rows that consist of a body of data for the parent table element, if the tbody element has a parent and it is a table. ",
+      "props": [
+        {
+          "name": "align",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This enumerated attribute specifies how horizontal alignment of each cell content will be handled. Possible values are:"
+        }
+      ]
+    },
+    {
+      "name": "td",
+      "dimension": {},
+      "open": true,
+      "docs": "* The td element represents a data cell in a table. ",
+      "props": [
+        {
+          "name": "abbr",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This attribute contains a short abbreviated description of the cell's content. Some user-agents, such as speech readers, may present this description before the content itself."
+        },
+        {
+          "name": "align",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This enumerated attribute specifies how the cell content's horizontal alignment will be handled. Possible values are:"
+        },
+        {
+          "name": "axis",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This attribute contains a list of space-separated strings. Each string is the `id` of a group of cells that this header applies to."
+        },
+        {
+          "name": "bgcolor",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This attribute defines the background color of each cell in a column. It consists of a 6-digit hexadecimal code as defined in [sRGB](https://www.w3.org/Graphics/Color/sRGB) and is prefixed by '#'. This attribute may be used with one of s..."
+        },
+        {
+          "name": "colspan",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "headers",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "rowspan",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        }
+      ]
+    },
+    {
+      "name": "template",
+      "dimension": {},
+      "open": true,
+      "docs": "* The template element is used to declare fragments of HTML that can be cloned and inserted in the document by script. "
+    },
+    {
+      "name": "textarea",
+      "dimension": {},
+      "open": true,
+      "docs": "* The textarea element represents a multiline plain text edit control for the element's raw value. The contents of the control represent the control's default value. ",
+      "props": [
+        {
+          "name": "autocapitalize",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This is a non-standard attribute supported by WebKit on iOS (therefore nearly all browsers running on iOS, including Safari, Firefox, and Chrome), which controls whether and how the text value should be automatically capitalized as it is..."
+        },
+        {
+          "name": "autocomplete",
+          "optional": true,
+          "kind": "enum",
+          "enumValues": [
+            "additional-name",
+            "address-level1",
+            "address-level2",
+            "address-level3",
+            "address-level4",
+            "address-line1",
+            "address-line2",
+            "address-line3",
+            "bday",
+            "bday-year",
+            "bday-day",
+            "bday-month",
+            "billing",
+            "cc-additional-name",
+            "cc-csc",
+            "cc-exp",
+            "cc-exp-month",
+            "cc-exp-year",
+            "cc-family-name",
+            "cc-given-name",
+            "cc-name",
+            "cc-number",
+            "cc-type",
+            "country",
+            "country-name",
+            "current-password",
+            "email",
+            "family-name",
+            "fax",
+            "given-name",
+            "home",
+            "honorific-prefix",
+            "honorific-suffix",
+            "impp",
+            "language",
+            "mobile",
+            "name",
+            "new-password",
+            "nickname",
+            "off",
+            "on",
+            "organization",
+            "organization-title",
+            "pager",
+            "photo",
+            "postal-code",
+            "sex",
+            "shipping",
+            "street-address",
+            "tel-area-code",
+            "tel",
+            "tel-country-code",
+            "tel-extension",
+            "tel-local",
+            "tel-local-prefix",
+            "tel-local-suffix",
+            "tel-national",
+            "transaction-amount",
+            "transaction-currency",
+            "url",
+            "username",
+            "work"
+          ],
+          "isFunction": false,
+          "docs": "This attribute indicates whether the value of the control can be automatically completed by the browser. Possible values are:"
+        },
+        {
+          "name": "autofocus",
+          "optional": true,
+          "kind": "boolean",
+          "isFunction": false,
+          "docs": "This Boolean attribute lets you specify that a form control should have input focus when the page loads. Only one form-associated element in a document can have this attribute specified."
+        },
+        {
+          "name": "cols",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The visible width of the text control, in average character widths. If it is specified, it must be a positive integer. If it is not specified, the default value is `20`."
+        },
+        {
+          "name": "dirname",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "disabled",
+          "optional": true,
+          "kind": "boolean",
+          "isFunction": false,
+          "docs": "This Boolean attribute indicates that the user cannot interact with the control. If this attribute is not specified, the control inherits its setting from the containing element, for example [`<fieldset>`](https://developer.mozilla.org/e..."
+        },
+        {
+          "name": "form",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The form element that the `<textarea>` element is associated with (its \"form owner\"). The value of the attribute must be the `id` of a form element in the same document. If this attribute is not specified, the `<textarea>` element must b..."
+        },
+        {
+          "name": "inputmode",
+          "optional": true,
+          "kind": "enum",
+          "enumValues": [
+            "verbatim",
+            "latin",
+            "latin-name",
+            "latin-prose",
+            "full-width-latin",
+            "kana",
+            "kana-name",
+            "katakana",
+            "numeric",
+            "tel",
+            "email",
+            "url"
+          ],
+          "isFunction": false
+        },
+        {
+          "name": "maxlength",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The maximum number of characters (unicode code points) that the user can enter. If this value isn't specified, the user can enter an unlimited number of characters."
+        },
+        {
+          "name": "minlength",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The minimum number of characters (unicode code points) required that the user should enter."
+        },
+        {
+          "name": "name",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The name of the control."
+        },
+        {
+          "name": "placeholder",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "A hint to the user of what can be entered in the control. Carriage returns or line-feeds within the placeholder text must be treated as line breaks when rendering the hint."
+        },
+        {
+          "name": "readonly",
+          "optional": true,
+          "kind": "boolean",
+          "isFunction": false,
+          "docs": "This Boolean attribute indicates that the user cannot modify the value of the control. Unlike the `disabled` attribute, the `readonly` attribute does not prevent the user from clicking or selecting in the control. The value of a read-onl..."
+        },
+        {
+          "name": "required",
+          "optional": true,
+          "kind": "boolean",
+          "isFunction": false,
+          "docs": "This attribute specifies that the user must fill in a value before submitting a form."
+        },
+        {
+          "name": "rows",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The number of visible text lines for the control."
+        },
+        {
+          "name": "spellcheck",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Specifies whether the `<textarea>` is subject to spell checking by the underlying browser/OS. the value can be:"
+        },
+        {
+          "name": "wrap",
+          "optional": true,
+          "kind": "enum",
+          "enumValues": [
+            "soft",
+            "hard"
+          ],
+          "isFunction": false,
+          "docs": "Indicates how the control wraps text. Possible values are:"
+        }
+      ]
+    },
+    {
+      "name": "tfoot",
+      "dimension": {},
+      "open": true,
+      "docs": "* The tfoot element represents the block of rows that consist of the column summaries (footers) for the parent table element, if the tfoot element has a parent and it is a table. ",
+      "props": [
+        {
+          "name": "align",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This enumerated attribute specifies how horizontal alignment of each cell content will be handled. Possible values are:"
+        }
+      ]
+    },
+    {
+      "name": "th",
+      "dimension": {},
+      "open": true,
+      "docs": "* The th element represents a header cell in a table. ",
+      "props": [
+        {
+          "name": "abbr",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This attribute contains a short abbreviated description of the cell's content. Some user-agents, such as speech readers, may present this description before the content itself."
+        },
+        {
+          "name": "align",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This enumerated attribute specifies how the cell content's horizontal alignment will be handled. Possible values are:"
+        },
+        {
+          "name": "axis",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This attribute contains a list of space-separated strings. Each string is the `id` of a group of cells that this header applies to."
+        },
+        {
+          "name": "bgcolor",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This attribute defines the background color of each cell in a column. It consists of a 6-digit hexadecimal code as defined in [sRGB](https://www.w3.org/Graphics/Color/sRGB) and is prefixed by '#'. This attribute may be used with one of s..."
+        },
+        {
+          "name": "colspan",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "headers",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "rowspan",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "scope",
+          "optional": true,
+          "kind": "enum",
+          "enumValues": [
+            "row",
+            "col",
+            "rowgroup",
+            "colgroup"
+          ],
+          "isFunction": false
+        },
+        {
+          "name": "sorted",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        }
+      ]
+    },
+    {
+      "name": "thead",
+      "dimension": {},
+      "open": true,
+      "docs": "* The thead element represents the block of rows that consist of the column labels (headers) for the parent table element, if the thead element has a parent and it is a table. ",
+      "props": [
+        {
+          "name": "align",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This enumerated attribute specifies how horizontal alignment of each cell content will be handled. Possible values are:"
+        }
+      ]
+    },
+    {
+      "name": "time",
+      "dimension": {},
+      "open": true,
+      "docs": "* The time element represents its contents, along with a machine-readable form of those contents in the datetime attribute. The kind of content is limited to various kinds of dates, times, time-zone offsets, and durations, as described below. ",
+      "props": [
+        {
+          "name": "datetime",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This attribute indicates the time and/or date of the element and must be in one of the formats described below."
+        }
+      ]
+    },
+    {
+      "name": "title",
+      "dimension": {},
+      "open": true,
+      "docs": "* The title element represents the document's title or name. Authors should use titles that identify their documents even when they are used out of context, for example in a user's history or bookmarks, or in search results. The document's... "
+    },
+    {
+      "name": "tr",
+      "dimension": {},
+      "open": true,
+      "docs": "* The tr element represents a row of cells in a table. ",
+      "props": [
+        {
+          "name": "align",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "A [`DOMString`](https://developer.mozilla.org/en-US/docs/Web/API/DOMString \"DOMString is a UTF-16 String. As JavaScript already uses such strings, DOMString is mapped directly to a String.\") which specifies how the cell's context should ..."
+        }
+      ]
+    },
+    {
+      "name": "track",
+      "dimension": {},
+      "open": true,
+      "docs": "* The track element allows authors to specify explicit external timed text tracks for media elements. It does not represent anything on its own. ",
+      "props": [
+        {
+          "name": "default",
+          "optional": true,
+          "kind": "boolean",
+          "isFunction": false,
+          "docs": "This attribute indicates that the track should be enabled unless the user's preferences indicate that another track is more appropriate. This may only be used on one `track` element per media element."
+        },
+        {
+          "name": "kind",
+          "optional": true,
+          "kind": "enum",
+          "enumValues": [
+            "subtitles",
+            "captions",
+            "descriptions",
+            "chapters",
+            "metadata"
+          ],
+          "isFunction": false,
+          "docs": "How the text track is meant to be used. If omitted the default kind is `subtitles`. If the attribute is not present, it will use the `subtitles`. If the attribute contains an invalid value, it will use `metadata`. (Versions of Chrome ear..."
+        },
+        {
+          "name": "label",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "A user-readable title of the text track which is used by the browser when listing available text tracks."
+        },
+        {
+          "name": "src",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Address of the track (`.vtt` file). Must be a valid URL. This attribute must be specified and its URL value must have the same origin as the document — unless the [`<audio>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/audi..."
+        },
+        {
+          "name": "srclang",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Language of the track text data. It must be a valid [BCP 47](https://r12a.github.io/app-subtags/) language tag. If the `kind` attribute is set to `subtitles,` then `srclang` must be defined."
+        }
+      ]
+    },
+    {
+      "name": "u",
+      "dimension": {},
+      "open": true,
+      "docs": "* The u element represents a span of text with an unarticulated, though explicitly rendered, non-textual annotation, such as labeling the text as being a proper name in Chinese text (a Chinese proper name mark), or labeling the text as bei... "
+    },
+    {
+      "name": "ul",
+      "dimension": {},
+      "open": true,
+      "docs": "* The ul element represents a list of items, where the order of the items is not important — that is, where changing the order would not materially change the meaning of the document. ",
+      "props": [
+        {
+          "name": "compact",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "This Boolean attribute hints that the list should be rendered in a compact style. The interpretation of this attribute depends on the user agent and it doesn't work in all browsers."
+        }
+      ]
+    },
+    {
+      "name": "var",
+      "dimension": {},
+      "open": true,
+      "docs": "* The var element represents a variable. This could be an actual variable in a mathematical expression or programming context, an identifier representing a constant, a symbol identifying a physical quantity, a function parameter, or just b... "
+    },
+    {
+      "name": "video",
+      "dimension": {},
+      "open": true,
+      "docs": "* A video element is used for playing videos or movies, and audio files with captions. ",
+      "props": [
+        {
+          "name": "autoplay",
+          "optional": true,
+          "kind": "boolean",
+          "isFunction": false,
+          "docs": "A Boolean attribute; if specified, the video automatically begins to play back as soon as it can do so without stopping to finish loading the data. **Note**: Sites that automatically play audio (or video with an audio track) can be an un..."
+        },
+        {
+          "name": "controls",
+          "optional": true,
+          "kind": "boolean",
+          "isFunction": false
+        },
+        {
+          "name": "crossorigin",
+          "optional": true,
+          "kind": "enum",
+          "enumValues": [
+            "anonymous",
+            "use-credentials"
+          ],
+          "isFunction": false
+        },
+        {
+          "name": "height",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "loop",
+          "optional": true,
+          "kind": "boolean",
+          "isFunction": false
+        },
+        {
+          "name": "mediagroup",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "muted",
+          "optional": true,
+          "kind": "boolean",
+          "isFunction": false
+        },
+        {
+          "name": "poster",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "preload",
+          "optional": true,
+          "kind": "enum",
+          "enumValues": [
+            "none",
+            "metadata",
+            "auto"
+          ],
+          "isFunction": false
+        },
+        {
+          "name": "src",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        },
+        {
+          "name": "width",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false
+        }
+      ]
+    },
+    {
+      "name": "wbr",
+      "dimension": {},
+      "open": true,
+      "docs": "* The wbr element represents a line break opportunity. "
+    }
+  ]
+}

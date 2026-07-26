@@ -58,6 +58,14 @@ export const Errors = {
     code: "HX_COMPILER_0071",
     ...(DEV && { message: "Invalid frontmatter entry '{0}'; expected 'key: value'." }),
   },
+  frontmatterBlockNested: {
+    code: "HX_COMPILER_0072",
+    ...(DEV && { message: "Invalid frontmatter block '{0}': blocks do not nest." }),
+  },
+  frontmatterBlockUnterminated: {
+    code: "HX_COMPILER_0073",
+    ...(DEV && { message: "Unterminated frontmatter block; expected a closing '}' line." }),
+  },
 
   // Common compile errors 0100-0199
   emptySource: {

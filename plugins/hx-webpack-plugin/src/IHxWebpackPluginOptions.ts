@@ -55,25 +55,26 @@ export interface IHxWebpackPluginOptions {
    */
   emitJson?: boolean | ((file: IAssetFile) => string)
   /**
-   * Emits each source's doc comments as a standalone `.docs.json` sidecar asset (an
-   * `IDocsManifest`), 1-to-1 with the emitted definition `.json` - the tooling-facing
-   * docs output consumed via the package `exports` `hxdocs` condition (e.g.
-   * `"./components/*": { "hxm": "./dist/components/*.hxm.json", "hxdocs":
-   * "./dist/components/*.hxm.docs.json" }`). Sources without doc comments emit no
-   * sidecar. `true` names sidecars after the definition asset with `.json` replaced by
-   * `.docs.json` (`src/Button.hxm.json` -> `src/Button.hxm.docs.json`, following
-   * `emitJson`'s naming); pass a function returning a path relative to `output.path`
-   * to customize. Docs never enter the app bundle - this is emission-only.
+   * Emits the package's compile-time metadata manifest (an `IMetaDocument`): one
+   * bundle per package - no per-file sidecars - carrying doc comments of every
+   * kind and component/converter typings-frontmatter facts, with
+   * `package`/`version` from the package.json at the compiler context. Shipped
+   * under the package `exports` `hxmeta` condition; consumed by build validation,
+   * editors and docs generation - never a runtime payload. `true` emits
+   * `hx.meta.json` in `output.path`; a string sets the asset path.
    */
-  emitDocs?: boolean | ((file: IAssetFile) => string)
+  emitMeta?: boolean | string
   /**
-   * Additionally bundles every source's doc comments into one docs manifest asset (an
-   * `IDocsManifest` with `package`/`version` from the package.json at the compiler
-   * context) for documentation portals and single-artifact consumers. `true` emits
-   * `hx.docs.json` in `output.path`; a string sets the asset path. Independent of
-   * `emitDocs` - ship sidecars, the bundle, or both.
+   * Runs the shared `@heleonix/hx-analyzer` over the scanned sources (including
+   * component-header params) after compilation: cross-file reference resolution and
+   * contract validation with the same diagnostic codes editors show, reported
+   * as webpack errors/warnings. The analyzer instance persists across watch
+   * rebuilds and recompiles only changed files. Per-file compile errors of
+   * kind sources are reported by the loader already, so the analyzer's
+   * duplicates of those are suppressed. `failOnWarnings` promotes analyzer
+   * warnings to build errors (CI-style strictness).
    */
-  emitDocsBundle?: boolean | string
+  validate?: boolean | { failOnWarnings?: boolean }
   /**
    * Emits one plain (unbundled) ES module per kind that extends the kind's runtime
    * definition-source class and imports the emitted `.json` assets by relative path -

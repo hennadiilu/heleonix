@@ -32,4 +32,10 @@ export const Errors = {
     code: "HX_COMPILER_0406",
     ...(DEV && { message: "Inline component override '<{0}:Component>' cannot have attributes." }),
   },
+  rootEmpty: {
+    code: "HX_COMPILER_0408",
+    ...(DEV && {
+      message: "Invalid component root: a component must declare children - '.hxm' components are always declarative.",
+    }),
+  },
 } as const satisfies Record<string, IErrorInfo>

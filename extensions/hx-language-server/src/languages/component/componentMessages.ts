@@ -8,8 +8,6 @@ export const COMPONENT_MESSAGES = {
   unknownStateProperty: (property: string) =>
     `'${property}' is not a property set on this component at any of its usages.`,
   unknownProperty: (tag: string, property: string) => `Property '${property}' is not used by component '${tag}'.`,
-  unknownPlatformAttribute: (tag: string, attribute: string) =>
-    `'${attribute}' is not a known attribute of '<${tag}>'.`,
   unknownOverrideTarget: (target: string, tag: string) =>
     `Override target '${target}' does not name a control or component in '${tag}'.`,
   ambiguousOverrideTarget: (segment: string, tag: string) =>

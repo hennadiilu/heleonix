@@ -1,3 +1,4 @@
+import { IMetaDocument } from "@heleonix/hx-language"
 import { DefinitionLoader } from "../loaders/DefinitionLoader"
 import { IDefinitionSource } from "./IDefinitionSource"
 import { IIndexContribution } from "../index/IIndexContribution"
@@ -18,11 +19,21 @@ import { projectCompiledDefinitions } from "./projectCompiledDefinitions"
 export class CompiledDefinitionSource implements IDefinitionSource {
   public readonly id: string
 
+  private lastMetas: readonly IMetaDocument[] = []
+
   public constructor(private readonly loader: DefinitionLoader) {
     this.id = loader.id
   }
 
   public async load(): Promise<IIndexContribution> {
-    return projectCompiledDefinitions(await this.loader.load())
+    const compiled = await this.loader.load()
+
+    this.lastMetas = compiled.metas ?? []
+
+    return projectCompiledDefinitions(compiled)
+  }
+
+  public metas(): readonly IMetaDocument[] {
+    return this.lastMetas
   }
 }

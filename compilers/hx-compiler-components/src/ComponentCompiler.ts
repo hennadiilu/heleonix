@@ -1,4 +1,11 @@
-import { XmlCompiler, ICompilerOptions, IXmlElement, IXmlNode } from "@heleonix/hx-compiler-core"
+import {
+  XmlCompiler,
+  ICompilerOptions,
+  IXmlElement,
+  IXmlNode,
+  splitFrontmatter,
+  type IFrontmatterDocument,
+} from "@heleonix/hx-compiler-core"
 import {
   COMPONENT_NAME_SEGMENT_SEPARATOR,
   CONTENT_TAG,
@@ -8,8 +15,12 @@ import {
   getOverrideTarget,
   isBindingExpression,
   parseBindingExpression,
+  parseDocComment,
   type IBindingExpression,
+  type IComponentHeader,
   type IComponentOverride,
+  type IDocs,
+  type IDocsEntry,
   type Kind,
 } from "@heleonix/hx-language"
 import type { IComponentDefinition, IComponentProperty, IComponentUsage } from "@heleonix/hx-language"
@@ -48,20 +59,86 @@ export class ComponentCompiler extends XmlCompiler<IComponentDefinition> {
     return "component"
   }
 
+  /**
+   * Compiles the compile-time facts of the typings frontmatter: the component
+   * summary and the declared props/events with their typings and doc texts.
+   * Tolerant by design, like `compileDocs` - facts are consumed by tooling,
+   * so unparsable source yields `undefined` (`compile` reports the real
+   * problems).
+   */
+  public compileHeader(source: string): IComponentHeader | undefined {
+    let header: IFrontmatterDocument
+
+    try {
+      header = splitFrontmatter(source)
+    } catch {
+      return undefined
+    }
+
+    const result: IComponentHeader = {}
+
+    if (header.docs) {
+      result.docs = header.docs
+    }
+
+    // props/events/params are opaque TypeScript type text - the analyzer hands
+    // them to the TypeScript compiler; the DSL never parses them here.
+    if (header.types?.["props"]) {
+      result.props = header.types["props"]
+    }
+
+    if (header.types?.["events"]) {
+      result.events = header.types["events"]
+    }
+
+    if (header.types?.["params"]) {
+      result.params = header.types["params"]
+    }
+
+    return Object.keys(result).length > 0 ? result : undefined
+  }
+
+  /**
+   * Docs come from the typings frontmatter summary - XML bodies carry no doc
+   * comments. Per-member prose lives in TSDoc inside the `props`/`events` type
+   * text and is read by the analyzer through the TypeScript compiler, not here.
+   */
+  public override compileDocs(
+    source: string,
+    dimension: IDimension,
+    options?: ICompilerOptions,
+  ): IDocsEntry | undefined {
+    const header = this.compileHeader(source)
+
+    if (!header?.docs) {
+      return undefined
+    }
+
+    const docs: IDocs = { ...parseDocComment(header.docs) }
+
+    if (Object.keys(docs).length === 0) {
+      return undefined
+    }
+
+    return { kind: this.kind, name: options?.name ?? "", dimension: dimension, docs }
+  }
+
   protected compileElement(root: IXmlElement, dimension: IDimension, options: ICompilerOptions): IComponentDefinition {
     const name = options.name ?? ""
     const children = compileChildren(root.children)
 
-    const result: IComponentDefinition = {
+    // `.hxm` components are always declarative: their body is the children.
+    // Programmatic components are TypeScript classes, discovered and registered
+    // separately - never declared through the template.
+    if (children.length === 0) {
+      throw new HeleonixComponentCompilerError(Errors.rootEmpty)
+    }
+
+    return {
       tag: name,
       dimension,
+      children,
     }
-
-    if (children.length > 0) {
-      result.children = children
-    }
-
-    return result
   }
 }
 

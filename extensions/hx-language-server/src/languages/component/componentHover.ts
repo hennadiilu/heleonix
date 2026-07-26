@@ -8,12 +8,13 @@ import {
   parseBindingExpression,
 } from "@heleonix/hx-language"
 import { IXmlAttribute, IXmlScan } from "@heleonix/hx-compiler-core"
+import type { IComponentInfo } from "@heleonix/hx-analyzer"
 import { Hover, Position } from "vscode-languageserver"
 import { TextDocument } from "vscode-languageserver-textdocument"
 import { DefinitionIndex } from "../../index/DefinitionIndex"
-import { PLATFORM_DATA } from "../../platform/PLATFORM_DATA"
 import { markdownHover } from "../../lsp/markdownHover"
 import { renderDocs } from "../../lsp/renderDocs"
+import { byName, componentDocs, memberOf, memberSummary, memberType } from "./componentInfoLookup"
 import { headSegment } from "../../references/headSegment"
 import { splitComponentPrefix } from "../../references/splitComponentPrefix"
 
@@ -30,12 +31,14 @@ export function hoverComponent(
   position: Position,
   index: DefinitionIndex,
   scan: IXmlScan,
+  components: readonly IComponentInfo[],
 ): Hover | null {
   const offset = doc.offsetAt(position)
+  const registry = byName(components)
 
   for (const tag of scan.tags) {
     if (offset >= tag.nameStart && offset <= tag.nameEnd) {
-      const docs = index.componentDocs(tag.name) ?? PLATFORM_DATA.tagDocs(tag.name)
+      const docs = componentDocs(registry.get(tag.name))
       return docs ? markdownHover(doc, tag.nameStart, tag.nameEnd, renderDocs(`<${tag.name}>`, docs)) : null
     }
 
@@ -49,7 +52,7 @@ export function hoverComponent(
 
       if (attr.name && attr.name !== NAME_ATTRIBUTE && offset >= attr.nameStart && offset <= attr.nameEnd) {
         // The `Component` keyword itself carries no docs; only its value does.
-        return isOverride ? null : attributeHover(doc, tag.name, attr, index)
+        return isOverride ? null : attributeHover(doc, tag.name, attr, index, registry)
       }
 
       if (
@@ -77,8 +80,14 @@ export function hoverComponent(
   return null
 }
 
-/** `@prop` docs of the property the attribute sets, resolved on the `ctrl:` chain target(s). */
-function attributeHover(doc: TextDocument, tagName: string, attr: IXmlAttribute, index: DefinitionIndex): Hover | null {
+/** Type + docs of the property the attribute sets, resolved on the `ctrl:` chain target(s). */
+function attributeHover(
+  doc: TextDocument,
+  tagName: string,
+  attr: IXmlAttribute,
+  index: DefinitionIndex,
+  registry: Map<string, IComponentInfo>,
+): Hover | null {
   const { prefix, path } = splitComponentPrefix(attr.name)
   const head = headSegment(path)
 
@@ -89,17 +98,13 @@ function attributeHover(doc: TextDocument, tagName: string, attr: IXmlAttribute,
   const segments = prefix ? prefix.split(COMPONENT_NAME_SEGMENT_SEPARATOR).filter(Boolean) : []
 
   for (const target of index.resolveControlChain([tagName], segments)) {
-    const props = index.componentDocs(target)?.props
-    const text = props?.[path] ?? props?.[head]
+    const member = memberOf(registry, target, path) ?? memberOf(registry, target, head)
 
-    if (text) {
-      return markdownHover(doc, attr.nameStart, attr.nameEnd, renderDocs(path, { summary: text }))
-    }
+    if (member) {
+      const summary = memberSummary(member)
+      const signature = `**\`${member.name}${member.optional ? "?" : ""}: ${memberType(member)}\`**`
 
-    const platformDocs = PLATFORM_DATA.attributeDocs(target, path)
-
-    if (platformDocs) {
-      return markdownHover(doc, attr.nameStart, attr.nameEnd, renderDocs(path, platformDocs))
+      return markdownHover(doc, attr.nameStart, attr.nameEnd, summary ? `${signature}\n\n${summary}` : signature)
     }
   }
 

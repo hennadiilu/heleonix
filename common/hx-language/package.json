@@ -23,7 +23,8 @@
   "scripts": {
     "clean": "rimraf dist temp",
     "build": "rollup -c",
-    "dts": "api-extractor run -l"
+    "dts": "api-extractor run -l",
+    "test": "node --experimental-strip-types spec/run.ts"
   },
   "exports": {
     ".": {

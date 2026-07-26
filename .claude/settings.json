@@ -12,7 +12,11 @@
       "WebFetch(*)",
       "WebSearch(*)",
       "NotebookEdit(*)",
-      "Skill(*)"
+      "Skill(*)",
+      "Bash(echo *)",
+      "Bash(pnpm *)",
+      "Bash(node *)",
+      "Bash(xargs *)"
     ],
     "deny": [
       "Bash(git push*)",

@@ -41,6 +41,7 @@
     "dist"
   ],
   "peerDependencies": {
+    "@heleonix/hx-analyzer": "workspace:*",
     "webpack": "^5.0.0"
   },
   "dependencies": {

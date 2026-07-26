@@ -1,3 +1,10 @@
+---
+/**
+ * Greets the current user with the localized greeting text.
+ */
+
+props: { /** Visual emphasis of the greeting. */ variant?: 'primary' | 'secondary' | 'danger' }
+---
 <Component>
   <div>
     <span name="label">@Sandbox.greeting</span>
