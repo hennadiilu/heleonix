@@ -1,19 +1,48 @@
 import { FrameworkElement } from "../FrameworkElement"
 import { StateManager } from "../state/StateManager"
-import { DictionaryManager } from "../dictionaries/DictionaryManager"
-import { ConfigManager } from "../configs/ConfigManager"
+import { DictionaryProvider } from "../dictionaries/DictionaryProvider"
+import { ConfigProvider } from "../configs/ConfigProvider"
+import { Binder } from "../bindings/Binder"
 import { PlatformAdapter } from "../platform/PlatformAdapter"
 import type { IComponentDefinition, IComponentUsage } from "@heleonix/hx-language"
 import { Scheduler } from "./Scheduler"
 import { ComponentManager } from "./ComponentManager"
 import { DimensionManager } from "../dimension/DimensionManager"
 import type { PlatformComponent } from "./PlatformComponent"
+import type { DataParams } from "../common/DataParams"
 
 const EMPTY_COMPONENTS: readonly Component[] = Object.freeze([])
 
-export abstract class Component extends FrameworkElement<
-  ComponentManager | StateManager | DictionaryManager | ConfigManager | Scheduler | PlatformAdapter | DimensionManager
+/**
+ * Base class for components. A **programmatic** component is a TypeScript class
+ * extending this base directly (it has no `*.hxm` file); its prop and event
+ * contracts are the `TProps` and `TEvents` type arguments, which the analyzer
+ * reads by class scan - exactly as it reads a `*.hxm` component's `props:` /
+ * `events:` frontmatter - so usages get the same validation, completion and
+ * hover. Both must be data (`DataParams` rejects function-typed members at any
+ * depth); events are payload types, callbacks are events themselves. The
+ * declarative `*.hxm` base and the platform base leave the arguments at their
+ * `object` defaults.
+ */
+export abstract class Component<
+  TProps extends DataParams<TProps> = object,
+  TEvents extends DataParams<TEvents> = object,
+> extends FrameworkElement<
+  | ComponentManager
+  | StateManager
+  | Binder
+  | DictionaryProvider
+  | ConfigProvider
+  | Scheduler
+  | PlatformAdapter
+  | DimensionManager
 > {
+  // Phantom, type-only carriers so TypeScript tracks the contract type arguments
+  // for the analyzer to read; `declare` emits no field at runtime.
+  declare protected readonly __props?: TProps
+
+  declare protected readonly __events?: TEvents
+
   private _fqName = ""
 
   private _definition: IComponentDefinition | undefined

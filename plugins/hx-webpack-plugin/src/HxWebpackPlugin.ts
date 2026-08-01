@@ -539,6 +539,7 @@ export class HxWebpackPlugin {
             const converterEntries: IRegistryMetaEntry[] = []
             const actionEntries: IRegistryMetaEntry[] = []
             const qualifierEntries: IQualifierDefinition[] = []
+            const programmaticComponents: IComponentMetaEntry[] = []
 
             if (typeHost) {
               const resolver = new TypeResolver(typeHost)
@@ -557,6 +558,26 @@ export class HxWebpackPlugin {
                   qualifierEntries.push({ name: found.name, args: found.args })
                 }
               }
+
+              // Programmatic components (classes extending `Component<TProps, TEvents>`)
+              // ship their resolved contract so consuming packages validate them too.
+              for (const found of resolver.components()) {
+                const entry: IComponentMetaEntry = { name: found.name, dimension: {} }
+
+                if (found.docs) {
+                  entry.docs = found.docs
+                }
+
+                if (found.props.length > 0) {
+                  entry.props = found.props
+                }
+
+                if (found.events.length > 0) {
+                  entry.events = found.events
+                }
+
+                programmaticComponents.push(entry)
+              }
             }
 
             compilation.emitAsset(
@@ -566,7 +587,10 @@ export class HxWebpackPlugin {
                   buildMeta(
                     {
                       docs: docsEntries,
-                      components: resolveComponentEntries(rawComponents, componentControls, typeHost),
+                      components: [
+                        ...resolveComponentEntries(rawComponents, componentControls, typeHost),
+                        ...programmaticComponents,
+                      ],
                       converters: converterEntries,
                       actions: actionEntries,
                       themeTokens,

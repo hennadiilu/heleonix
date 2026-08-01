@@ -2,6 +2,7 @@ import path from "node:path"
 import ts from "typescript"
 import type { IQualifierArg, QualifierRefKind } from "@heleonix/hx-language"
 import type { IDiscoveredClass } from "./IDiscoveredClass"
+import type { IDiscoveredComponent } from "./IDiscoveredComponent"
 import type { IDiscoveredQualifier } from "./IDiscoveredQualifier"
 import type { IMemberType, MemberKind } from "./IMemberType"
 import type { IResolvedType } from "./IResolvedType"
@@ -9,6 +10,7 @@ import type { ITypeProgramHost } from "./ITypeProgramHost"
 
 const QUALIFIER_BASE = "StyleQualifier"
 const QUALIFIER_SUFFIX = "Qualifier"
+const COMPONENT_BASE = "Component"
 
 /** One header type to resolve: its owning `.hxm` directory and the raw text. */
 export interface ITypeRequest {
@@ -43,6 +45,9 @@ export class TypeResolver {
   // the same pass as converters/actions; read via `qualifiers()`).
   private lastQualifiers: IDiscoveredQualifier[] = []
 
+  // Programmatic components found by the most recent `discover()` scan.
+  private lastComponents: IDiscoveredComponent[] = []
+
   public constructor(programHost: ITypeProgramHost) {
     this.programHost = programHost
   }
@@ -50,6 +55,11 @@ export class TypeResolver {
   /** Style qualifiers found by the most recent {@link discover} scan. */
   public qualifiers(): IDiscoveredQualifier[] {
     return this.lastQualifiers
+  }
+
+  /** Programmatic components found by the most recent {@link discover} scan. */
+  public components(): IDiscoveredComponent[] {
+    return this.lastComponents
   }
 
   public resolve(requests: readonly ITypeRequest[]): Map<string, IResolvedType> {
@@ -116,6 +126,7 @@ export class TypeResolver {
     const checker = program.getTypeChecker()
     const result: IDiscoveredClass[] = []
     const qualifiers: IDiscoveredQualifier[] = []
+    const components: IDiscoveredComponent[] = []
 
     for (const source of program.getSourceFiles()) {
       if (source.isDeclarationFile || source.fileName.includes("node_modules")) {
@@ -166,6 +177,28 @@ export class TypeResolver {
           continue
         }
 
+        if (matched.base === COMPONENT_BASE) {
+          // A programmatic component's contract is its two type arguments; the
+          // tag is the class name verbatim (no suffix).
+          const args = checker.getTypeArguments(matched.type as ts.TypeReference)
+          const component: IDiscoveredComponent = {
+            name: className,
+            file: source.fileName,
+            line: at.line,
+            character: at.character,
+            props: args[0] ? resolveMembers(args[0], checker, node) : [],
+            events: args[1] ? resolveMembers(args[1], checker, node) : [],
+          }
+
+          if (docs) {
+            component.docs = docs
+          }
+
+          components.push(component)
+
+          continue
+        }
+
         const [method, paramIndex] = matched.base === "Converter" ? (["format", 1] as const) : (["Execute", 0] as const)
         const suffixOk = className.length > matched.base.length && className.endsWith(matched.base)
 
@@ -189,6 +222,7 @@ export class TypeResolver {
     }
 
     this.lastQualifiers = qualifiers
+    this.lastComponents = components
 
     return result
   }
@@ -206,7 +240,7 @@ function isAbstract(node: ts.ClassDeclaration): boolean {
 function matchBase(
   type: ts.Type,
   checker: ts.TypeChecker,
-): { base: "Converter" | "Action" | "StyleQualifier"; type: ts.Type } | undefined {
+): { base: "Converter" | "Action" | "StyleQualifier" | "Component"; type: ts.Type } | undefined {
   const stack = [...baseTypes(type, checker)]
   const seen = new Set<ts.Symbol>()
 
@@ -214,7 +248,7 @@ function matchBase(
     const current = stack.pop() as ts.Type
     const name = current.symbol?.getName()
 
-    if (name === "Converter" || name === "Action" || name === QUALIFIER_BASE) {
+    if (name === "Converter" || name === "Action" || name === QUALIFIER_BASE || name === COMPONENT_BASE) {
       return { base: name, type: current }
     }
 

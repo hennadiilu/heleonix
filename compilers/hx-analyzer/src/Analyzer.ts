@@ -39,6 +39,7 @@ import type { IComponentInfo } from "./IComponentInfo"
 import type { IThemeTokenLocation } from "./IThemeTokenLocation"
 import type { IDiagnostic } from "./IDiagnostic"
 import type { IDiscoveredClass } from "./IDiscoveredClass"
+import type { IDiscoveredComponent } from "./IDiscoveredComponent"
 import type { IDiscoveredQualifier } from "./IDiscoveredQualifier"
 import type { IMemberType } from "./IMemberType"
 import type { IRegistryInfo } from "./IRegistryInfo"
@@ -168,6 +169,10 @@ export class Analyzer {
   // The most recent class scan, retained so editor features (completion, hover,
   // go-to-implementation) can query converter/action locations between analyses.
   private discovered: IDiscoveredClass[] = []
+
+  // Programmatic components (classes extending `Component<TProps, TEvents>`) from
+  // the most recent scan; their contracts feed the component registry.
+  private discoveredComponents: IDiscoveredComponent[] = []
 
   // The most recent component contracts (workspace + native), retained so the
   // editor can offer tag/prop completion and hover between analyses.
@@ -375,6 +380,17 @@ export class Analyzer {
       }
     }
 
+    // Programmatic components carry docs and a source location (class file).
+    const locations = new Map<string, IDiscoveredComponent>()
+
+    for (const component of this.discoveredComponents) {
+      locations.set(component.name, component)
+
+      if (component.docs) {
+        docs.set(component.name, component.docs)
+      }
+    }
+
     this.componentInfos = new Map()
 
     for (const name of index.components) {
@@ -389,6 +405,14 @@ export class Analyzer {
 
       if (summary) {
         info.docs = summary
+      }
+
+      const location = locations.get(name)
+
+      if (location) {
+        info.file = location.file
+        info.line = location.line
+        info.character = location.character
       }
 
       this.componentInfos.set(name, info)
@@ -548,6 +572,7 @@ export class Analyzer {
 
     this.discovered = resolver.discover()
     this.discoveredQualifiers = resolver.qualifiers()
+    this.discoveredComponents = resolver.components()
 
     for (const found of this.discovered) {
       if (!found.suffixOk) {
@@ -561,6 +586,26 @@ export class Analyzer {
       const registry = found.base === "Converter" ? index.converters : index.actions
 
       registry.set(found.name, found.params)
+    }
+
+    // Programmatic components are recognized tags; their props/events form a
+    // closed contract (like a `*.hxm` frontmatter), validated only when declared
+    // so a contract-less class stays gradual rather than rejecting every prop.
+    for (const component of this.discoveredComponents) {
+      index.components.add(component.name)
+
+      if (component.props.length === 0 && component.events.length === 0) {
+        continue
+      }
+
+      const declared = getDeclared(index, component.name)
+
+      declared.present = true
+      declared.resolvable = true
+
+      for (const member of [...component.props, ...component.events]) {
+        declared.members.set(member.name, member)
+      }
     }
   }
 

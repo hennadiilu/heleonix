@@ -2,16 +2,11 @@ import { Component } from "./Component"
 import type { IComponentDefinition, IComponentProperty, IComponentUsage } from "@heleonix/hx-language"
 import { ComponentManager } from "./ComponentManager"
 import type { PlatformComponent } from "./PlatformComponent"
-import { StateManager } from "../state/StateManager"
-import { DictionaryManager } from "../dictionaries/DictionaryManager"
-import { ConfigManager } from "../configs/ConfigManager"
+import { Binder } from "../bindings/Binder"
+import { reconcileBindings } from "./reconcileBindings"
 
 export class DeclarativeComponent extends Component {
-  protected readonly dictionaryManager = this.inject(DictionaryManager)
-
-  protected readonly configManager = this.inject(ConfigManager)
-
-  protected readonly stateManager = this.inject(StateManager)
+  protected readonly binder = this.inject(Binder)
 
   protected readonly componentManager = this.inject(ComponentManager)
 
@@ -45,7 +40,13 @@ export class DeclarativeComponent extends Component {
   }
 
   public override async update(newDefinition: IComponentDefinition, newUsage: IComponentUsage): Promise<void> {
-    await this.diffAndApplyBindings(this.usage.properties, newUsage.properties)
+    await reconcileBindings(
+      this.usage.properties,
+      newUsage.properties,
+      (property) => this.applyBinding(property),
+      (property) => this.removeBinding(property),
+      (property) => this.refreshBinding(property),
+    )
 
     await this.componentManager.reconcileChildren(this, newDefinition.children, this, this, this.platformParent)
 
@@ -65,44 +66,6 @@ export class DeclarativeComponent extends Component {
     super.destroy()
   }
 
-  private async diffAndApplyBindings(
-    oldProps: IComponentProperty[] | undefined,
-    newProps: IComponentProperty[] | undefined,
-  ): Promise<void> {
-    const oldMap = new Map<string, IComponentProperty>()
-
-    for (const p of oldProps ?? []) {
-      oldMap.set(p.name, p)
-    }
-
-    const newMap = new Map<string, IComponentProperty>()
-
-    for (const p of newProps ?? []) {
-      newMap.set(p.name, p)
-    }
-
-    for (const [name] of oldMap) {
-      if (!newMap.has(name)) {
-        this.removeBinding(oldMap.get(name)!)
-      }
-    }
-
-    for (const [name, newProp] of newMap) {
-      const oldProp = oldMap.get(name)
-
-      if (!oldProp) {
-        await this.applyBinding(newProp)
-      } else if (this.hasBindingChanged(oldProp, newProp)) {
-        this.removeBinding(oldProp)
-        await this.applyBinding(newProp)
-      }
-    }
-  }
-
-  private hasBindingChanged(oldProp: IComponentProperty, newProp: IComponentProperty): boolean {
-    return oldProp.binding.type !== newProp.binding.type || oldProp.binding.value !== newProp.binding.value
-  }
-
   private async applyBindings(properties: IComponentProperty[] | undefined): Promise<void> {
     if (!properties) {
       return
@@ -116,23 +79,7 @@ export class DeclarativeComponent extends Component {
   private async applyBinding(property: IComponentProperty): Promise<void> {
     const targetFQPropertyName = this.componentManager.getTargetFQPropertyName(this, property.name)
 
-    switch (property.binding.type) {
-      case "state":
-        this.stateManager.bind(
-          targetFQPropertyName,
-          this.componentManager.getSourceFQPropertyName(this, property.binding.value),
-        )
-        break
-      case "dictionary":
-        await this.dictionaryManager.bind(targetFQPropertyName, property.binding.value, this.fqName)
-        break
-      case "config":
-        await this.configManager.bind(targetFQPropertyName, property.binding.value)
-        break
-      case "literal":
-        this.stateManager.setValue(targetFQPropertyName, JSON.parse(property.binding.value))
-        break
-    }
+    await this.binder.bind(targetFQPropertyName, property.binding, this.scopedParent?.fqName ?? "")
   }
 
   private removeBindings(properties: IComponentProperty[] | undefined): void {
@@ -146,21 +93,14 @@ export class DeclarativeComponent extends Component {
   }
 
   private removeBinding(property: IComponentProperty): void {
-    const targetFQPropertyName = this.componentManager.getTargetFQPropertyName(this, property.name)
+    this.binder.unbind(this.componentManager.getTargetFQPropertyName(this, property.name))
+  }
 
-    switch (property.binding.type) {
-      case "state":
-        this.stateManager.unbind(
-          targetFQPropertyName,
-          this.componentManager.getSourceFQPropertyName(this, property.binding.value),
-        )
-        break
-      case "dictionary":
-        this.dictionaryManager.unbind(targetFQPropertyName)
-        break
-      case "config":
-        this.configManager.unbind(targetFQPropertyName)
-        break
-    }
+  private refreshBinding(property: IComponentProperty): void {
+    this.binder.refresh(
+      this.componentManager.getTargetFQPropertyName(this, property.name),
+      property.binding,
+      this.scopedParent?.fqName ?? "",
+    )
   }
 }

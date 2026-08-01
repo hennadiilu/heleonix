@@ -31,14 +31,13 @@ export * from "./state/StateBindingHandler"
 
 export * from "./dimension/DimensionManager"
 
-export * from "./dictionaries/DictionaryManager"
 export * from "./dictionaries/DictionaryDefinitionProvider"
 export * from "./dictionaries/DictionaryProvider"
 export * from "./dictionaries/DictionarySelectionStrategy"
 
-export * from "./configs/ConfigManager"
 export * from "./configs/ConfigDefinitionProvider"
 export * from "./configs/ConfigProvider"
+export * from "./configs/resolveConfigEntry"
 export * from "./configs/ConfigSelectionStrategy"
 
 export * from "./platform/PlatformAdapter"
@@ -50,9 +49,13 @@ export * from "./common/IEventEmitter"
 export * from "./common/IKeyedEventEmitter"
 export * from "./components/PlatformComponent"
 export * from "./components/Content"
+export * from "./components/reconcileBindings"
 
 export * from "./common/DataParams"
 export * from "./converters/Converter"
+export * from "./bindings/Binder"
+export * from "./bindings/BindingEvaluator"
+export * from "./bindings/ConverterRegistry"
 export * from "./actions/Action"
 export * from "./services/Service"
 

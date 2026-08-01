@@ -548,6 +548,74 @@ props: { variant?: 'primary' | 'default'; count?: number; active?: boolean }
       })
     })
 
+    describe("when a programmatic component is declared as a discovered TypeScript class", () => {
+      beforeAll(() => {
+        fs.writeFileSync(
+          path.join(root, "componentBases.ts"),
+          `export abstract class Component<TProps = object, TEvents = object> {
+             declare protected readonly __props?: TProps
+             declare protected readonly __events?: TEvents
+           }`,
+        )
+        fs.writeFileSync(
+          path.join(root, "Card.ts"),
+          `import { Component } from "./componentBases"
+           interface CardProps { variant?: 'primary' | 'secondary'; count?: number }
+           export class Card extends Component<CardProps> {}`,
+        )
+      })
+
+      function cardAnalyzer(attributes: string): Analyzer {
+        const analyzer = new Analyzer()
+
+        analyzer.setTypeProgramHost(createNodeTypeProgramHost(root))
+        analyzer.setFile({
+          path: path.join(root, "Form.hxm"),
+          ext: EXT_TEMPLATE,
+          name: "Form",
+          dimension: {},
+          source: `<Component><Card ${attributes} /></Component>`,
+        })
+
+        return analyzer
+      }
+
+      it("then recognizes the tag (class name) and accepts a valid prop", async () => {
+        const result = await cardAnalyzer(`variant="'primary'" count="3"`).analyze()
+
+        expect(result).toEqual([])
+      })
+
+      it("then reports an out-of-enum prop value", async () => {
+        const result = await cardAnalyzer(`variant="'huge'"`).analyze()
+
+        expect(result.map((entry) => entry.code)).toEqual(["HX_ANALYZER_0102"])
+      })
+
+      it("then reports an undeclared prop", async () => {
+        const result = await cardAnalyzer(`bogus="1"`).analyze()
+
+        expect(result.map((entry) => entry.code)).toEqual(["HX_ANALYZER_0103"])
+      })
+
+      it("then reports a value kind mismatch", async () => {
+        const result = await cardAnalyzer(`count="'x'"`).analyze()
+
+        expect(result.map((entry) => entry.code)).toEqual(["HX_ANALYZER_0105"])
+      })
+
+      it("then exposes the component with its members and class location", async () => {
+        const analyzer = cardAnalyzer(`variant="'primary'"`)
+        await analyzer.analyze()
+
+        const card = analyzer.components().find((info) => info.name === "Card")
+
+        expect(card?.members.map((member) => member.name).sort()).toEqual(["count", "variant"])
+        expect(card?.file).toContain("Card.ts")
+        expect(card?.open).toBe(false)
+      })
+    })
+
     describe("when a component's props type declares a function member", () => {
       it("then reports the no-functions guardrail violation at the header", async () => {
         const analyzer = new Analyzer()

@@ -16,7 +16,7 @@ import type { DataParams } from "../common/DataParams"
  * depth). A `readonly` parameter is an input - any binding source may be bound
  * (dictionary, config, literal, state, prop); a mutable parameter is in-out and
  * the action writes back to it, so it must bind a writable state/prop path.
- * `Execute` returns void; actions may inject services and the config provider.
+ * `Execute` returns void; actions may inject services and config provider - they can get values but never bind them.
  */
 export abstract class Action<TParams extends DataParams<TParams> = object> extends FrameworkElement<
   Service | ConfigProvider

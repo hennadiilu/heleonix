@@ -3,18 +3,15 @@ import type { IComponentDefinition, IComponentProperty, IComponentUsage } from "
 import { ComponentManager } from "./ComponentManager"
 import { StateManager } from "../state/StateManager"
 import { StateChangedHandler } from "../state/StateChangedHandler"
-import { DictionaryManager } from "../dictionaries/DictionaryManager"
-import { ConfigManager } from "../configs/ConfigManager"
+import { Binder } from "../bindings/Binder"
 import type { PlatformComponent } from "./PlatformComponent"
 
 const VALUE_PROPERTY = "value"
 
 export class Content extends Component {
-  protected readonly dictionaryManager = this.inject(DictionaryManager)
-
-  protected readonly configManager = this.inject(ConfigManager)
-
   protected readonly stateManager = this.inject(StateManager)
+
+  protected readonly binder = this.inject(Binder)
 
   protected readonly componentManager = this.inject(ComponentManager)
 
@@ -61,6 +58,12 @@ export class Content extends Component {
       this.currentBinding = newProp
 
       await this.applyBinding(newProp)
+    } else if (oldProp && newProp) {
+      this.binder.refresh(
+        this.componentManager.getTargetFQPropertyName(this, newProp.name),
+        newProp.binding,
+        this.scopedParent?.fqName ?? "",
+      )
     }
 
     await super.update(newDefinition, newUsage)
@@ -91,31 +94,21 @@ export class Content extends Component {
   }
 
   private hasBindingChanged(oldProp: IComponentProperty, newProp: IComponentProperty): boolean {
-    return oldProp.binding.type !== newProp.binding.type || oldProp.binding.value !== newProp.binding.value
+    return (
+      oldProp.binding.type !== newProp.binding.type ||
+      oldProp.binding.value !== newProp.binding.value ||
+      (oldProp.binding.converters ?? []).join("|") !== (newProp.binding.converters ?? []).join("|")
+    )
   }
 
   private async applyBinding(property: IComponentProperty): Promise<void> {
     const targetFQPropertyName = this.componentManager.getTargetFQPropertyName(this, property.name)
 
+    // Subscribe before binding so the binder's initial write renders the first
+    // value as content through this handler.
     this.stateManager.changed.on(targetFQPropertyName, this.handleStateChanged)
 
-    switch (property.binding.type) {
-      case "state":
-        this.stateManager.bind(
-          targetFQPropertyName,
-          this.componentManager.getSourceFQPropertyName(this, property.binding.value),
-        )
-        break
-      case "dictionary":
-        await this.dictionaryManager.bind(targetFQPropertyName, property.binding.value, this.fqName)
-        break
-      case "config":
-        await this.configManager.bind(targetFQPropertyName, property.binding.value)
-        break
-      case "literal":
-        this.stateManager.setValue(targetFQPropertyName, JSON.parse(property.binding.value))
-        break
-    }
+    await this.binder.bind(targetFQPropertyName, property.binding, this.scopedParent?.fqName ?? "")
   }
 
   private removeBinding(property: IComponentProperty): void {
@@ -123,20 +116,7 @@ export class Content extends Component {
 
     this.stateManager.changed.off(targetFQPropertyName, this.handleStateChanged)
 
-    switch (property.binding.type) {
-      case "state":
-        this.stateManager.unbind(
-          targetFQPropertyName,
-          this.componentManager.getSourceFQPropertyName(this, property.binding.value),
-        )
-        break
-      case "dictionary":
-        this.dictionaryManager.unbind(targetFQPropertyName)
-        break
-      case "config":
-        this.configManager.unbind(targetFQPropertyName)
-        break
-    }
+    this.binder.unbind(targetFQPropertyName)
   }
 
   private readonly handleStateChanged: StateChangedHandler = (_fqPropertyName, newValue) => {

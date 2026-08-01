@@ -3,15 +3,13 @@ import type { IComponentDefinition, IComponentProperty, IComponentUsage } from "
 import { ComponentManager } from "./ComponentManager"
 import { StateManager } from "../state/StateManager"
 import { StateChangedHandler } from "../state/StateChangedHandler"
-import { DictionaryManager } from "../dictionaries/DictionaryManager"
-import { ConfigManager } from "../configs/ConfigManager"
+import { Binder } from "../bindings/Binder"
+import { reconcileBindings } from "./reconcileBindings"
 
 export abstract class PlatformComponent extends Component {
-  protected readonly dictionaryManager = this.inject(DictionaryManager)
-
-  protected readonly configManager = this.inject(ConfigManager)
-
   protected readonly stateManager = this.inject(StateManager)
+
+  protected readonly binder = this.inject(Binder)
 
   protected readonly componentManager = this.inject(ComponentManager)
 
@@ -41,7 +39,13 @@ export abstract class PlatformComponent extends Component {
   }
 
   public override async update(newDefinition: IComponentDefinition, newUsage: IComponentUsage): Promise<void> {
-    await this.diffAndApplyBindings(this.usage.properties, newUsage.properties)
+    await reconcileBindings(
+      this.usage.properties,
+      newUsage.properties,
+      (property) => this.applyBinding(property),
+      (property) => this.removeBinding(property),
+      (property) => this.refreshBinding(property),
+    )
 
     await this.componentManager.reconcileChildren(this, newUsage.children, this, this.scopedParent, this)
 
@@ -61,44 +65,6 @@ export abstract class PlatformComponent extends Component {
     super.destroy()
   }
 
-  private async diffAndApplyBindings(
-    oldProps: IComponentProperty[] | undefined,
-    newProps: IComponentProperty[] | undefined,
-  ): Promise<void> {
-    const oldMap = new Map<string, IComponentProperty>()
-
-    for (const p of oldProps ?? []) {
-      oldMap.set(p.name, p)
-    }
-
-    const newMap = new Map<string, IComponentProperty>()
-
-    for (const p of newProps ?? []) {
-      newMap.set(p.name, p)
-    }
-
-    for (const [name] of oldMap) {
-      if (!newMap.has(name)) {
-        this.removeBinding(oldMap.get(name)!)
-      }
-    }
-
-    for (const [name, newProp] of newMap) {
-      const oldProp = oldMap.get(name)
-
-      if (!oldProp) {
-        await this.applyBinding(newProp)
-      } else if (this.hasBindingChanged(oldProp, newProp)) {
-        this.removeBinding(oldProp)
-        await this.applyBinding(newProp)
-      }
-    }
-  }
-
-  private hasBindingChanged(oldProp: IComponentProperty, newProp: IComponentProperty): boolean {
-    return oldProp.binding.type !== newProp.binding.type || oldProp.binding.value !== newProp.binding.value
-  }
-
   private async applyBindings(properties: IComponentProperty[] | undefined): Promise<void> {
     if (!properties) {
       return
@@ -112,25 +78,11 @@ export abstract class PlatformComponent extends Component {
   private async applyBinding(property: IComponentProperty): Promise<void> {
     const targetFQPropertyName = this.componentManager.getTargetFQPropertyName(this, property.name)
 
+    // Subscribe before binding so the binder's initial write pushes the first
+    // value to the platform element through this handler.
     this.stateManager.changed.on(targetFQPropertyName, this.handleStateChanged)
 
-    switch (property.binding.type) {
-      case "state":
-        this.stateManager.bind(
-          targetFQPropertyName,
-          this.componentManager.getSourceFQPropertyName(this, property.binding.value),
-        )
-        break
-      case "dictionary":
-        await this.dictionaryManager.bind(targetFQPropertyName, property.binding.value, this.fqName)
-        break
-      case "config":
-        await this.configManager.bind(targetFQPropertyName, property.binding.value)
-        break
-      case "literal":
-        this.stateManager.setValue(targetFQPropertyName, JSON.parse(property.binding.value))
-        break
-    }
+    await this.binder.bind(targetFQPropertyName, property.binding, this.scopedParent?.fqName ?? "")
   }
 
   private removeBinding(property: IComponentProperty): void {
@@ -138,20 +90,17 @@ export abstract class PlatformComponent extends Component {
 
     this.stateManager.changed.off(targetFQPropertyName, this.handleStateChanged)
 
-    switch (property.binding.type) {
-      case "state":
-        this.stateManager.unbind(
-          targetFQPropertyName,
-          this.componentManager.getSourceFQPropertyName(this, property.binding.value),
-        )
-        break
-      case "dictionary":
-        this.dictionaryManager.unbind(targetFQPropertyName)
-        break
-      case "config":
-        this.configManager.unbind(targetFQPropertyName)
-        break
-    }
+    this.binder.unbind(targetFQPropertyName)
+  }
+
+  // Re-resolves a surviving binding on a dimension switch. The view-sync
+  // subscription stays put; the binder's rewrite flows the new value through it.
+  private refreshBinding(property: IComponentProperty): void {
+    this.binder.refresh(
+      this.componentManager.getTargetFQPropertyName(this, property.name),
+      property.binding,
+      this.scopedParent?.fqName ?? "",
+    )
   }
 
   private removeBindings(properties: IComponentProperty[] | undefined): void {

@@ -38,7 +38,7 @@ export class DIContainer implements IDIContainer, IDIContainerInternal {
     const Constructor = this.injectables.get(constructorName)
 
     if (!Constructor) {
-      throw new HeleonixError(Errors.unknownComponent, constructorName)
+      throw new HeleonixError(Errors.unknownFrameworkElement, constructorName)
     }
 
     const instance = new Constructor(this)

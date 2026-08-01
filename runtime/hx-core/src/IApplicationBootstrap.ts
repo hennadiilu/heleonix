@@ -17,6 +17,7 @@ import { StyleDefinitionSource } from "./styling/StyleDefinitionSource"
 import { StyleSelectionStrategy } from "./styling/StyleSelectionStrategy"
 import { ThemeDefinitionProvider } from "./styling/ThemeDefinitionProvider"
 import { ThemeDefinitionSource } from "./styling/ThemeDefinitionSource"
+import { Converter } from "./converters/Converter"
 
 export interface IApplicationBootstrap {
   componentDefinition: {
@@ -58,4 +59,6 @@ export interface IApplicationBootstrap {
   }
 
   components?: InjectableConstructor<Component>[]
+
+  converters?: InjectableConstructor<Converter>[]
 }

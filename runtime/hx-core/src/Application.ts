@@ -9,9 +9,10 @@ import { Children } from "./components/Children"
 import { Scheduler } from "./components/Scheduler"
 import { StateManager } from "./state/StateManager"
 import { DimensionManager } from "./dimension/DimensionManager"
-import { DictionaryManager } from "./dictionaries/DictionaryManager"
 import { DictionaryDefinitionProvider } from "./dictionaries/DictionaryDefinitionProvider"
-import { ConfigManager } from "./configs/ConfigManager"
+import { Binder } from "./bindings/Binder"
+import { BindingEvaluator } from "./bindings/BindingEvaluator"
+import { ConverterRegistry } from "./bindings/ConverterRegistry"
 import { ConfigDefinitionProvider } from "./configs/ConfigDefinitionProvider"
 import { PlatformAdapter } from "./platform/PlatformAdapter"
 import { PlatformRuntime } from "./platform/PlatformRuntime"
@@ -91,10 +92,10 @@ export abstract class Application extends FrameworkElement<
 
     diContainer.registerInjectables([
       //...bootstrap.actions,
-      //...bootstrap.converters,
       //...bootstrap.services,
 
       ...(bootstrap.components ?? []),
+      ...(bootstrap.converters ?? []),
 
       bootstrap.platform.adapter,
       bootstrap.platform.runtime,
@@ -115,10 +116,11 @@ export abstract class Application extends FrameworkElement<
       StateManager,
       Scheduler,
       ComponentManager,
-      DictionaryManager,
       DictionaryProvider,
-      ConfigManager,
       ConfigProvider,
+      BindingEvaluator,
+      ConverterRegistry,
+      Binder,
       DimensionManager,
 
       ...stylingInjectables,
@@ -207,7 +209,7 @@ export abstract class Application extends FrameworkElement<
       }
 
       const rootUsage = {
-        tag: this.constructor.name,
+        tag: this.name,
         name: this.name,
       }
 

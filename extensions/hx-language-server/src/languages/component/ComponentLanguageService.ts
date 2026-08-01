@@ -20,6 +20,7 @@ import { ILanguageContext } from "../ILanguageContext"
 import { ILanguageService } from "../ILanguageService"
 import { completeComponent } from "./componentCompletion"
 import { completeConverterAction, definitionConverterAction, hoverConverterAction } from "./converterActionFeature"
+import { definitionComponent } from "./componentDefinition"
 import { diagnoseComponent } from "./componentDiagnostics"
 import { hoverComponent } from "./componentHover"
 import { buildComponentSemanticTokens } from "./componentSemanticTokens"
@@ -65,12 +66,12 @@ export class ComponentLanguageService implements ILanguageService {
   }
 
   public definition(doc: TextDocument, position: Position, context: ILanguageContext): Location | null {
-    return definitionConverterAction(
-      doc,
-      doc.offsetAt(position),
-      this.scanCache.get(doc),
-      context.converters,
-      context.actions,
+    const offset = doc.offsetAt(position)
+    const scan = this.scanCache.get(doc)
+
+    return (
+      definitionConverterAction(doc, offset, scan, context.converters, context.actions) ??
+      definitionComponent(offset, scan, context.components)
     )
   }
 

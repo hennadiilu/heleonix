@@ -10,6 +10,10 @@ export const Errors = {
     code: "HX_CORE_0002",
     ...(DEV && { message: "Cannot create injectable: '{0}' is missing or invalid." }),
   },
+  unknownFrameworkElement: {
+    code: "HX_CORE_0003",
+    ...(DEV && { message: "The '{0}' framework element is unknown (probably it was not provided)." }),
+  },
 
   // Application errors 0100-0199
   applicationLifecycle: {

@@ -47,7 +47,11 @@
         "extensions": [
           ".hxm"
         ],
-        "configuration": "./language-configuration/hxm.json"
+        "configuration": "./language-configuration/hxm.json",
+        "icon": {
+          "light": "./icons/hxm-light.svg",
+          "dark": "./icons/hxm-dark.svg"
+        }
       },
       {
         "id": "heleonix-hx-dictionary",
@@ -58,7 +62,11 @@
         "extensions": [
           ".hxd"
         ],
-        "configuration": "./language-configuration/hxd.json"
+        "configuration": "./language-configuration/hxd.json",
+        "icon": {
+          "light": "./icons/hxd-light.svg",
+          "dark": "./icons/hxd-dark.svg"
+        }
       },
       {
         "id": "heleonix-hx-config",
@@ -69,7 +77,39 @@
         "extensions": [
           ".hxc"
         ],
-        "configuration": "./language-configuration/hxc.json"
+        "configuration": "./language-configuration/hxc.json",
+        "icon": {
+          "light": "./icons/hxc-light.svg",
+          "dark": "./icons/hxc-dark.svg"
+        }
+      },
+      {
+        "id": "heleonix-hx-style",
+        "aliases": [
+          "Heleonix Style",
+          "hxs"
+        ],
+        "extensions": [
+          ".hxs"
+        ],
+        "icon": {
+          "light": "./icons/hxs-light.svg",
+          "dark": "./icons/hxs-dark.svg"
+        }
+      },
+      {
+        "id": "heleonix-hx-theme",
+        "aliases": [
+          "Heleonix Theme",
+          "hxt"
+        ],
+        "extensions": [
+          ".hxt"
+        ],
+        "icon": {
+          "light": "./icons/hxt-light.svg",
+          "dark": "./icons/hxt-dark.svg"
+        }
       }
     ],
     "grammars": [

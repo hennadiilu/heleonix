@@ -7,11 +7,17 @@ interface TruncateParams {
 
 /** Shortens a string to a maximum length. */
 export class TruncateConverter extends Converter<string, string, TruncateParams> {
-  public async format(value: string, params: TruncateParams): Promise<string> {
-    return value.length > params.length ? value.slice(0, params.length) : value
+  public static get diName(): string {
+    return "TruncateConverter"
   }
 
-  public async parse(value: string): Promise<string> {
-    return value
+  public format(value: string, params: TruncateParams): Promise<string> {
+    const text = String(value ?? "")
+
+    return Promise.resolve(text.length > params.length ? text.slice(0, params.length) : text)
+  }
+
+  public parse(value: string): Promise<string> {
+    return Promise.resolve(value)
   }
 }
