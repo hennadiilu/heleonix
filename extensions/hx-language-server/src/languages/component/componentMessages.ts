@@ -1,4 +1,3 @@
-/** Diagnostic message templates for `ComponentLanguageService`. */
 export const COMPONENT_MESSAGES = {
   unterminatedAttributeValue: "Unterminated attribute value.",
   invalidBindingExpression: (raw: string) => `Invalid binding expression: '${raw}'.`,

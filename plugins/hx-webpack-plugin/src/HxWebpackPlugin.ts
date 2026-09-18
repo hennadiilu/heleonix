@@ -10,7 +10,7 @@ import type {
   IDimensionDefinition,
   IDocsEntry,
   IQualifierDefinition,
-  IRegistryMetaEntry,
+  IConverterActionMetaEntry,
   IThemeDefinition,
 } from "@heleonix/hx-language"
 import {
@@ -536,8 +536,8 @@ export class HxWebpackPlugin {
           }
 
           if (metaFile) {
-            const converterEntries: IRegistryMetaEntry[] = []
-            const actionEntries: IRegistryMetaEntry[] = []
+            const converterEntries: IConverterActionMetaEntry[] = []
+            const actionEntries: IConverterActionMetaEntry[] = []
             const qualifierEntries: IQualifierDefinition[] = []
             const programmaticComponents: IComponentMetaEntry[] = []
 
@@ -545,7 +545,7 @@ export class HxWebpackPlugin {
               const resolver = new TypeResolver(typeHost)
 
               for (const found of resolver.discover()) {
-                if (found.suffixOk) {
+                if (found.hasHxName) {
                   ;(found.base === "Converter" ? converterEntries : actionEntries).push({
                     name: found.name,
                     params: found.params,
@@ -554,7 +554,7 @@ export class HxWebpackPlugin {
               }
 
               for (const found of resolver.qualifiers()) {
-                if (found.suffixOk) {
+                if (found.hasHxName) {
                   qualifierEntries.push({ name: found.name, args: found.args })
                 }
               }
@@ -562,6 +562,10 @@ export class HxWebpackPlugin {
               // Programmatic components (classes extending `Component<TProps, TEvents>`)
               // ship their resolved contract so consuming packages validate them too.
               for (const found of resolver.components()) {
+                if (!found.hasHxName) {
+                  continue
+                }
+
                 const entry: IComponentMetaEntry = { name: found.name, dimension: {} }
 
                 if (found.docs) {
@@ -683,12 +687,6 @@ function toArray<T>(value: T | T[]): T[] {
   return Array.isArray(value) ? value : [value]
 }
 
-/**
- * Resolves each component's props/events header text into member facts for the
- * meta manifest, so a consuming package validates usages without re-resolving
- * this package's TypeScript sources. Without a type host (no TS project), or for
- * an unresolvable type, only the summary docs are shipped for that component.
- */
 function resolveComponentEntries(
   raws: readonly { name: string; dimension: IAssetFile["dimension"]; dir: string; header: IComponentHeader }[],
   controls: ReadonlyMap<string, Set<string>>,
@@ -737,11 +735,6 @@ function toPosix(filePath: string): string {
   return filePath.replace(/\\/g, "/")
 }
 
-/**
- * Default emitted name for a compiled definition: the source path relative to the
- * compiler context with `.json` appended, keeping the source extension so same-named
- * sources of different kinds never collide (`src/Sandbox.hxc` -> `src/Sandbox.hxc.json`).
- */
 function defaultJsonAssetName(context: string, file: IAssetFile): string {
   const relative = path.relative(context, file.absPath)
   const withinContext = !path.isAbsolute(relative) && !relative.startsWith("..")
@@ -753,7 +746,6 @@ function declarationFileName(jsFileName: string): string {
   return jsFileName.endsWith(".js") ? `${jsFileName.slice(0, -3)}.d.ts` : `${jsFileName}.d.ts`
 }
 
-/** Relative import specifier from one emitted asset to another (both output-relative). */
 function relativeRequest(fromFile: string, toFile: string): string {
   const fromDir = path.posix.dirname(fromFile)
   const relative = path.posix.relative(fromDir === "." ? "" : fromDir, toFile)
@@ -761,11 +753,6 @@ function relativeRequest(fromFile: string, toFile: string): string {
   return relative.startsWith(".") ? relative : `./${relative}`
 }
 
-/**
- * Derives a class-name prefix from the `name` in the package.json at the compiler
- * context (`@acme/ui` -> `AcmeUi`), so definition sources emitted by different library
- * packages get distinct class/DI names by default.
- */
 function derivePackageClassPrefix(context: string): string | undefined {
   let name: unknown
 
@@ -788,7 +775,6 @@ function derivePackageClassPrefix(context: string): string | undefined {
   return segments.map((segment) => segment[0].toUpperCase() + segment.slice(1)).join("")
 }
 
-/** `name`/`version` of the package.json at the compiler context - the docs bundle's envelope. */
 function readPackageInfo(context: string): { package?: string; version?: string } | undefined {
   let manifest: { name?: unknown; version?: unknown }
 
@@ -817,7 +803,6 @@ function writeIfChanged(file: string, content: string): void {
   fs.writeFileSync(file, content)
 }
 
-/** `file:line:column` of the finding's subject in the source, or the bare file. */
 function locate(file: string, subject: string | undefined): string {
   if (!subject) {
     return file

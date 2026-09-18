@@ -3,12 +3,6 @@ import { IJsoncComment } from "../jsonc/IJsoncComment"
 import { IJsoncEntry } from "../jsonc/IJsoncEntry"
 import { docCommentBefore } from "./docCommentBefore"
 
-/**
- * Docs of inline `/** ... *\/` doc comments on a JSONC document's top-level
- * entries (dictionary/config keys), keyed by entry key. `body` is the same
- * (frontmatter-stripped) text the entries and comments were parsed from, so
- * all offsets agree.
- */
 export function jsoncEntryDocs(
   entries: readonly IJsoncEntry[],
   comments: readonly IJsoncComment[],

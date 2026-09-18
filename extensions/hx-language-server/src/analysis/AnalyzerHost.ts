@@ -4,11 +4,11 @@ import { Diagnostic, DiagnosticSeverity } from "vscode-languageserver"
 import { TextDocument } from "vscode-languageserver-textdocument"
 import { Analyzer, createNodeTypeProgramHost } from "@heleonix/hx-analyzer"
 import { loadDependencyMetas } from "@heleonix/hx-plugin-core"
-import type { IComponentInfo, IDiagnostic, IRegistryInfo, IThemeTokenLocation } from "@heleonix/hx-analyzer"
-import type { IMetaDocument, IQualifierDefinition } from "@heleonix/hx-language"
+import type { IDiagnostic } from "@heleonix/hx-analyzer"
+import type { IMetaDocument } from "@heleonix/hx-language"
+import type { IAnalyzerSnapshot } from "./IAnalyzerSnapshot"
 import { EXT_CONFIG, EXT_DICTIONARY, EXT_STYLE, EXT_TEMPLATE, EXT_THEME } from "@heleonix/hx-language"
 
-/** Extensions the shared analyzer consumes - a superset of the language services'. */
 export const ANALYZER_EXTS = new Set([EXT_TEMPLATE, EXT_DICTIONARY, EXT_CONFIG, EXT_STYLE, EXT_THEME])
 
 // The unresolved-reference and legacy-ported inference families follow the
@@ -24,12 +24,6 @@ const REFERENCE_CODES = new Set([
   "HX_ANALYZER_0104",
 ])
 
-/**
- * Hosts the shared `@heleonix/hx-analyzer` inside the language server: feeds
- * it the workspace snapshot incrementally and maps its position-less findings
- * onto ranges by locating each finding's `subject` in the document text - so
- * the editor and the build report identical codes from one implementation.
- */
 export class AnalyzerHost {
   private readonly analyzer = new Analyzer()
 
@@ -77,39 +71,16 @@ export class AnalyzerHost {
     this.version += 1
   }
 
-  /** Converters known to the editor, from the most recent analysis. */
-  public converters(): IRegistryInfo[] {
-    return this.analyzer.converters()
-  }
-
-  /** Actions known to the editor, from the most recent analysis. */
-  public actions(): IRegistryInfo[] {
-    return this.analyzer.actions()
-  }
-
-  /** Components known to the editor (workspace + native), from the most recent analysis. */
-  public components(): IComponentInfo[] {
-    return this.analyzer.components()
-  }
-
-  /** The merged theme token space (workspace `*.hxt` + dependency meta): path -> value. */
-  public themeTokens(): Map<string, string> {
-    return this.analyzer.themeTokens()
-  }
-
-  /** Control names per component (workspace + meta), for `@hx-style(for: ...)` scope completion. */
-  public controlNames(): Map<string, string[]> {
-    return this.analyzer.controlNames()
-  }
-
-  /** Where each workspace theme token is defined, for `{$...}` go-to-definition. */
-  public themeTokenLocations(): Map<string, IThemeTokenLocation> {
-    return this.analyzer.themeTokenLocations()
-  }
-
-  /** Style qualifiers known to the editor (discovered classes + meta-delivered contracts). */
-  public qualifiers(): IQualifierDefinition[] {
-    return this.analyzer.qualifiers()
+  public snapshot(): IAnalyzerSnapshot {
+    return {
+      converters: this.analyzer.converters(),
+      actions: this.analyzer.actions(),
+      components: this.analyzer.components(),
+      themeTokens: this.analyzer.themeTokens(),
+      qualifiers: this.analyzer.qualifiers(),
+      controlNames: this.analyzer.controlNames(),
+      themeTokenLocations: this.analyzer.themeTokenLocations(),
+    }
   }
 
   public update(filePath: string, text: string | undefined): void {
@@ -217,7 +188,6 @@ export class AnalyzerHost {
   }
 }
 
-/** All occurrences of the finding's subject; the document start when unknown. */
 function rangesOf(
   text: string,
   finding: IDiagnostic,

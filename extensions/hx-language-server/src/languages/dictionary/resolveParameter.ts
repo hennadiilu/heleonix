@@ -3,19 +3,6 @@ import { DefinitionIndex } from "../../index/DefinitionIndex"
 import { headSegment } from "../../references/headSegment"
 import { DICTIONARY_MESSAGES } from "./dictionaryMessages"
 
-/**
- * Resolves a `{...}` state parameter inside a dictionary value against the
- * components that reference this entry (`@Dic.entry`). Returns an issue message
- * when the parameter cannot be a property of any of those components, or
- * `undefined` when it resolves (or when the entry has no referrers, in which
- * case there is nothing to resolve against - the unused-entry check covers it).
- *
- *   - `{some.state}`        -> head `some` must be in a referrer's property pool.
- *   - `{ctrl:some.state}`   -> `ctrl` must be a named control of a referrer, and
- *                              head `some` must be a property of that control's tag.
- *
- * Matching is head-only (deeper path semantics are still TBD in the framework).
- */
 export function parameterIssue(
   dictName: string,
   key: string,
@@ -84,7 +71,6 @@ function qualifiedIssue(
   return DICTIONARY_MESSAGES.unknownControlProperty(control, head)
 }
 
-/** Whether any property path in `pool` has `head` as its head segment. */
 function hasPropertyHead(pool: readonly string[], head: string): boolean {
   return pool.some((property) => headSegment(property) === head)
 }

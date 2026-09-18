@@ -1,6 +1,7 @@
 import {
   XmlCompiler,
   ICompilerOptions,
+  IXmlAttributeValue,
   IXmlElement,
   IXmlNode,
   splitFrontmatter,
@@ -16,6 +17,8 @@ import {
   isBindingExpression,
   parseBindingExpression,
   parseDocComment,
+  soleExpression,
+  stringLiteralExpression,
   type IBindingExpression,
   type IComponentHeader,
   type IComponentOverride,
@@ -30,26 +33,12 @@ import { HeleonixComponentCompilerError } from "./errors/HeleonixComponentCompil
 
 const CONTENT_NAME = "content"
 const VALUE_PROPERTY = "value"
+const TRUE_LITERAL = "true"
 
 const OVERRIDE_TARGET = new RegExp(
   `^${IDENTIFIER_PATTERN}(\\${COMPONENT_NAME_SEGMENT_SEPARATOR}${IDENTIFIER_PATTERN})*$`,
 )
 
-/**
- * Compiles `*.hxm` component source into an `IComponentDefinition`-compatible
- * JSON shape that the runtime `ComponentDefinitionProvider` can hand to
- * `DeclarativeComponent` for building/updating component trees.
- *
- * The root `<Component>` element is a compile-time wrapper only; its children
- * become the compiled definition's `children`. Text nodes that contain a
- * binding expression are emitted as a single `Content` child with a `value`
- * property binding.
- *
- * A `target:Component` attribute or `<target:Component>` child element is a
- * component override: it is diverted onto the usage's `overrides` (resolved at
- * build time to swap the target component) rather than becoming a property
- * binding or a child component.
- */
 export class ComponentCompiler extends XmlCompiler<IComponentDefinition> {
   protected get rootTag(): string {
     return ROOT_TAG
@@ -59,13 +48,6 @@ export class ComponentCompiler extends XmlCompiler<IComponentDefinition> {
     return "component"
   }
 
-  /**
-   * Compiles the compile-time facts of the typings frontmatter: the component
-   * summary and the declared props/events with their typings and doc texts.
-   * Tolerant by design, like `compileDocs` - facts are consumed by tooling,
-   * so unparsable source yields `undefined` (`compile` reports the real
-   * problems).
-   */
   public compileHeader(source: string): IComponentHeader | undefined {
     let header: IFrontmatterDocument
 
@@ -98,11 +80,6 @@ export class ComponentCompiler extends XmlCompiler<IComponentDefinition> {
     return Object.keys(result).length > 0 ? result : undefined
   }
 
-  /**
-   * Docs come from the typings frontmatter summary - XML bodies carry no doc
-   * comments. Per-member prose lives in TSDoc inside the `props`/`events` type
-   * text and is read by the analyzer through the TypeScript compiler, not here.
-   */
   public override compileDocs(
     source: string,
     dimension: IDimension,
@@ -153,7 +130,7 @@ function compileChildren(nodes: IXmlNode[]): IComponentUsage[] {
         continue
       }
 
-      result.push(createContentUsage(parseBinding(raw)))
+      result.push(createContentUsage(contentBinding(raw)))
 
       continue
     }
@@ -172,7 +149,13 @@ function compileUsage(element: IXmlElement): IComponentUsage {
   const name = element.attributes[NAME_ATTRIBUTE]
 
   if (name) {
-    usage.name = name
+    if (name.kind !== "literal") {
+      throw new HeleonixComponentCompilerError(Errors.invalidName, element.tag)
+    }
+
+    if (name.value) {
+      usage.name = name.value
+    }
   }
 
   const overrides: IComponentOverride[] = []
@@ -203,23 +186,53 @@ function collectProperties(element: IXmlElement, overrides: IComponentOverride[]
       continue
     }
 
-    const raw = element.attributes[attrName]
+    const attribute = element.attributes[attrName]
     const target = getOverrideTarget(attrName)
 
     if (target !== undefined) {
-      addOverride(overrides, element.tag, target, overrideFromValue(target, raw))
+      addOverride(overrides, element.tag, target, overrideFromValue(target, attribute))
 
       continue
     }
 
-    if (!isBindingExpression(raw)) {
-      throw new HeleonixComponentCompilerError(Errors.invalidBinding, raw, attrName)
-    }
-
-    properties.push({ name: attrName, binding: parseBindingExpression(raw) })
+    properties.push({ name: attrName, binding: attributeBinding(attrName, attribute) })
   }
 
   return properties
+}
+
+function attributeBinding(name: string, attribute: IXmlAttributeValue): IBindingExpression {
+  if (attribute.kind === "flag") {
+    return parseBindingExpression(TRUE_LITERAL)
+  }
+
+  if (attribute.kind === "literal") {
+    return stringLiteralExpression(attribute.value)
+  }
+
+  const expression = attribute.value.trim()
+
+  if (!isBindingExpression(expression)) {
+    throw new HeleonixComponentCompilerError(Errors.invalidBinding, attribute.value, name)
+  }
+
+  return parseBindingExpression(expression)
+}
+
+function contentBinding(raw: string): IBindingExpression {
+  const expression = soleExpression(raw)
+
+  if (expression === undefined) {
+    return stringLiteralExpression(raw)
+  }
+
+  const trimmed = expression.text.trim()
+
+  if (!isBindingExpression(trimmed)) {
+    throw new HeleonixComponentCompilerError(Errors.invalidContent, raw)
+  }
+
+  return parseBindingExpression(trimmed)
 }
 
 function compileElementChildren(element: IXmlElement, overrides: IComponentOverride[]): IComponentUsage[] {
@@ -251,23 +264,31 @@ function compileElementChildren(element: IXmlElement, overrides: IComponentOverr
   }
 
   if (textParts.length > 0) {
-    return [createContentUsage(parseBinding(textParts.join(" ")))]
+    return [createContentUsage(contentBinding(textParts.join(" ")))]
   }
 
   return childElements.map(compileUsage)
 }
 
-function overrideFromValue(target: string, raw: string): IComponentOverride {
+function overrideFromValue(target: string, attribute: IXmlAttributeValue): IComponentOverride {
   validateTarget(target)
 
-  const value = raw.trim()
+  if (attribute.kind === "flag") {
+    return { target }
+  }
+
+  const value = attribute.value.trim()
 
   if (value === "") {
     return { target }
   }
 
+  if (attribute.kind === "literal") {
+    return { target, binding: stringLiteralExpression(value) }
+  }
+
   if (!isBindingExpression(value)) {
-    throw new HeleonixComponentCompilerError(Errors.invalidOverrideValue, target, raw)
+    throw new HeleonixComponentCompilerError(Errors.invalidOverrideValue, target, attribute.value)
   }
 
   return { target, binding: parseBindingExpression(value) }
@@ -304,14 +325,6 @@ function validateTarget(target: string): void {
   if (!OVERRIDE_TARGET.test(target)) {
     throw new HeleonixComponentCompilerError(Errors.invalidOverrideTarget, target)
   }
-}
-
-function parseBinding(raw: string): IBindingExpression {
-  if (!isBindingExpression(raw)) {
-    throw new HeleonixComponentCompilerError(Errors.invalidContent, raw)
-  }
-
-  return parseBindingExpression(raw)
 }
 
 function createContentUsage(binding: IBindingExpression): IComponentUsage {

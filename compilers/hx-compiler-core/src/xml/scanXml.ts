@@ -4,33 +4,23 @@ import { IXmlScan } from "./IXmlScan"
 import { IXmlTag } from "./IXmlTag"
 import { IXmlTextRun } from "./IXmlTextRun"
 
-/**
- * Error-tolerant, single-pass lexer for XML-like Heleonix source.
- *
- * Unlike a strict XML parser (which throws on the first problem), this scanner
- * never throws: it walks the text once and reports the structural spans both the
- * build pipeline and editor tooling need - tag occurrences (name + attribute
- * ranges), text runs and comments (`<!-- ... -->`, collected so doc comments
- * can be associated with the node they precede) - with absolute character
- * offsets. Processing instructions/declarations are skipped; CDATA sections
- * are emitted as verbatim text runs.
- *
- * {@link parseXml} layers strict tree-building and validation on top of this,
- * while the language server consumes the flat scan directly for diagnostics and
- * semantic tokens - so there is a single source of truth for the grammar.
- */
-
-const LT = 60 // <
-const GT = 62 // >
-const SLASH = 47 // /
-const EQ = 61 // =
-const DQUOTE = 34 // "
-const SQUOTE = 39 // '
-const BANG = 33 // !
-const QUESTION = 63 // ?
+const LT = 60
+const GT = 62
+const SLASH = 47
+const EQ = 61
+const DQUOTE = 34
+const SQUOTE = 39
+const BANG = 33
+const QUESTION = 63
+const LBRACE = 123
+const RBRACE = 125
 
 function isSpace(c: number): boolean {
   return c === 32 || c === 9 || c === 10 || c === 13
+}
+
+function isQuote(c: number): boolean {
+  return c === DQUOTE || c === SQUOTE
 }
 
 function isNameChar(c: number): boolean {
@@ -73,10 +63,8 @@ export function scanXml(text: string): IXmlScan {
       continue
     }
 
-    // A '<' begins a tag/comment/section - close out any pending text run.
     flushText(pos)
 
-    // Comment: <!-- ... -->
     if (text.startsWith("<!--", pos)) {
       const end = text.indexOf("-->", pos + 4)
       const next = end === -1 ? len : end + 3
@@ -86,9 +74,8 @@ export function scanXml(text: string): IXmlScan {
       continue
     }
 
-    // CDATA: <![CDATA[ ... ]]> - emitted verbatim, may contain '<' and '>'.
     if (text.startsWith("<![CDATA[", pos)) {
-      const inner = pos + 9 // '<![CDATA['.length
+      const inner = pos + 9
       const end = text.indexOf("]]>", inner)
       const close = end === -1 ? len : end
 
@@ -101,7 +88,6 @@ export function scanXml(text: string): IXmlScan {
       continue
     }
 
-    // Other declarations / processing instructions: skip to '>'.
     if (text.charCodeAt(pos + 1) === BANG || text.charCodeAt(pos + 1) === QUESTION) {
       const end = text.indexOf(">", pos + 1)
       pos = end === -1 ? len : end + 1
@@ -112,7 +98,6 @@ export function scanXml(text: string): IXmlScan {
     const tag = readTag(text, pos, len)
 
     if (!tag) {
-      // Not actually a tag (e.g. a stray '<') - treat '<' as text.
       pos++
       continue
     }
@@ -128,7 +113,7 @@ export function scanXml(text: string): IXmlScan {
 }
 
 function readTag(text: string, start: number, len: number): { tag: IXmlTag; next: number } | undefined {
-  let pos = start + 1 // consume '<'
+  let pos = start + 1
   const closing = text.charCodeAt(pos) === SLASH
 
   if (closing) {
@@ -154,13 +139,12 @@ function readTag(text: string, start: number, len: number): { tag: IXmlTag; next
     attrs: [],
   }
 
-  // Attributes up to the closing '>' (noting a trailing '/').
   while (pos < len) {
     const c = text.charCodeAt(pos)
 
     if (c === SLASH) {
-      // The only legal '/' in a start tag is the self-close; attribute values
-      // are consumed inside readAttr, so a bare '/' here means '<Tag ... />'.
+      // Attribute values are consumed inside readAttr, so a bare slash here is
+      // the self-close of the tag.
       tag.selfClosing = true
       pos++
       continue
@@ -176,13 +160,13 @@ function readTag(text: string, start: number, len: number): { tag: IXmlTag; next
       break
     }
 
-    if (!isNameChar(c)) {
+    if (c !== LBRACE && !isNameChar(c)) {
       // Unexpected char - skip it so we stay error-tolerant.
       pos++
       continue
     }
 
-    const attr = readAttr(text, pos, len)
+    const attr = c === LBRACE ? readShorthandAttr(text, pos, len) : readAttr(text, pos, len)
     tag.attrs.push(attr.attr)
     pos = attr.next
 
@@ -192,6 +176,80 @@ function readTag(text: string, start: number, len: number): { tag: IXmlTag; next
   }
 
   return { tag, next: pos }
+}
+
+interface IBracedValue {
+  valueStart: number
+  valueEnd: number
+  next: number
+  unterminated: boolean
+}
+
+function readBraced(text: string, start: number, len: number): IBracedValue {
+  let pos = start + 1
+  const valueStart = pos
+  let depth = 1
+
+  while (pos < len) {
+    const c = text.charCodeAt(pos)
+
+    if (isQuote(c)) {
+      pos++
+
+      while (pos < len && text.charCodeAt(pos) !== c) {
+        pos++
+      }
+
+      if (pos < len) {
+        pos++
+      }
+
+      continue
+    }
+
+    if (c === LBRACE) {
+      depth++
+    } else if (c === RBRACE) {
+      depth--
+
+      if (depth === 0) {
+        return { valueStart, valueEnd: pos, next: pos + 1, unterminated: false }
+      }
+    }
+
+    pos++
+  }
+
+  return { valueStart, valueEnd: len, next: len, unterminated: true }
+}
+
+function readShorthandAttr(text: string, start: number, len: number): { attr: IXmlAttribute; next: number } {
+  const braced = readBraced(text, start, len)
+  const value = text.slice(braced.valueStart, braced.valueEnd)
+  const nameStart = braced.valueStart + (value.length - value.trimStart().length)
+
+  let nameEnd = nameStart
+
+  while (nameEnd < braced.valueEnd && isNameChar(text.charCodeAt(nameEnd))) {
+    nameEnd++
+  }
+
+  const attr: IXmlAttribute = {
+    name: text.slice(nameStart, nameEnd),
+    nameStart,
+    nameEnd,
+    kind: "expression",
+    shorthand: true,
+    valueStart: braced.valueStart,
+    valueEnd: braced.valueEnd,
+    value,
+  }
+
+  if (braced.unterminated) {
+    attr.unterminated = true
+  }
+
+  return { attr, next: braced.next }
 }
 
 function readAttr(text: string, start: number, len: number): { attr: IXmlAttribute; next: number } {
@@ -206,44 +264,65 @@ function readAttr(text: string, start: number, len: number): { attr: IXmlAttribu
     name: text.slice(nameStart, pos),
     nameStart,
     nameEnd: pos,
+    kind: "flag",
   }
 
-  // Skip whitespace before a possible '='.
+  const afterName = pos
+
   while (pos < len && isSpace(text.charCodeAt(pos))) {
     pos++
   }
 
   if (text.charCodeAt(pos) !== EQ) {
-    return { attr, next: pos }
+    // No assignment: a value-less flag. Rewind to just after the name so the
+    // tag loop re-reads what follows and can end the tag on it.
+    return { attr, next: afterName }
   }
 
-  pos++ // consume '='
+  pos++
 
   while (pos < len && isSpace(text.charCodeAt(pos))) {
     pos++
   }
 
-  const quote = text.charCodeAt(pos)
+  const c = text.charCodeAt(pos)
 
-  if (quote !== DQUOTE && quote !== SQUOTE) {
-    // '=' present but no quoted value - structurally invalid.
+  if (c === LBRACE) {
+    const braced = readBraced(text, pos, len)
+
+    attr.kind = "expression"
+    attr.valueStart = braced.valueStart
+    attr.valueEnd = braced.valueEnd
+    attr.value = text.slice(braced.valueStart, braced.valueEnd)
+
+    if (braced.unterminated) {
+      attr.unterminated = true
+    }
+
+    return { attr, next: braced.next }
+  }
+
+  if (!isQuote(c)) {
+    // Assignment present but no quoted or braced value - structurally invalid.
     attr.malformed = true
+
     return { attr, next: pos }
   }
 
-  pos++ // consume opening quote
+  pos++
   const valueStart = pos
 
-  while (pos < len && text.charCodeAt(pos) !== quote) {
+  while (pos < len && text.charCodeAt(pos) !== c) {
     pos++
   }
 
+  attr.kind = "literal"
   attr.valueStart = valueStart
   attr.valueEnd = pos
   attr.value = text.slice(valueStart, pos)
 
   if (pos < len) {
-    pos++ // consume closing quote
+    pos++
   } else {
     attr.unterminated = true
   }

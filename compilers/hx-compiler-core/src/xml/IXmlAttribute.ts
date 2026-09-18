@@ -1,9 +1,5 @@
-/**
- * A single attribute parsed from a start tag, with absolute character offsets
- * for the name and (optional) quoted value. Produced by the error-tolerant
- * {@link scanXml} lexer; consumed both by editor tooling (for ranges) and by
- * {@link parseXml} (to build the strict attribute map).
- */
+import type { XmlAttributeKind } from "./XmlAttributeKind"
+
 export interface IXmlAttribute {
   name: string
 
@@ -11,16 +7,17 @@ export interface IXmlAttribute {
 
   nameEnd: number
 
-  /** Offset of the first character inside the quotes (undefined for value-less attrs). */
+  kind: XmlAttributeKind
+
   valueStart?: number
 
   valueEnd?: number
 
   value?: string
 
-  /** `true` when the opening quote was never closed before end-of-file. */
+  shorthand?: boolean
+
   unterminated?: boolean
 
-  /** `true` when an `=` was present but no quoted value followed it. */
   malformed?: boolean
 }

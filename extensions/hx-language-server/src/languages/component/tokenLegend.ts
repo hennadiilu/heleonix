@@ -1,9 +1,5 @@
 import { SemanticTokensLegend } from "vscode-languageserver"
 
-/**
- * Semantic token types emitted for `*.hxm`. Every entry is a standard LSP token
- * type so the active theme colors it - nothing is hard-coded.
- */
 export const TOKEN_TYPES = [
   "class", // user component tags (defined in any definition source)
   "property", // attribute / property names; component name before ':' (+readonly)

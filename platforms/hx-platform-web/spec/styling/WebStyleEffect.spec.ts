@@ -1,6 +1,11 @@
-import type { StyleHandle } from "@heleonix/hx-core"
+import type { IScheduler, StyleHandle } from "@heleonix/hx-core"
 import { WebStyleEffect } from "@heleonix/hx-platform-web"
 import type { WebStyleHandle } from "@heleonix/hx-platform-web"
+
+const immediate: IScheduler = {
+  scheduleCompute: (job) => void job(),
+  scheduleCommit: (job) => void job(),
+}
 
 class FakeStyle {
   public readonly props = new Map<string, string>()
@@ -40,7 +45,7 @@ describe("WebStyleEffect", () => {
   it("then mangles a variable key and sets/removes it on every root", () => {
     const a = new FakeElement()
     const b = new FakeElement()
-    const effect = new WebStyleEffect([a, b] as unknown as HTMLElement[])
+    const effect = new WebStyleEffect([a, b] as unknown as HTMLElement[], immediate)
 
     effect.setVariable("someProp", "5px")
     expect(a.style.props.get("--hx-some-prop")).toBe("5px")
@@ -52,7 +57,7 @@ describe("WebStyleEffect", () => {
 
   it("then adds and removes the handle's class on every root", () => {
     const root = new FakeElement()
-    const effect = new WebStyleEffect([root] as unknown as HTMLElement[])
+    const effect = new WebStyleEffect([root] as unknown as HTMLElement[], immediate)
 
     effect.setClass(handle("hx-abc"))
     expect(root.classes.has("hx-abc")).toBeTrue()
@@ -63,7 +68,7 @@ describe("WebStyleEffect", () => {
 
   it("then toggles a gate attribute (for @hx-if) on every root", () => {
     const root = new FakeElement()
-    const effect = new WebStyleEffect([root] as unknown as HTMLElement[])
+    const effect = new WebStyleEffect([root] as unknown as HTMLElement[], immediate)
 
     effect.setAttribute("data-hx-is-saving", "")
     expect(root.attrs.get("data-hx-is-saving")).toBe("")
@@ -74,7 +79,7 @@ describe("WebStyleEffect", () => {
 
   it("then writes inline CSSOM properties directly (no mangling)", () => {
     const root = new FakeElement()
-    const effect = new WebStyleEffect([root] as unknown as HTMLElement[])
+    const effect = new WebStyleEffect([root] as unknown as HTMLElement[], immediate)
 
     effect.setProperty("color", "red")
     expect(root.style.props.get("color")).toBe("red")

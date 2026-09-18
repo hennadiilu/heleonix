@@ -7,9 +7,7 @@ interface TruncateParams {
 
 /** Shortens a string to a maximum length. */
 export class TruncateConverter extends Converter<string, string, TruncateParams> {
-  public static get diName(): string {
-    return "TruncateConverter"
-  }
+  public static readonly hxName = "Truncate"
 
   public format(value: string, params: TruncateParams): Promise<string> {
     const text = String(value ?? "")

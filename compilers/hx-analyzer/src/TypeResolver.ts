@@ -1,6 +1,6 @@
 import path from "node:path"
 import ts from "typescript"
-import type { IQualifierArg, QualifierRefKind } from "@heleonix/hx-language"
+import { HX_NAME_PROPERTY, type IQualifierArg, type QualifierRefKind } from "@heleonix/hx-language"
 import type { IDiscoveredClass } from "./IDiscoveredClass"
 import type { IDiscoveredComponent } from "./IDiscoveredComponent"
 import type { IDiscoveredQualifier } from "./IDiscoveredQualifier"
@@ -9,10 +9,8 @@ import type { IResolvedType } from "./IResolvedType"
 import type { ITypeProgramHost } from "./ITypeProgramHost"
 
 const QUALIFIER_BASE = "StyleQualifier"
-const QUALIFIER_SUFFIX = "Qualifier"
 const COMPONENT_BASE = "Component"
 
-/** One header type to resolve: its owning `.hxm` directory and the raw text. */
 export interface ITypeRequest {
   id: string
 
@@ -23,17 +21,6 @@ export interface ITypeRequest {
 
 const ALIAS = "__HxType"
 
-/**
- * Resolves component/converter header type text through the TypeScript
- * compiler. Each request is synthesized into a virtual `.ts` module
- * co-located with its `.hxm` (so `import("./…")` reference forms resolve
- * relative to the component), typed as `export type __HxType = (<text>)`, and
- * its members are read from the checker.
- *
- * Filesystem-free by design: all file access goes through the injected
- * {@link ITypeProgramHost}, so the analyzer runs unchanged in Node (disk host)
- * and in the browser (in-memory host, e.g. StackBlitz).
- */
 export class TypeResolver {
   private readonly programHost: ITypeProgramHost
 
@@ -52,12 +39,10 @@ export class TypeResolver {
     this.programHost = programHost
   }
 
-  /** Style qualifiers found by the most recent {@link discover} scan. */
   public qualifiers(): IDiscoveredQualifier[] {
     return this.lastQualifiers
   }
 
-  /** Programmatic components found by the most recent {@link discover} scan. */
   public components(): IDiscoveredComponent[] {
     return this.lastComponents
   }
@@ -106,13 +91,6 @@ export class TypeResolver {
     return result
   }
 
-  /**
-   * Scans the project's own `.ts` files for non-abstract classes extending the
-   * `Converter` / `Action` base, reading each one's `TParams`
-   * (`Parameters<Class["format"]>[1]` / `Parameters<Class["Execute"]>[0]`) into
-   * member facts. Base classes are matched by name up the heritage chain, so a
-   * class extending an intermediate abstract subclass is still found.
-   */
   public discover(): IDiscoveredClass[] {
     const program = ts.createProgram(
       [...this.programHost.rootFiles],
@@ -152,16 +130,16 @@ export class TypeResolver {
         }
 
         const className = node.name.text
+        const hxName = readHxName(node)
         const at = source.getLineAndCharacterOfPosition(node.name.getStart())
         const docs = ts.displayPartsToString(symbol.getDocumentationComment(checker)).trim()
 
         if (matched.base === QUALIFIER_BASE) {
-          const suffixOk = className.length > QUALIFIER_SUFFIX.length && className.endsWith(QUALIFIER_SUFFIX)
           const argType = checker.getTypeArguments(matched.type as ts.TypeReference)[0]
           const qualifier: IDiscoveredQualifier = {
             className,
-            name: suffixOk ? className.slice(0, -QUALIFIER_SUFFIX.length) : className,
-            suffixOk,
+            name: hxName ?? className,
+            hasHxName: hxName !== undefined,
             file: source.fileName,
             line: at.line,
             character: at.character,
@@ -178,11 +156,13 @@ export class TypeResolver {
         }
 
         if (matched.base === COMPONENT_BASE) {
-          // A programmatic component's contract is its two type arguments; the
-          // tag is the class name verbatim (no suffix).
+          // A programmatic component's contract is its two type arguments; its
+          // tag is the name it declares, like every other framework element.
           const args = checker.getTypeArguments(matched.type as ts.TypeReference)
           const component: IDiscoveredComponent = {
-            name: className,
+            className,
+            name: hxName ?? className,
+            hasHxName: hxName !== undefined,
             file: source.fileName,
             line: at.line,
             character: at.character,
@@ -200,13 +180,12 @@ export class TypeResolver {
         }
 
         const [method, paramIndex] = matched.base === "Converter" ? (["format", 1] as const) : (["Execute", 0] as const)
-        const suffixOk = className.length > matched.base.length && className.endsWith(matched.base)
 
         const discovered: IDiscoveredClass = {
           className,
           base: matched.base,
-          name: suffixOk ? className.slice(0, -matched.base.length) : className,
-          suffixOk,
+          name: hxName ?? className,
+          hasHxName: hxName !== undefined,
           file: source.fileName,
           line: at.line,
           character: at.character,
@@ -228,15 +207,31 @@ export class TypeResolver {
   }
 }
 
+function readHxName(node: ts.ClassDeclaration): string | undefined {
+  for (const member of node.members) {
+    if (!ts.isPropertyDeclaration(member) || !ts.isIdentifier(member.name) || member.name.text !== HX_NAME_PROPERTY) {
+      continue
+    }
+
+    if (!member.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.StaticKeyword)) {
+      continue
+    }
+
+    const initializer =
+      member.initializer && ts.isAsExpression(member.initializer) ? member.initializer.expression : member.initializer
+
+    if (initializer && ts.isStringLiteral(initializer)) {
+      return initializer.text
+    }
+  }
+
+  return undefined
+}
+
 function isAbstract(node: ts.ClassDeclaration): boolean {
   return node.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.AbstractKeyword) ?? false
 }
 
-/**
- * Walks the heritage chain and returns which framework base a class extends
- * (with the matched, instantiated base type so a qualifier's `TArgs` type
- * argument can be read), or undefined.
- */
 function matchBase(
   type: ts.Type,
   checker: ts.TypeChecker,
@@ -270,7 +265,6 @@ function baseTypes(type: ts.Type, checker: ts.TypeChecker): readonly ts.Type[] {
   return type.isClassOrInterface() ? (checker.getBaseTypes(type) ?? []) : []
 }
 
-/** Members of a class method's parameter at `paramIndex`, with generics substituted for the concrete class. */
 function readParams(
   instanceType: ts.Type,
   checker: ts.TypeChecker,
@@ -314,13 +308,6 @@ function resolveAlias(source: ts.SourceFile, checker: ts.TypeChecker): IResolved
   return { resolved: true, members: resolveMembers(type, checker, alias) }
 }
 
-/**
- * Enumerates and classifies the members of a data type (a component prop type
- * or a converter/action `TParams`) into {@link IMemberType} facts. Shared so an
- * inline prop type and a class's params yield identical member facts. `location`
- * is a node for `getTypeOfSymbolAtLocation`; defaults to a member's own
- * declaration when omitted.
- */
 export function resolveMembers(type: ts.Type, checker: ts.TypeChecker, location?: ts.Node): IMemberType[] {
   const members: IMemberType[] = []
 
@@ -357,12 +344,6 @@ export function resolveMembers(type: ts.Type, checker: ts.TypeChecker, location?
   return members
 }
 
-/**
- * Resolves a qualifier's `TArgs` members like {@link resolveMembers}, plus the
- * branded `refKind` of any member typed as `PropertyRef`/`EventRef`/
- * `ThemeTokenRef` - detected by the type alias name, so it works regardless of
- * which package declares the brand.
- */
 function resolveQualifierArgs(type: ts.Type, checker: ts.TypeChecker, location: ts.Node): IQualifierArg[] {
   const refKinds = new Map<string, QualifierRefKind>()
 
@@ -395,7 +376,6 @@ function refKindOf(type: ts.Type): QualifierRefKind | undefined {
   }
 }
 
-/** Whether a member is declared `readonly` (an input-only action parameter). */
 function isReadonly(symbol: ts.Symbol): boolean {
   return (symbol.declarations ?? []).some(
     (declaration) => (ts.getCombinedModifierFlags(declaration) & ts.ModifierFlags.Readonly) !== 0,
@@ -439,7 +419,6 @@ function classify(
   return { kind: "unknown", isFunction: false }
 }
 
-/** The members of a union of string literals (a `'a' | 'b'` prop or string enum), or undefined. */
 function stringLiteralUnion(type: ts.Type): string[] | undefined {
   if (!type.isUnion()) {
     return type.isStringLiteral() ? [type.value] : undefined
@@ -458,7 +437,6 @@ function stringLiteralUnion(type: ts.Type): string[] | undefined {
   return values.length > 0 ? values : undefined
 }
 
-/** Wraps a host so the virtual header modules are served before the real files. */
 function overlay(base: ts.CompilerHost, virtual: Map<string, string>): ts.CompilerHost {
   const getSourceFile = base.getSourceFile.bind(base)
   const fileExists = base.fileExists.bind(base)

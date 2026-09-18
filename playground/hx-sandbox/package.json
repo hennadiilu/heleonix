@@ -15,7 +15,8 @@
   },
   "scripts": {
     "clean": "rimraf dist temp",
-    "dev": "webpack serve --config webpack.config.js"
+    "dev": "webpack serve --config webpack.config.js",
+    "perf": "node perf/run.mjs"
   },
   "dependencies": {
     "@heleonix/hx-core": "workspace:*",

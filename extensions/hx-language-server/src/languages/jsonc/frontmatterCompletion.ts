@@ -15,11 +15,6 @@ const FRONTMATTER_CLOSE = new RegExp(`^[ \\t]*${FRONTMATTER_FENCE}[ \\t]*$`, "m"
 const FRONTMATTER_KEY = /([A-Za-z_][\w-]*)?$/
 const FRONTMATTER_ENTRY = /^[ \t]*([A-Za-z_][\w-]*)[ \t]*:[ \t]*(\S*)$/
 
-/**
- * Completion inside the `--- ... ---` header of `*.hxd`/`*.hxc`: keys at line
- * start, and the allowed values after `usage:`. Returns `undefined` when the
- * cursor is not in the frontmatter.
- */
 export function frontmatterCompletion(
   doc: TextDocument,
   offset: number,

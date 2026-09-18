@@ -3,13 +3,33 @@
   "name": "Heleonix Framework Component",
   "scopeName": "source.hxm",
   "patterns": [
+    { "include": "#frontmatter" },
     { "include": "#docComment" },
     { "include": "#comment" },
     { "include": "#overrideTag" },
     { "include": "#tag" },
-    { "include": "#reference" }
+    { "include": "#expression" }
   ],
   "repository": {
+    "frontmatter": {
+      "name": "meta.embedded.block.frontmatter.hxm",
+      "begin": "^---\\s*$",
+      "end": "^---\\s*$",
+      "beginCaptures": {
+        "0": { "name": "punctuation.definition.frontmatter.hxm" }
+      },
+      "endCaptures": {
+        "0": { "name": "punctuation.definition.frontmatter.hxm" }
+      },
+      "patterns": [
+        { "name": "comment.block.documentation.hxm", "begin": "/\\*\\*", "end": "\\*/" },
+        { "name": "comment.block.hxm", "begin": "/\\*", "end": "\\*/" },
+        { "name": "comment.line.double-slash.hxm", "match": "//.*$" },
+        { "name": "keyword.other.frontmatter.hxm", "match": "^\\s*(props|events|params|usage)\\b" },
+        { "name": "string.quoted.single.hxm", "match": "'[^']*'" },
+        { "name": "string.quoted.double.hxm", "match": "\"[^\"]*\"" }
+      ]
+    },
     "overrideTag": {
       "name": "meta.tag.override.hxm",
       "begin": "(</?)([A-Za-z_][\\w.]*)(:)(Component)\\b",
@@ -95,26 +115,26 @@
           "patterns": [{ "include": "#stateBinding" }]
         },
         {
-          "begin": "([A-Za-z_][\\w.]*)(:)(Component)\\s*(=)\\s*(\")",
+          "begin": "([A-Za-z_][\\w.]*)(:)(Component)\\s*(=)\\s*(\\{)",
           "beginCaptures": {
             "1": { "name": "entity.other.attribute-name.hxm" },
             "2": { "name": "keyword.operator.hxm" },
             "3": { "name": "keyword.control.override.hxm" },
             "4": { "name": "punctuation.separator.key-value.hxm" },
-            "5": { "name": "punctuation.definition.string.begin.hxm" }
+            "5": { "name": "punctuation.section.embedded.begin.hxm" }
           },
-          "end": "(\")",
+          "end": "(\\})",
           "endCaptures": {
-            "1": { "name": "punctuation.definition.string.end.hxm" }
+            "1": { "name": "punctuation.section.embedded.end.hxm" }
           },
-          "name": "string.quoted.double.hxm",
           "patterns": [
             { "include": "#reference" },
+            { "include": "#converter" },
             { "match": "[A-Za-z_][\\w.]*", "name": "support.class.component.hxm" }
           ]
         },
         {
-          "begin": "([A-Za-z_][\\w.]*)(:)(Component)\\s*(=)\\s*(')",
+          "begin": "([A-Za-z_][\\w.]*)(:)(Component)\\s*(=)\\s*([\"'])",
           "beginCaptures": {
             "1": { "name": "entity.other.attribute-name.hxm" },
             "2": { "name": "keyword.operator.hxm" },
@@ -122,14 +142,29 @@
             "4": { "name": "punctuation.separator.key-value.hxm" },
             "5": { "name": "punctuation.definition.string.begin.hxm" }
           },
-          "end": "(')",
+          "end": "([\"'])",
           "endCaptures": {
             "1": { "name": "punctuation.definition.string.end.hxm" }
           },
-          "name": "string.quoted.single.hxm",
+          "name": "string.quoted.hxm",
+          "patterns": [{ "match": "[A-Za-z_][\\w.]*", "name": "support.class.component.hxm" }]
+        },
+        {
+          "begin": "([A-Za-z_][\\w.:-]*)\\s*(=)\\s*(\\{)",
+          "beginCaptures": {
+            "1": { "name": "entity.other.attribute-name.hxm" },
+            "2": { "name": "punctuation.separator.key-value.hxm" },
+            "3": { "name": "punctuation.section.embedded.begin.hxm" }
+          },
+          "end": "(\\})",
+          "endCaptures": {
+            "1": { "name": "punctuation.section.embedded.end.hxm" }
+          },
           "patterns": [
             { "include": "#reference" },
-            { "match": "[A-Za-z_][\\w.]*", "name": "support.class.component.hxm" }
+            { "include": "#converter" },
+            { "include": "#literal" },
+            { "include": "#stateBinding" }
           ]
         },
         {
@@ -143,8 +178,7 @@
           "endCaptures": {
             "1": { "name": "punctuation.definition.string.end.hxm" }
           },
-          "name": "string.quoted.double.hxm",
-          "patterns": [{ "include": "#reference" }, { "include": "#converter" }, { "include": "#stateBinding" }]
+          "name": "string.quoted.double.hxm"
         },
         {
           "begin": "([A-Za-z_][\\w.:-]*)\\s*(=)\\s*(')",
@@ -157,13 +191,37 @@
           "endCaptures": {
             "1": { "name": "punctuation.definition.string.end.hxm" }
           },
-          "name": "string.quoted.single.hxm",
-          "patterns": [{ "include": "#reference" }, { "include": "#converter" }, { "include": "#stateBinding" }]
+          "name": "string.quoted.single.hxm"
         },
+        { "include": "#expression" },
         {
           "match": "[A-Za-z_][\\w.:-]*",
           "name": "entity.other.attribute-name.hxm"
         }
+      ]
+    },
+    "expression": {
+      "begin": "(\\{)",
+      "beginCaptures": {
+        "1": { "name": "punctuation.section.embedded.begin.hxm" }
+      },
+      "end": "(\\})",
+      "endCaptures": {
+        "1": { "name": "punctuation.section.embedded.end.hxm" }
+      },
+      "patterns": [
+        { "include": "#reference" },
+        { "include": "#converter" },
+        { "include": "#literal" },
+        { "include": "#stateBinding" }
+      ]
+    },
+    "literal": {
+      "patterns": [
+        { "match": "'[^']*'", "name": "string.quoted.single.hxm" },
+        { "match": "\"[^\"]*\"", "name": "string.quoted.double.hxm" },
+        { "match": "\\b(?:true|false)\\b", "name": "constant.language.boolean.hxm" },
+        { "match": "-?\\d+(?:\\.\\d+)?", "name": "constant.numeric.hxm" }
       ]
     },
     "reference": {

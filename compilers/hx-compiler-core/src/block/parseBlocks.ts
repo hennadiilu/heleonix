@@ -4,22 +4,6 @@ import type { IBlockNode } from "./IBlockNode"
 
 const INTERPOLATION_PREFIXES = "$@#"
 
-/**
- * Parses a CSS-subset body (the shared `*.hxs`/`*.hxt` grammar) into a generic
- * block AST: nested `prelude { ... }` blocks, `name: value;` declarations and
- * `@word(...);` statements. Purely syntactic - it assigns no meaning to prelude
- * or declaration text and leaves `{...}` interpolations intact.
- *
- * Scanning is quote-, paren- and interpolation-aware:
- * - Comments (`/* *\/`, `//`) are recognized only outside strings and parens, so
- *   `url(https://x)` and `content: '/*'` stay value text.
- * - After a top-level identifier, `:` begins a declaration and `{` begins a
- *   block; a leading `:`/`@` prelude (`:hover`, `@media ...`) never triggers the
- *   declaration split.
- * - A top-level `{` in prelude position is an interpolation when what follows
- *   starts a binding source (`$`/`@`/`#`, e.g. `@media {$Media.compact}`),
- *   otherwise it opens the block. In value position every `{` is interpolation.
- */
 export function parseBlocks(source: string): IBlockDocument {
   const src = source
   const len = src.length
@@ -149,12 +133,6 @@ export function parseBlocks(source: string): IBlockDocument {
     return text === "" ? undefined : { kind: "statement", text }
   }
 
-  /**
-   * A top-level prelude `{` is an interpolation only when it is tight - the very
-   * next character introduces a binding source (`{$Media.compact}`). Whitespace
-   * or anything else after `{` means a block body (`:hover { @media ... }`), so
-   * a block whose first child is an at-rule is never mistaken for a `{@...}` ref.
-   */
   function isInterpolationAhead(): boolean {
     return INTERPOLATION_PREFIXES.indexOf(src.charAt(pos + 1)) >= 0
   }

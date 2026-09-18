@@ -26,11 +26,6 @@ import { currentComponents } from "./currentComponents"
 const TAG = /<([A-Za-z_][\w.-]*)?$/
 const NAME_CHAR = /[A-Za-z0-9_.:-]/
 
-/**
- * Completion for `*.hxm`: `@`/`#` references (shared), state-binding values
- * inside attribute quotes, `<` component tags, and property names inside an open
- * start tag.
- */
 export function completeComponent(
   doc: TextDocument,
   position: Position,
@@ -62,6 +57,11 @@ export function completeComponent(
       return overrideValueItems(doc, offset, typed, valueStart, index)
     }
 
+    // Quoted text is a static string: there is no expression to complete in it.
+    if (attr.kind !== "expression") {
+      return []
+    }
+
     return stateValueItems(doc, offset, typed, valueStart, currentComponents(doc), index)
   }
 
@@ -86,7 +86,6 @@ export function completeComponent(
   return propertyItems(doc, offset, before, text, index, registry)
 }
 
-/** The attribute (and its value start) the cursor sits inside, excluding `name`, or `undefined`. */
 function attrValueAt(scan: IXmlScan, offset: number): { attr: IXmlAttribute; valueStart: number } | undefined {
   for (const tag of scan.tags) {
     if (tag.closing) {
@@ -109,7 +108,6 @@ function attrValueAt(scan: IXmlScan, offset: number): { attr: IXmlAttribute; val
   return undefined
 }
 
-/** Component-name completions offered inside a `target:Component` override value. */
 function overrideValueItems(
   doc: TextDocument,
   offset: number,
@@ -125,13 +123,6 @@ function overrideValueItems(
     .map((name) => completionItem(name, CompletionItemKind.Class, range, index.componentDocs(name)?.summary))
 }
 
-/**
- * Properties/controls for a state-binding value being typed in this file. A
- * bare path or control-name prefix offers the current component's incoming
- * property pool plus its control names; after a `ctrl:` qualifier, the resolved
- * control's incoming property pool. References and converters are not state and
- * are handled elsewhere / skipped.
- */
 function stateValueItems(
   doc: TextDocument,
   offset: number,
@@ -227,7 +218,6 @@ function propertyItems(
   return items
 }
 
-/** Settable-property completions: the union of the analyzer's members for the given tags, deduplicated. */
 function memberItems(registry: Map<string, IComponentInfo>, tags: Iterable<string>, range: Range): CompletionItem[] {
   const items: CompletionItem[] = []
   const seen = new Set<string>()
@@ -244,7 +234,6 @@ function memberItems(registry: Map<string, IComponentInfo>, tags: Iterable<strin
   return items
 }
 
-/** Components a `ctrl.nested` prefix resolves to from `starts` (empty when it names no known control). */
 function resolveTargets(starts: readonly string[], prefix: string, index: DefinitionIndex): Set<string> {
   const segments = prefix.split(COMPONENT_NAME_SEGMENT_SEPARATOR).filter(Boolean)
   return index.resolveControlChain(starts, segments)

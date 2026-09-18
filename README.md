@@ -235,7 +235,7 @@ OR
 ```
 
 `*.hxs` uses a **custom CSS-subset syntax** (not XML), parsed by a dependency-free grammar shared with `*.hxt`. A
-`{...}` interpolation is a **binding source** — the same grammar as `*.hxm` attribute values, plus theme tokens:
+`{...}` interpolation is a **binding source** — the same grammar as a `*.hxm` braced attribute value, plus theme tokens:
 `{someProp}` (a component property / state path), `{@Dictionary.key}` (a dictionary reference), `{#Config.path}` (a
 config reference) and `{$Theme.token}` (a theme token). Both **CSS declaration values and qualifier arguments** use it.
 When a bound source changes — a property, or a dictionary/config/theme under a culture/dimension switch — the style
@@ -254,16 +254,18 @@ Syntax rules:
 - A block is introduced by a pseudo (`:hover`) or an at-rule (`@media (...)`, `@hx-*(...)`); after an identifier `:`
   begins a declaration and `{` begins a block, so the two never clash.
 - Nesting means AND: `:hover { @media (...) { ... } }` applies on hover AND matching media.
-- `@hx-if(value: {subject})` applies its declarations while the subject is truthy; `@hx-unless(value: {subject})`
-  while it is falsy or unset. The subject is the `value:` argument — a `{...}` binding source, with `*.hxm` addressing
-  (`{sub.subsub:isInvalid}`) — the same argument name as the `<If value="...">` / `<Switch value="...">` builtins in
+- `@hx-if(value: {subject})` applies its declarations while the subject is truthy. The subject is the `value:` argument — a `{...}` binding source, with `*.hxm` addressing
+  (`{sub.subsub:isInvalid}`) — the same argument name as the `<If value={...}>` / `<Switch value={...}>` builtins in
   \*.hxm, so the condition grammar is identical across both formats. Comparison arguments test it against an operand:
   `@hx-if(value: {variant}, is: {'primary'})`, `@hx-if(value: {variant}, isNot: {'danger'})`. Operands are one value
   expression each: a literal (`3`, `true`, a string literal `'primary'` checked against the subject's enum, raw CSS
   text — equality is strict lexical/numeric, never unit-aware, so `12px` != `1em`), or any `{...}` binding source —
   `{other.prop}` (another property, for selected-item/active-state styling), `{@Dict.key}`, `{#Config.path}` or
-  `{$Theme.token}` (the rule re-evaluates when the bound dictionary/config/theme changes). `@hx-unless` takes no
-  comparison arguments — combined negation is `isNot:`. One subject per qualifier; multiple conditions nest (nesting means AND). No operators or
+  `{$Theme.token}` (the rule re-evaluates when the bound dictionary/config/theme changes). A **boolean** operand is the
+  one that does not compare strictly: it tests the subject's truthiness, so `is: {true}` is the bare condition spelled
+  out and `is: {false}` / `isNot: {true}` is its negation, for a subject of any type. (Strict equality against a
+  boolean would be dead for every non-boolean subject, so nothing is given up.) That is the whole of negation — there is
+  no separate negated qualifier. One subject per qualifier; multiple conditions nest (nesting means AND). No operators or
   expressions inside braces — anything more is computed state authored in \*.hxm. On web the runtime toggles a `data-`
   attribute on the root element, selected via `[data-...]` - no class regeneration.
 - `@hx-style(for: path)` scopes declarations to child components, with the same name resolution as in \*.hxm. Each path
@@ -483,15 +485,15 @@ Style qualifiers:
 
 Every conditioning construct is interpreted by a qualifier. Native CSS spellings (`:hover`, `::before`, `@media`,
 `@keyframes`) are built-in qualifiers; framework concepts are `@hx-*(named: args)` blocks. A qualifier is a class
-registered in DI at runtime only, like other framework elements - neither the compiler nor the build has a qualifier
-code API, and the style system hardcodes no conditions. One qualifier can claim many spellings (the pseudo families each
-claim hundreds).
+provided through `IApplicationBootstrap.qualifiers` at runtime only, like other framework elements - its rule-key
+segment name is the class name minus the required `Qualifier` suffix, and a custom class of a built-in name replaces
+that built-in. Neither the compiler nor the build has a qualifier code API, and the style system hardcodes no
+conditions. One qualifier can claim many spellings (the pseudo families each claim hundreds).
 
 - Signatures are mechanical, produced by the compiler without qualifier code: each construct serializes to one segment
   - `Name` with no arguments, `Name(name:value,...)` for named args (sorted, comma-joined), or `Name(value,...)` for
     the positional args of native functional pseudos - and nesting (AND) joins segments with `&`. `:hover` -> `Hover`,
-    `@media (...)` -> `Media(query:...)`, `@hx-if(value: {variant}, is: {'primary'})` -> `If(is:{'primary'},value:{variant})`,
-    `@hx-unless(value: {loading})` -> `Unless(value:{loading})`, `@hx-style(for: x.y)` ->
+    `@media (...)` -> `Media(query:...)`, `@hx-if(value: {variant}, is: {'primary'})` -> `If(is:{'primary'},value:{variant})`, `@hx-style(for: x.y)` ->
     `Style(for:x.y)`, `@hx-style(for: Component)` -> `Style(for:Component)`. Rule keys are the merge identity across dimension files,
     platform-neutral and free of CSS syntax.
 - Values are opaque and may contain `:` `,` `/` `()` (a media query is `Media(query:(400px <= width <= 700px),print)`,
@@ -500,7 +502,7 @@ claim hundreds).
   top-level `,` separates a segment's arguments, and the first `:` of each named argument splits its name from the
   value - anything inside balanced parens is value text.
 - `@hx-*` arguments are named-only, so each maps 1:1 to a typed parameter and canonicalizes by sorting on name — the
-  condition qualifiers' subject is the ordinary named argument `value:`, same as the `<If value="...">` builtin in
+  condition qualifiers' subject is the ordinary named argument `value:`, same as the `<If value={...}>` builtin in
   \*.hxm. Positional arguments exist only in native functional pseudos (`:nth-child(2n+1)`), which are CSS, not
   `@hx-*`. There are no reserved arguments: every argument of every qualifier is signature material. Merge `usage`
   exists only in file frontmatter, like the other mergeable formats.
@@ -576,7 +578,7 @@ box-shadow: 10px {someProp}px {$Colors.Roles.Primary.bg};
 ```
 
 Compiled into rules keyed by a canonical qualifier signature (`""` root, `Hover`, `Media(query:...)`,
-`If(value:{property})` / `Unless(value:{property})` / `If(is:{'member'},value:{property})`, `Style(for:component.path)` scope, `Style(for:Component)` all first-level children,
+`If(value:{property})` / `If(is:{'member'},value:{property})`, `Style(for:component.path)` scope, `Style(for:Component)` all first-level children,
 joined with `&` for AND; no CSS syntax in definitions), so dimension overlays merge per-declaration with the same
 deep-merge as dictionaries and configs:
 
@@ -987,9 +989,9 @@ Runtime/compilation:
     <div>
         <button />
     </div>
-    <div>@MyDictionary.myText</div>
-    <div>#MyConfig.myValue</div>
-    <div>somePropertyOfCustomAddButton</div>
+    <div>{@MyDictionary.myText}</div>
+    <div>{#MyConfig.myValue}</div>
+    <div>{somePropertyOfCustomAddButton}</div>
 
     <OnUpdating property="add:extraValueForCustomComponents" name="handleUpdate">
         ...
@@ -998,16 +1000,16 @@ Runtime/compilation:
 
 <Component>
     <FromToList name="roleSelector"
-        isReadonly="#UIConfig.isReadonly | Converter1"
-        from2:items="availableItems"
+        isReadonly={#UIConfig.isReadonly | Converter1}
+        from2:items={availableItems}
         from2.Item:Component=""
-        to:items="selectedItems"
-        add:Component="@MyComponents.CustomAddButtonTemplateName - for exactly the component with the 'add' name"
-        Button:Component="@MyComponents.CustomAddButtonTemplateName - for all buttons used in FromToList.hxm component definition file, but not definitions of its child components. If there is a control with name 'Button' and Button component, handle it as an error"
-        subComponentName.Button:Component="@MyComponents.CustomAddButtonTemplateName - for all buttons in the 'subComponentName' instance component definition"
-        subComponentName.Button.text:Component="@MyComponents.CustomTextTemplateName - for named 'text' component inside all Button components in the 'subComponentName' instance component definition"
-        add:text="@Buttons.add | Converter1"
-        add:extraValueForCustomComponents="extraValue"
+        to:items={selectedItems}
+        add:Component={@MyComponents.CustomAddButtonTemplateName - for exactly the component with the 'add' name}
+        Button:Component={@MyComponents.CustomAddButtonTemplateName - for all buttons used in FromToList.hxm component definition file, but not definitions of its child components. If there is a control with name 'Button' and Button component, handle it as an error}
+        subComponentName.Button:Component={@MyComponents.CustomAddButtonTemplateName - for all buttons in the 'subComponentName' instance component definition}
+        subComponentName.Button.text:Component={@MyComponents.CustomTextTemplateName - for named 'text' component inside all Button components in the 'subComponentName' instance component definition}
+        add:text={@Buttons.add | Converter1}
+        add:extraValueForCustomComponents={extraValue}
     >
         <from:Component>
             <div><List name="from2"/></div>
@@ -1015,12 +1017,12 @@ Runtime/compilation:
         <Button:Component></Button:Component>
     </FromToList>
     <OnAdding property="roleSelector.from:items" name="doSomethingOnAdding">
-        <Update property="roleSelector:prop1" value="roleSelector.add:prop2" />
+        <Update property="roleSelector:prop1" value={roleSelector.add:prop2} />
         <Add />
         <Remove />
         <Move />
         <Raise event="someEvent" />
-        <Execute action="FetchSomething" prop1="prop1" prop2="prop2" prop3="prop3" />
+        <Execute action="FetchSomething" prop1={prop1} prop2={prop2} prop3={prop3} />
     </OnAdding>
     <OnRaising event="roleSelector.add:click" name="handleAdding">
         <!--...-->
@@ -1034,9 +1036,9 @@ FromToList.hxm:
 <Component>
 	<div>
 		<List name="from" />
-		<Button name="add">text</Button>
-    <dic>@MyDictionary.myText</div>
-		<Button name="remove">#MyConfig.myValue</Button>
+		<Button name="add">{text}</Button>
+    <dic>{@MyDictionary.myText}</div>
+		<Button name="remove">{#MyConfig.myValue}</Button>
 		<List name="to" />
 	</div>
 </Component>
@@ -1051,8 +1053,8 @@ resolves to inside the used component's definition. It comes in two forms:
   dictionary/config reference:
   - `add:Component="CustomAddButton"` — the value is the replacement component's
     name.
-  - `add:Component="@MyComponents.CustomAddButton"` /
-    `add:Component="#UIConfig.AddButton"` — the dictionary/config entry's value
+  - `add:Component={@MyComponents.CustomAddButton}` /
+    `add:Component={#UIConfig.AddButton}` — the dictionary/config entry's value
     is the component name (so the replacement can vary per dimension).
   - `add:Component=""` — the target renders nothing.
 - **Inline** — a `<target:Component>…</target:Component>` child element whose
@@ -1083,11 +1085,11 @@ Simple property binding in nameless components:
 
 ```xml
 Login.hxm
-<Input value="loginUsername"/>
-<Input value="loginPassword"/>
+<Input value={loginUsername}/>
+<Input value={loginPassword}/>
 
 Home.hxm
-<Login loginUsername="data.user" loginPassword="data.password"/>
+<Login loginUsername={data.user} loginPassword={data.password}/>
 ```
 
 #### Component roots: declarative vs programmatic
@@ -1143,7 +1145,7 @@ Rules:
   and the analyzer checks the _resolved value type_ of whatever source is bound against the declared type, regardless
   of source. (The framework no longer constrains a prop to be dictionary-sourced; inline string values are allowed.)
 - **Enums** are ordinary TypeScript string or numeric enums / unions (`'a' | 'b'`), inline or referenced. An inline
-  string value at a usage site (`variant="'primary'"`) is checked against the prop's union/enum.
+  string value at a usage site (`variant="primary"`) is checked against the prop's union/enum.
 - **Docs are TSDoc.** Prose and `@default` / `@example` / `@deprecated` live in `/** */` TSDoc on the type's members,
   read back through the TS symbol API — one docs source shared with converters and actions. There is no separate
   frontmatter doc convention for props.
@@ -1153,33 +1155,52 @@ Rules:
 The same applies to `events:` (payload types). Converter and action parameter types are not declared in a header at
 all — they come directly from the implementing TypeScript class's `TParams` (see CONVERTERS and ACTIONS).
 
-#### Binding sources
+#### Attribute values
 
-Every attribute value is a binding expression. The source grammar, shared by attributes, converter arguments and
-`@hx-*` qualifier arguments:
+**How a value is written is what decides its meaning** — one spelling per concept, so no value is ambiguous and none
+needs a second reading:
 
-- a bare identifier/path is a **property path**: `value="loginUsername"`, `value="data.user"`;
-- `@Dictionary.key` is a dictionary reference, `#Config.path` a config reference;
-- `true`, `false` and numbers (`0`, `1.5`, `-2`) are **inline literals**: `fullWidth="true"`, `min="0"`. Booleans and
-  numbers may be literal because their type cannot carry content — they never need translation and never vary by
-  customer;
-- a **single-quoted string** is a **string literal**: `variant="'primary'"`. Unlike a bare unquoted string — always a
-  reference — a string literal is valid only where the target declares an enum/union type (an inline `'a' | 'b'` union
-  or a referenced TypeScript enum/union), and it is type-checked against that type's members. This keeps arbitrary
+- **quoted text is static**: `variant="primary"`, `label='Save changes'`. Single and double quotes are fully
+  interchangeable — the quote character carries no meaning of its own, so a consumer normalizes to whichever its lint
+  rules prefer. Static text is valid only where the target declares a `string` or an enum/union type (an inline
+  `'a' | 'b'` union or a referenced TypeScript enum/union) and is type-checked against it — which keeps arbitrary
   hardcoded translations inexpressible (a free-form string prop has nowhere to land) while letting enum values be
   written inline;
+- **a value-less attribute is `true`**: `isVisible` is the short form of `isVisible={true}`;
+- **braces hold an expression**: `value={userName}`, `title={@Buttons.save | Truncate(length: 40)}`. Braces are
+  **required** for every expression, never optional, so adding a converter never reshapes a binding and a dynamic value
+  is always visible as one;
+- **the brace short form** binds a property to the state of the same name: `{userName}` is `userName={userName}`, and
+  it takes converters like any other expression (`{userName | Truncate(length: 40)}`).
+
+Element text follows the same split: `Save` is static text, `{@Buttons.save}` is a binding.
+
+#### Binding sources
+
+Inside `{...}` — and equally in converter arguments and `@hx-*` qualifier arguments, which share one grammar — a
+source's kind is decided by its **lexical form alone**:
+
+- a bare identifier/path is a **property path**: `{loginUsername}`, `{data.user}`;
+- `@Dictionary.key` is a dictionary reference, `#Config.path` a config reference;
+- `true`, `false` and numbers (`0`, `1.5`, `-2`) are **literals**: `{true}`, `{0}`. Booleans and numbers may be
+  literal because their type cannot carry content — they never need translation and never vary by customer;
+- a **quoted string** is a **string literal**: `{'primary'}` or `{"primary"}`, type-checked like static text;
 - converters chain with `|` (see CONVERTERS).
 
+Because a bare token is always a reference and a string literal is always quoted, the source a converter chain reads
+is never in doubt: `{'circle' | Pick}` converts a string literal, `{circle | Pick}` converts the state at `circle`.
+
 Compiled binding sources are discriminated by type — `{ "type": "state" | "dictionary" | "config" | "literal", ... }`
-— with literals carrying valid JSON in `value` (a string literal is normalized to its JSON form, `'primary'` →
-`"primary"`, coerced by one `JSON.parse`). All sources keep their reactivity as before; literals are static.
+— with literals carrying valid JSON in `value` (a quoted string is normalized to its JSON form, `'primary'` →
+`"primary"`, coerced by one `JSON.parse`; the static text of a quoted attribute compiles to that same literal). All
+sources keep their reactivity as before; literals are static.
 
 Switch:
 
 ```xml
-<Switch value="variant">
-    <Case is="'primary'">...</Case>
-    <Case is="'danger'">...</Case>
+<Switch value={variant}>
+    <Case is="primary">...</Case>
+    <Case is="danger">...</Case>
     <Default>...</Default>
 </Switch>
 ```
@@ -1187,16 +1208,18 @@ Switch:
 If:
 
 ```xml
-<If value="isSaving">...</If>
-<Unless value="isSaving">...</Unless>
-<If value="variant" is="'primary'">...</If>
-<If value="rows" is="3">...</If>
+<If value={isSaving}>...</If>
+<Unless value={isSaving}>...</Unless>
+<If value={variant} is="primary">...</If>
+<If value={rows} is={3}>...</If>
 ```
 
 The condition vocabulary is identical to `@hx-if` in \*.hxs: the subject is the `value` argument in both formats,
 comparison arguments are the same `is`/`isNot` names with the same operand grammar (binding sources — properties,
-enum string literals, boolean/number literals), truthiness is the subject alone, and `Unless` mirrors `@hx-unless` (it takes
-no comparison arguments). Learn the condition grammar once, use it in both formats.
+enum string literals, boolean/number literals), and truthiness is the subject alone. Negation is where the two differ
+in spelling only: the component format has the `<Unless>` tag, while a style — having one condition qualifier and no
+tags — negates through its operand, as `@hx-if(value: {x}, is: {false})`. Learn the condition grammar once, use it in
+both formats.
 
 List:
 
@@ -1210,7 +1233,7 @@ users = [
 
 ```xml
 <div>
-	<List name="myUsers" items="users" key="id" Item:extraProp="extraValue" Item:Component="@Components.CustomListItem" />
+	<List name="myUsers" items={users} key="id" Item:extraProp={extraValue} Item:Component={@Components.CustomListItem} />
 </div>
 ```
 
@@ -1219,9 +1242,9 @@ CustomListItem.hxm:
 ```xml
 <Component>
   <div> <!--Dynamic name="<id value>" is the value of the "key" or index 0, 1, 2 etc if key="id" is not specified-->
-    <div name="identifier">id</div>
-    <div name="full">fullname</div>
-    <div name="extra">extraProp</div>
+    <div name="identifier">{id}</div>
+    <div name="full">{fullname}</div>
+    <div name="extra">{extraProp}</div>
   </div>
 </Component>
 ```
@@ -1269,7 +1292,7 @@ Placement per format:
 ---
 /**
  * A confirmation dialog with OK/Cancel actions.
- * @example <ConfirmDialog title="@Dialogs.DeleteTitle" />
+ * @example <ConfirmDialog title={@Dialogs.DeleteTitle} />
  */
 props: {
   /** Text shown in the dialog header. */
@@ -1307,6 +1330,11 @@ to definitions by kind + name.
 
 ### SERVICES
 
+A service is a plain **TypeScript class** `extends Service`, provided through `IApplicationBootstrap.services` like
+every other framework element and resolved by its **class** rather than by a name (nothing in the DSL references a
+service), through `this.context.services.get(SomeService)`. It is a singleton per application: built on first
+resolution, dropped when the application stops. Actions reach services the same way, through their own context.
+
 HttpService - provides many scenarios with requests:
 
 - sequential requests
@@ -1319,13 +1347,13 @@ HttpService - provides many scenarios with requests:
 ### CONVERTERS
 
 A converter is a plain **TypeScript class** `extends Converter<TValue, TReturn, TParams>`, with `async format`
-(value → view) and `async parse` (view → state), so one chain serves two-way bindings. It is registered in DI like
-other framework elements and may inject other converters and providers. There is no DSL header file: the analyzer
-discovers converter classes by their base type and reads the parameter contract straight from `TParams`
-(`Parameters<Class["format"]>[1]`).
+(value → view) and `async parse` (view → state), so one chain serves two-way bindings. It is provided through
+`IApplicationBootstrap.converters` like other framework elements and may inject other converters and providers. There
+is no DSL header file: the analyzer discovers converter classes by their base type and reads the parameter contract
+straight from `TParams` (`Parameters<Class["format"]>[1]`).
 
-- **Binding name** = the class name minus the required `Converter` suffix — `TruncateConverter` → `Truncate` (the DI
-  token is the full class name). A class missing the suffix is a diagnostic.
+- **Binding name** = the class name minus the required `Converter` suffix — `TruncateConverter` → `Truncate` (the name
+  it is provided under in the bootstrap). A class missing the suffix is a diagnostic.
 - **`TParams` must be data.** It is constrained by `DataParams<TParams>`, which rejects function-typed members at any
   depth (callbacks are events, not data). Nested data objects and arrays are allowed; methodful objects (`Date`,
   `Map`, class instances) are not, since converter arguments are bound from the DSL's data sources.
@@ -1371,10 +1399,10 @@ source | converter | converter(name: value, ...) | ...
 
 ```xml
 <Button
-    price="data.price | Round(digits: #UIConfig.digits) | Currency(code: #UIConfig.currency)"
-    title="@Products.title | Truncate(length: #UIConfig.len, ellipsis: #UIConfig.ellipsis)"
-    created="data.createdAt | DateFormat(format: @Formats.shortDate)"
-    width="#SomeConfig.value | Scale(by: zoomLevel)"
+    price={data.price | Round(digits: #UIConfig.digits) | Currency(code: #UIConfig.currency)}
+    title={@Products.title | Truncate(length: #UIConfig.len, ellipsis: #UIConfig.ellipsis)}
+    created={data.createdAt | DateFormat(format: @Formats.shortDate)}
+    width={#SomeConfig.value | Scale(by: zoomLevel)}
 />
 ```
 
@@ -1408,8 +1436,8 @@ kind-check exactly like component props.
 
 An action is a plain **TypeScript class** `extends Action<TParams>` with a single `async Execute(params): Promise<void>`;
 it may inject services and the `ConfigProvider`. Like converters, it is discovered by its base type (no header), the
-**registry name** is the class name minus the required `Action` suffix (`SubmitAction` → `Submit`, DI token = the full
-class name), and `TParams` is `DataParams`-constrained (no functions at any depth).
+**registry name** is the class name minus the required `Action` suffix (`SubmitAction` → `Submit`) under which it is
+provided through `IApplicationBootstrap.actions`, and `TParams` is `DataParams`-constrained (no functions at any depth).
 
 An action is run by the builtin `<Execute>` component. Its `action` attribute is a registry reference naming the
 action class; the **sibling attributes are the action's named parameters** (not `param1`/`param2`), validated
@@ -1417,7 +1445,7 @@ dependently against `TParams` — unknown action, unknown/missing argument, and 
 converter arguments.
 
 ```xml
-<Execute action="Submit" id="123" result="savedId" />
+<Execute action="Submit" id={123} result={savedId} />
 ```
 
 Parameter direction is expressed with TypeScript's native `readonly`:
@@ -1454,39 +1482,6 @@ index.html -> `<div id="root"></div>`
 index.js -> `new MyApplication().run()`
 
 ### OTHER NOTES
-
-There is set of instances:
-ConfigManager injectable into
-ConfigBinder
-ConfigProvider
-ConfigProvider injectable into
-Actions
-Converters
-Components
-ConfigBinder injectable into
-Components
-DictionaryManager injectable into
-DictionaryBinder
-DictionaryProvider
-DictionaryProvider injectable into
-Converters
-Components
-DictionaryBinder injectable into
-Components
-StyleManager injectable into
-Styles
-ComponentManager injectable into
-Components
-DimensionManager injectable into
-Actions
-Components
-DictionaryManager
-ConfigManager
-StyleManager
-ComponentManager
-ThemeManager
-StateManager injectable into
-Components
 
 Configs don't have interpolation with component properties. They can reference own properties and other configs
 

@@ -182,7 +182,7 @@
         "heleonix.hx.definitionSources": {
           "type": "array",
           "default": [],
-          "markdownDescription": "Additional sources of compiled definitions beyond the workspace scan, for components/dictionaries/configs shipped as libraries. Each entry is an installed package specifier (`@acme/widgets`), an `http(s)` URL, a local file/directory path to a compiled-definitions manifest, or a local `.js`/`.mjs`/`.cjs` module exporting a custom `DefinitionLoader`. Paths are relative to the first workspace folder. Custom loader modules run workspace code and are loaded only in a trusted workspace.",
+          "markdownDescription": "Additional sources of compiled definitions beyond the workspace scan, for components/dictionaries/configs shipped as libraries. Each entry is an installed package specifier (`@acme/widgets`), an `http(s)` URL, a local file/directory path to a compiled-definitions manifest, or a local `.js`/`.mjs`/`.cjs` module exporting a custom definition transport. Paths are relative to the first workspace folder. Custom transport modules run workspace code and are loaded only in a trusted workspace.",
           "items": {
             "type": "string"
           }

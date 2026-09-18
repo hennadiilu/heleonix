@@ -1,5 +1,5 @@
 import { EXT_STYLE, EXT_THEME } from "@heleonix/hx-language"
-import { AnalyzerHost, ANALYZER_EXTS } from "../src/analysis/AnalyzerHost.ts"
+import { AnalyzerHost, ANALYZER_EXTS } from "../src/analysis/AnalyzerHost"
 
 describe("AnalyzerHost styling bridge", () => {
   it("then feeds style and theme files to the analyzer", () => {
@@ -16,7 +16,9 @@ describe("AnalyzerHost styling bridge", () => {
       qualifiers: [{ name: "If", args: [] }],
     })
 
-    expect(host.themeTokens().get("Brand.accent")).toBe("#7c3aed")
-    expect(host.qualifiers().map((q) => q.name)).toEqual(["If"])
+    const snapshot = host.snapshot()
+
+    expect(snapshot.themeTokens.get("Brand.accent")).toBe("#7c3aed")
+    expect(snapshot.qualifiers.map((q) => q.name)).toEqual(["If"])
   })
 })

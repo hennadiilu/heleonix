@@ -1,14 +1,14 @@
 import { pathToFileURL } from "node:url"
 import { scanXml } from "@heleonix/hx-compiler-core"
-import type { IRegistryInfo } from "@heleonix/hx-analyzer"
+import type { IConverterActionInfo } from "@heleonix/hx-analyzer"
 import { TextDocument } from "vscode-languageserver-textdocument"
 import {
   completeConverterAction,
   definitionConverterAction,
   hoverConverterAction,
-} from "../src/languages/component/converterActionFeature.ts"
+} from "../src/languages/component/converterActionFeature"
 
-const converters: IRegistryInfo[] = [
+const converters: IConverterActionInfo[] = [
   {
     name: "Truncate",
     params: [
@@ -22,7 +22,7 @@ const converters: IRegistryInfo[] = [
   },
 ]
 
-const actions: IRegistryInfo[] = [
+const actions: IConverterActionInfo[] = [
   {
     name: "Submit",
     params: [{ name: "id", optional: false, kind: "number", isFunction: false }],
@@ -40,7 +40,7 @@ function at(source: string, marker: string): { doc: TextDocument; offset: number
 
 describe("converterActionFeature", () => {
   describe("given a converter pipe in an attribute value", () => {
-    const source = `<Component><span title="@X.y | Tr" /></Component>`
+    const source = `<Component><span title={@X.y | Tr} /></Component>`
 
     describe("when completion is requested on the converter name", () => {
       it("then offers the discovered converter names", () => {
@@ -53,7 +53,7 @@ describe("converterActionFeature", () => {
   })
 
   describe("given a converter pipe in text content", () => {
-    const source = `<Component><span>data | Truncate</span></Component>`
+    const source = `<Component><span>{data | Truncate}</span></Component>`
 
     describe("when hover is requested on the converter name", () => {
       it("then shows the signature and docs", () => {
@@ -78,7 +78,7 @@ describe("converterActionFeature", () => {
   })
 
   describe("given converter arguments", () => {
-    const source = `<Component><span>data | Truncate(le)</span></Component>`
+    const source = `<Component><span>{data | Truncate(le)}</span></Component>`
 
     describe("when completion is requested inside the argument list", () => {
       it("then offers the converter's parameter names", () => {
@@ -114,7 +114,7 @@ describe("converterActionFeature", () => {
   })
 
   describe("given a binding source that is not a converter", () => {
-    const source = `<Component><span title="@X.y" /></Component>`
+    const source = `<Component><span title={@X.y} /></Component>`
 
     describe("when completion is requested in the source segment", () => {
       it("then defers (returns undefined) so ordinary completion runs", () => {

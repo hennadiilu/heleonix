@@ -8,8 +8,9 @@ import {
   ROOT_TAG,
   getOverrideTarget,
   parseBindingExpression,
+  soleExpression,
 } from "@heleonix/hx-language"
-import { IXmlScan } from "@heleonix/hx-compiler-core"
+import { IXmlAttribute, IXmlScan } from "@heleonix/hx-compiler-core"
 import { SemanticTokens, SemanticTokensBuilder } from "vscode-languageserver"
 import { TextDocument } from "vscode-languageserver-textdocument"
 import { TOKEN_MODIFIER, TOKEN_TYPE } from "./tokenLegend"
@@ -40,10 +41,6 @@ const BINDING_MODIFIER: Partial<Record<BindingTokenKind, number>> = {
   componentName: TOKEN_MODIFIER.readonly,
 }
 
-/**
- * Produces semantic tokens for a `*.hxm` document, mapping the structural scan
- * (from hx-compiler-core) and binding tokenizer to standard LSP token types.
- */
 export function buildComponentSemanticTokens(doc: TextDocument, scan: IXmlScan): SemanticTokens {
   const raw: RawToken[] = []
 
@@ -59,42 +56,26 @@ export function buildComponentSemanticTokens(doc: TextDocument, scan: IXmlScan):
         continue
       }
 
-      const isName = attr.name === NAME_ATTRIBUTE
-      const isOverride = !isName && getOverrideTarget(attr.name) !== undefined
-
-      if (isName) {
-        push(raw, attr.nameStart, attr.name.length, TOKEN_TYPE.keyword)
-      } else if (isOverride) {
-        pushOverrideName(raw, attr.name, attr.nameStart)
-      } else {
-        pushAttrName(raw, attr.name, attr.nameStart)
-      }
-
-      if (attr.value === undefined || attr.valueStart === undefined) {
-        continue
-      }
-
-      // Quotes take the value kind's color; `name` reads as a readonly variable
-      // and an override value as the component type it names.
-      const quoteType = isName ? TOKEN_TYPE.variable : isOverride ? TOKEN_TYPE.class : sourceTokenType(attr.value)
-      const quoteModifiers = isName ? TOKEN_MODIFIER.readonly : 0
-      push(raw, attr.valueStart - 1, 1, quoteType, quoteModifiers)
-      if (!attr.unterminated && attr.valueEnd !== undefined) {
-        push(raw, attr.valueEnd, 1, quoteType, quoteModifiers)
-      }
-
-      if (isName) {
-        pushDeclaredName(raw, attr.value, attr.valueStart)
-      } else if (isOverride) {
-        pushOverrideValue(raw, attr.value, attr.valueStart)
-      } else {
-        pushBinding(raw, attr.value, attr.valueStart)
-      }
+      pushAttribute(raw, attr)
     }
   }
 
+  // Static text is a string literal; a run that is one `{...}` expression is
+  // tokenized as the binding it holds.
   for (const node of scan.texts) {
-    pushBinding(raw, node.value, node.start)
+    const expression = soleExpression(node.value)
+
+    if (!expression) {
+      pushText(raw, node.value, node.start)
+
+      continue
+    }
+
+    const start = node.start + expression.start
+    const type = sourceTokenType(expression.text)
+    push(raw, start - 1, 1, type)
+    pushBinding(raw, expression.text, start)
+    push(raw, node.start + expression.end, 1, type)
   }
 
   raw.sort((a, b) => a.offset - b.offset)
@@ -107,6 +88,60 @@ export function buildComponentSemanticTokens(doc: TextDocument, scan: IXmlScan):
   }
 
   return builder.build()
+}
+
+function pushAttribute(raw: RawToken[], attr: IXmlAttribute): void {
+  const isName = attr.name === NAME_ATTRIBUTE
+  const isOverride = !isName && getOverrideTarget(attr.name) !== undefined
+
+  if (!attr.shorthand) {
+    if (isName) {
+      push(raw, attr.nameStart, attr.name.length, TOKEN_TYPE.keyword)
+    } else if (isOverride) {
+      pushOverrideName(raw, attr.name, attr.nameStart)
+    } else {
+      pushAttrName(raw, attr.name, attr.nameStart)
+    }
+  }
+
+  if (attr.kind === "flag" || attr.value === undefined || attr.valueStart === undefined) {
+    return
+  }
+
+  const isExpression = attr.kind === "expression"
+  const delimiterType = isName
+    ? TOKEN_TYPE.variable
+    : isOverride
+      ? TOKEN_TYPE.class
+      : isExpression
+        ? sourceTokenType(attr.value)
+        : TOKEN_TYPE.string
+  const delimiterModifiers = isName ? TOKEN_MODIFIER.readonly : 0
+
+  push(raw, attr.valueStart - 1, 1, delimiterType, delimiterModifiers)
+
+  if (!attr.unterminated && attr.valueEnd !== undefined) {
+    push(raw, attr.valueEnd, 1, delimiterType, delimiterModifiers)
+  }
+
+  if (isName) {
+    pushDeclaredName(raw, attr.value, attr.valueStart)
+  } else if (isOverride) {
+    pushOverrideValue(raw, isExpression, attr.value, attr.valueStart)
+  } else if (isExpression) {
+    pushBinding(raw, attr.value, attr.valueStart)
+  } else {
+    pushText(raw, attr.value, attr.valueStart)
+  }
+}
+
+function pushText(raw: RawToken[], value: string, start: number): void {
+  const lead = value.length - value.trimStart().length
+  const text = value.trim()
+
+  if (text) {
+    push(raw, start + lead, text.length, TOKEN_TYPE.string)
+  }
 }
 
 function pushTag(raw: RawToken[], name: string, start: number): void {
@@ -132,7 +167,6 @@ function pushDeclaredName(raw: RawToken[], value: string, valueStart: number): v
   }
 }
 
-/** `target:Component` override name (attribute or tag): target chain, `:`, then the `Component` keyword. */
 function pushOverrideName(raw: RawToken[], name: string, start: number): void {
   const colon = name.indexOf(COMPONENT_PROPERTY_SEPARATOR)
 
@@ -146,9 +180,8 @@ function pushOverrideName(raw: RawToken[], name: string, start: number): void {
   push(raw, start + colon + 1, name.length - colon - 1, TOKEN_TYPE.keyword)
 }
 
-/** `target:Component` value: a `@Dic`/`#Cfg` reference keeps its color, a bare component name reads as a type. */
-function pushOverrideValue(raw: RawToken[], value: string, valueStart: number): void {
-  const type = parseBindingExpression(value).type
+function pushOverrideValue(raw: RawToken[], isExpression: boolean, value: string, valueStart: number): void {
+  const type = isExpression ? parseBindingExpression(value).type : "literal"
 
   if (type === "dictionary" || type === "config") {
     pushBinding(raw, value, valueStart)
@@ -163,7 +196,6 @@ function pushOverrideValue(raw: RawToken[], value: string, valueStart: number): 
   }
 }
 
-/** `component:property` (component may be dotted) or a plain property path. */
 function pushAttrName(raw: RawToken[], name: string, start: number): void {
   const colon = name.indexOf(COMPONENT_PROPERTY_SEPARATOR)
 

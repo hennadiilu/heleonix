@@ -20,12 +20,6 @@ const REF_PATTERNS: ReadonlyMap<ReferenceType, RegExp> = new Map(
   REFERENCE_TYPES.map((kind) => [kind, new RegExp(`${REFERENCE_PREFIXES[kind]}(${REF_NAME})?$`)]),
 )
 
-/**
- * Completion for reference kinds (`@dictionary`, `#config`, ...) against the
- * index: names first, then entries after `Name.`. Used in `*.hxm` bindings and
- * in `*.hxd`/`*.hxc` interpolations. Returns `undefined` when the cursor is not
- * on a reference.
- */
 export function referenceCompletion(
   doc: TextDocument,
   offset: number,

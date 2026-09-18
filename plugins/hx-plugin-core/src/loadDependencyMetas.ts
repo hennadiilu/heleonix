@@ -3,12 +3,6 @@ import path from "node:path"
 import { META_CONDITION } from "@heleonix/hx-language"
 import type { IMetaDocument } from "@heleonix/hx-language"
 
-/**
- * Loads the `hx.meta.json` manifests of a package's direct dependencies:
- * each dependency's `exports` map is searched for `hxmeta`-conditioned
- * targets. Unreadable or absent manifests are skipped - dependency metadata
- * only ever adds diagnostics precision, never gates compilation.
- */
 export function loadDependencyMetas(contextDir: string): IMetaDocument[] {
   const result: IMetaDocument[] = []
   const packageJson = readJson(path.join(contextDir, "package.json")) as
@@ -45,7 +39,6 @@ export function loadDependencyMetas(contextDir: string): IMetaDocument[] {
   return result
 }
 
-/** All `hxmeta`-conditioned target paths inside an `exports` value. */
 function metaTargets(exports: unknown, found: Set<string> = new Set()): Set<string> {
   if (!exports || typeof exports !== "object" || Array.isArray(exports)) {
     return found

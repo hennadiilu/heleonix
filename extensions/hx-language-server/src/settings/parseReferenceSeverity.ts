@@ -1,6 +1,5 @@
 import { DiagnosticSeverity } from "vscode-languageserver"
 
-/** Parses a severity setting (`error`/`warning`/`information`/`hint`) to an LSP severity (`undefined` = off). */
 export function parseReferenceSeverity(value: string | undefined): DiagnosticSeverity | undefined {
   if (value === "error") {
     return DiagnosticSeverity.Error

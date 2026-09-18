@@ -12,7 +12,7 @@ const definition = await compiler.compile(source, dimension, { name: "CustomAddB
 ```
 
 The compiled output is a JSON definition compatible with the `IComponentDefinition`
-shape consumed by `@heleonix/hx-core`'s `ComponentDefinitionProvider`.
+shape consumed by `@heleonix/hx-core`'s `ComponentDefinitionLoader`.
 
 Attribute values and inner text content are parsed as binding expressions:
 

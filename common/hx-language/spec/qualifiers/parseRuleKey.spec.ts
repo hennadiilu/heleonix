@@ -87,7 +87,7 @@ describe("stringifyRuleKey (round-trip)", () => {
     "Is(.a,.b)",
     "If(value:{isInvalid})",
     "If(is:{'primary'},value:{variant})",
-    "Unless(value:{loading})",
+    "If(isNot:{'danger'},value:{variant})",
     "Style(for:head)",
     "Style(for:head.menu.item)",
     "Style(for:Component)",

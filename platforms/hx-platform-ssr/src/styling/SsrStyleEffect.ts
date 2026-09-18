@@ -1,17 +1,9 @@
-import type { StyleEffect, StyleHandle } from "@heleonix/hx-core"
+import type { IStyleEffect, StyleHandle } from "@heleonix/hx-core"
 import { mangleVariable } from "@heleonix/hx-platform-web"
 import type { SsrElementState } from "./SsrElementState"
 import type { SsrStyleHandle } from "./SsrStyleHandle"
 
-/**
- * The SSR implementation of {@link StyleEffect} for one component: every op
- * mutates its {@link SsrElementState} instead of a DOM node, so the exact same
- * `attach()` calls the client runs at hydration are serialized into markup on
- * the server. `setVariable`/`removeVariable` mangle the core's neutral key to the
- * same `--hx-` custom property the composed classes reference (via the web's
- * {@link mangleVariable}), so server and client agree byte-for-byte.
- */
-export class SsrStyleEffect implements StyleEffect {
+export class SsrStyleEffect implements IStyleEffect {
   private readonly state: SsrElementState
 
   public constructor(state: SsrElementState) {

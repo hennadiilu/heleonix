@@ -53,4 +53,20 @@ describe("isBindingExpression", () => {
       })
     })
   })
+
+  describe("given a double-quoted string literal", () => {
+    describe("when the expression is checked", () => {
+      it("then accepts it - the quote character carries no meaning of its own", () => {
+        expect(isBindingExpression('"primary"')).toBeTrue()
+      })
+    })
+  })
+
+  describe("given a converter chain whose literal argument holds a pipe", () => {
+    describe("when the expression is checked", () => {
+      it("then does not split the chain inside the quoted literal", () => {
+        expect(isBindingExpression("data | Pick(fallback: 'a | b')")).toBeTrue()
+      })
+    })
+  })
 })

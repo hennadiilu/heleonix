@@ -2,11 +2,6 @@ import { ReferenceType } from "@heleonix/hx-language"
 import { DefinitionIndex } from "../index/DefinitionIndex"
 import { REFERENCE_MESSAGES } from "./referenceMessages"
 
-/**
- * Resolves a `name.entry` reference against the index. Returns a message when
- * the dictionary/config name or its entry is unknown, or `undefined` when it
- * resolves cleanly.
- */
 export function referenceIssue(
   kind: ReferenceType,
   name: string,

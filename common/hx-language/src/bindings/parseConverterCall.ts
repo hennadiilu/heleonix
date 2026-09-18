@@ -7,17 +7,25 @@ import { parseBindingExpression } from "./parseBindingExpression"
 const ARGUMENT_SEPARATOR = ","
 const NAME_VALUE_SEPARATOR = ":"
 
-/**
- * Parses one converter pipe segment into its registry name and named arguments.
- * A bare converter (`Truncate`) yields empty `args`; a call
- * (`Truncate(length: 10, ellipsis: 'dots')`) parses each `name: value` pair as an
- * ordinary binding source through {@link parseBindingExpression}.
- *
- * Malformed spellings the language forbids throw: empty parens (`Truncate()`), an
- * argument without a `name:` prefix, and a converter chain inside an argument
- * (`length: value | Other`) - arguments are plain sources, not chains.
- */
+// A converter segment is an immutable string that reappears on every recompute
+// of a binding, so its parse is cached: callers treat the result as read-only.
+const cache = new Map<string, IConverterCall>()
+
 export function parseConverterCall(segment: string): IConverterCall {
+  const cached = cache.get(segment)
+
+  if (cached !== undefined) {
+    return cached
+  }
+
+  const call = parseSegment(segment)
+
+  cache.set(segment, call)
+
+  return call
+}
+
+function parseSegment(segment: string): IConverterCall {
   const trimmed = segment.trim()
   const parenAt = trimmed.indexOf("(")
 

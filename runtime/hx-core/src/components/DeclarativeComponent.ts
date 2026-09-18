@@ -1,18 +1,12 @@
 import { Component } from "./Component"
 import type { IComponentDefinition, IComponentProperty, IComponentUsage } from "@heleonix/hx-language"
-import { ComponentManager } from "./ComponentManager"
 import type { PlatformComponent } from "./PlatformComponent"
-import { Binder } from "../bindings/Binder"
+import type { MaybePromise } from "../common/MaybePromise"
+import { thenMaybe } from "../common/thenMaybe"
 import { reconcileBindings } from "./reconcileBindings"
 
 export class DeclarativeComponent extends Component {
-  protected readonly binder = this.inject(Binder)
-
-  protected readonly componentManager = this.inject(ComponentManager)
-
-  public static get diName(): string {
-    return "DeclarativeComponent"
-  }
+  public static readonly hxName = "DeclarativeComponent"
 
   public override async build(
     fqName: string,
@@ -22,33 +16,23 @@ export class DeclarativeComponent extends Component {
     scopedParent: Component | undefined,
     platformParent: PlatformComponent | undefined,
   ): Promise<void> {
-    await super.build(fqName, definition, usage, parent, scopedParent, platformParent)
-
-    this.scopedParent = this
+    await super.build(fqName, definition, usage, parent, this, platformParent)
 
     await this.applyBindings(usage.properties)
 
-    if (definition.children) {
-      for (const childUsage of definition.children) {
-        const component = await this.componentManager.buildComponent(childUsage, this, this, platformParent)
-
-        this.appendChild(component)
-
-        component.mount()
-      }
-    }
+    await this.attachChildren(definition.children, this, this, platformParent)
   }
 
   public override async update(newDefinition: IComponentDefinition, newUsage: IComponentUsage): Promise<void> {
     await reconcileBindings(
       this.usage.properties,
       newUsage.properties,
-      (property) => this.applyBinding(property),
-      (property) => this.removeBinding(property),
-      (property) => this.refreshBinding(property),
+      this.applyBinding,
+      this.removeBinding,
+      this.refreshBinding,
     )
 
-    await this.componentManager.reconcileChildren(this, newDefinition.children, this, this, this.platformParent)
+    await this.reconcileChildren(newDefinition.children, this, this, this.platformParent)
 
     await super.update(newDefinition, newUsage)
   }
@@ -56,30 +40,23 @@ export class DeclarativeComponent extends Component {
   public override destroy(): void {
     this.removeBindings(this.usage.properties)
 
-    for (const child of [...this.children]) {
-      child.unmount()
-      this.removeChild(child)
-
-      this.componentManager.destroyComponent(child)
-    }
-
     super.destroy()
   }
 
-  private async applyBindings(properties: IComponentProperty[] | undefined): Promise<void> {
-    if (!properties) {
-      return
+  private applyBindings(properties: IComponentProperty[] | undefined): MaybePromise<void> {
+    let chain: MaybePromise<void> = undefined
+
+    for (const property of properties ?? []) {
+      chain = thenMaybe(chain, () => this.applyBinding(property))
     }
 
-    for (const property of properties) {
-      await this.applyBinding(property)
-    }
+    return chain
   }
 
-  private async applyBinding(property: IComponentProperty): Promise<void> {
-    const targetFQPropertyName = this.componentManager.getTargetFQPropertyName(this, property.name)
+  private applyBinding = (property: IComponentProperty): MaybePromise<void> => {
+    const targetFQPropertyName = this.context.components.getTargetFQPropertyName(this, property.name)
 
-    await this.binder.bind(targetFQPropertyName, property.binding, this.scopedParent?.fqName ?? "")
+    return this.context.binder.bind(targetFQPropertyName, property.binding, this.scopedParent?.fqName ?? "")
   }
 
   private removeBindings(properties: IComponentProperty[] | undefined): void {
@@ -92,13 +69,13 @@ export class DeclarativeComponent extends Component {
     }
   }
 
-  private removeBinding(property: IComponentProperty): void {
-    this.binder.unbind(this.componentManager.getTargetFQPropertyName(this, property.name))
+  private removeBinding = (property: IComponentProperty): void => {
+    this.context.binder.unbind(this.context.components.getTargetFQPropertyName(this, property.name))
   }
 
-  private refreshBinding(property: IComponentProperty): void {
-    this.binder.refresh(
-      this.componentManager.getTargetFQPropertyName(this, property.name),
+  private refreshBinding = (property: IComponentProperty): void => {
+    this.context.binder.rebind(
+      this.context.components.getTargetFQPropertyName(this, property.name),
       property.binding,
       this.scopedParent?.fqName ?? "",
     )

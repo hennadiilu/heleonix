@@ -1,29 +1,19 @@
-import type { StyleEffect, StyleHandle } from "@heleonix/hx-core"
+import type { IScheduler, IStyleEffect, StyleHandle } from "@heleonix/hx-core"
 import { mangleVariable } from "./mangleVariable"
-import { StyleWriteScheduler, synchronousScheduler } from "./StyleWriteScheduler"
 import type { WebStyleHandle } from "./WebStyleHandle"
 
-/**
- * The DOM implementation of {@link StyleEffect} for one component: every op fans
- * out to each of the component's root elements, batched through a
- * {@link StyleWriteScheduler} (a `requestAnimationFrame` flush in the browser) so
- * a styling burst touches the DOM once per frame. `setVariable`/`removeVariable`
- * take the core's neutral key and mangle it to the `--hx-` custom property the
- * composed classes reference; `setProperty`/`removeProperty` use CSSOM names
- * directly; `setClass`/`removeClass` read the class off the opaque handle.
- */
-export class WebStyleEffect implements StyleEffect {
+export class WebStyleEffect implements IStyleEffect {
   private readonly roots: readonly HTMLElement[]
 
-  private readonly scheduler: StyleWriteScheduler
+  private readonly scheduler: IScheduler
 
-  public constructor(roots: readonly HTMLElement[], scheduler: StyleWriteScheduler = synchronousScheduler) {
+  public constructor(roots: readonly HTMLElement[], scheduler: IScheduler) {
     this.roots = roots
     this.scheduler = scheduler
   }
 
   public setAttribute(name: string, value: string): void {
-    this.scheduler.write(() => {
+    this.scheduler.scheduleCommit(() => {
       for (const root of this.roots) {
         root.setAttribute(name, value)
       }
@@ -31,7 +21,7 @@ export class WebStyleEffect implements StyleEffect {
   }
 
   public removeAttribute(name: string): void {
-    this.scheduler.write(() => {
+    this.scheduler.scheduleCommit(() => {
       for (const root of this.roots) {
         root.removeAttribute(name)
       }
@@ -41,7 +31,7 @@ export class WebStyleEffect implements StyleEffect {
   public setVariable(name: string, value: string): void {
     const property = mangleVariable(name)
 
-    this.scheduler.write(() => {
+    this.scheduler.scheduleCommit(() => {
       for (const root of this.roots) {
         root.style.setProperty(property, value)
       }
@@ -51,7 +41,7 @@ export class WebStyleEffect implements StyleEffect {
   public removeVariable(name: string): void {
     const property = mangleVariable(name)
 
-    this.scheduler.write(() => {
+    this.scheduler.scheduleCommit(() => {
       for (const root of this.roots) {
         root.style.removeProperty(property)
       }
@@ -61,7 +51,7 @@ export class WebStyleEffect implements StyleEffect {
   public setClass(handle: StyleHandle): void {
     const { className } = handle as unknown as WebStyleHandle
 
-    this.scheduler.write(() => {
+    this.scheduler.scheduleCommit(() => {
       for (const root of this.roots) {
         root.classList.add(className)
       }
@@ -71,7 +61,7 @@ export class WebStyleEffect implements StyleEffect {
   public removeClass(handle: StyleHandle): void {
     const { className } = handle as unknown as WebStyleHandle
 
-    this.scheduler.write(() => {
+    this.scheduler.scheduleCommit(() => {
       for (const root of this.roots) {
         root.classList.remove(className)
       }
@@ -79,7 +69,7 @@ export class WebStyleEffect implements StyleEffect {
   }
 
   public setProperty(name: string, value: string): void {
-    this.scheduler.write(() => {
+    this.scheduler.scheduleCommit(() => {
       for (const root of this.roots) {
         root.style.setProperty(name, value)
       }
@@ -87,7 +77,7 @@ export class WebStyleEffect implements StyleEffect {
   }
 
   public removeProperty(name: string): void {
-    this.scheduler.write(() => {
+    this.scheduler.scheduleCommit(() => {
       for (const root of this.roots) {
         root.style.removeProperty(name)
       }

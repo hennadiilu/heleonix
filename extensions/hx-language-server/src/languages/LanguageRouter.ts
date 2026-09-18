@@ -1,12 +1,6 @@
 import { SemanticTokensLegend } from "vscode-languageserver"
 import { ILanguageService } from "./ILanguageService"
 
-/**
- * Dispatches editor requests to the {@link ILanguageService} registered for a
- * document's extension, and aggregates the capabilities the server advertises
- * (completion triggers, semantic-token legend, watch glob) so the server stays
- * kind-agnostic.
- */
 export class LanguageRouter {
   private readonly byExtension = new Map<string, ILanguageService>()
 

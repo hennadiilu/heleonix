@@ -24,11 +24,6 @@ export class DefinitionRegistry {
     return this.index
   }
 
-  /**
-   * The type-level `hx.meta.json` manifests every source carries, gathered after
-   * a {@link rebuild}/{@link reloadSources}. Fed to the analyzer so definitions
-   * from packages, endpoints and custom loaders validate like workspace ones.
-   */
   public metas(): IMetaDocument[] {
     const result: IMetaDocument[] = []
 
@@ -67,12 +62,6 @@ export class DefinitionRegistry {
     return this.reindex()
   }
 
-  /**
-   * Re-loads the non-incremental (external) sources - compiled definitions from
-   * packages, endpoints and manifests - leaving the incrementally-maintained
-   * workspace contributions untouched. Used to pick up dependency changes (e.g.
-   * after an install) without re-walking the workspace.
-   */
   public async reloadSources(): Promise<DefinitionIndex> {
     this.sourceContributions.clear()
 

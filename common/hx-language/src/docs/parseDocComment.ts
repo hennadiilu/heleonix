@@ -13,14 +13,6 @@ const DECORATION = /^\s*(?:\*(?:[ \t]|$))?/
 // A named tag's first line: the target name followed by optional text.
 const NAMED_TAG = /^(\S+)\s*/
 
-/**
- * Parses the inner text of a doc comment into {@link IDocs}: a markdown
- * summary followed by `@prop`/`@param`/`@example`/`@deprecated`/`@see` block
- * tags (each running until the next tag). A doc comment is a regular comment
- * whose inner text starts with `*` (`<!--* ... -->`, `/** ... *\/`); JSDoc-style
- * `*` line decorations are stripped. Returns `undefined` when the text is not
- * a doc comment or carries no content.
- */
 export function parseDocComment(inner: string): IDocs | undefined {
   if (!inner.startsWith("*")) {
     return undefined

@@ -1,64 +1,51 @@
-import type { IDimensionDefinition } from "@heleonix/hx-language"
-import { Component } from "./components/Component"
-import { PlatformAdapter } from "./platform/PlatformAdapter"
-import { PlatformRuntime } from "./platform/PlatformRuntime"
-import { InjectableConstructor } from "./injection/InjectableConstructor"
-import { ComponentDefinitionProvider } from "./components/ComponentDefinitionProvider"
-import { DictionaryDefinitionProvider } from "./dictionaries/DictionaryDefinitionProvider"
-import { DictionaryDefinitionSource } from "./dictionaries/DictionaryDefinitionSource"
-import { ConfigDefinitionProvider } from "./configs/ConfigDefinitionProvider"
-import { ComponentDefinitionSource } from "./components/ComponentDefinitionSource"
-import { ConfigDefinitionSource } from "./configs/ConfigDefinitionSource"
-import { ConfigSelectionStrategy } from "./configs/ConfigSelectionStrategy"
-import { DictionarySelectionStrategy } from "./dictionaries/DictionarySelectionStrategy"
-import { ComponentSelectionStrategy } from "./components/ComponentSelectionStrategy"
-import { StyleDefinitionProvider } from "./styling/StyleDefinitionProvider"
-import { StyleDefinitionSource } from "./styling/StyleDefinitionSource"
-import { StyleSelectionStrategy } from "./styling/StyleSelectionStrategy"
-import { ThemeDefinitionProvider } from "./styling/ThemeDefinitionProvider"
-import { ThemeDefinitionSource } from "./styling/ThemeDefinitionSource"
-import { Converter } from "./converters/Converter"
+import type {
+  IComponentDefinition,
+  IConfigDefinition,
+  IDictionaryDefinition,
+  IDimensionDefinition,
+  IStyleDefinition,
+  IThemeDefinition,
+} from "@heleonix/hx-language"
+import { ComponentConstructor } from "./components/ComponentConstructor"
+import { ApplicationRuntime } from "./platform/ApplicationRuntime"
+import { ComponentDefinitionLoader } from "./components/ComponentDefinitionLoader"
+import { DictionaryDefinitionLoader } from "./dictionaries/DictionaryDefinitionLoader"
+import { ConfigDefinitionLoader } from "./configs/ConfigDefinitionLoader"
+import { AggregateDefinitionSource } from "./definitions/AggregateDefinitionSource"
+import { DefinitionSource } from "./definitions/DefinitionSource"
+import type { IDefinitionSection } from "./IDefinitionSection"
+import { StyleDefinitionLoader } from "./styling/StyleDefinitionLoader"
+import { ThemeDefinitionLoader } from "./theming/ThemeDefinitionLoader"
+import { ConverterConstructor } from "./converters/ConverterConstructor"
+import { ActionConstructor } from "./actions/ActionConstructor"
+import { ServiceConstructor } from "./services/ServiceConstructor"
+import { StyleQualifierConstructor } from "./styling/qualifiers/StyleQualifierConstructor"
 
 export interface IApplicationBootstrap {
-  componentDefinition: {
-    provider?: InjectableConstructor<ComponentDefinitionProvider>
-    sources: InjectableConstructor<ComponentDefinitionSource>[]
-    selectionStrategy?: ComponentSelectionStrategy
-  }
+  runtime: new () => ApplicationRuntime
 
-  dictionaryDefinition: {
-    provider?: InjectableConstructor<DictionaryDefinitionProvider>
-    sources: InjectableConstructor<DictionaryDefinitionSource>[]
-    selectionStrategy?: DictionarySelectionStrategy
-  }
+  componentDefinition?: IDefinitionSection<DefinitionSource<IComponentDefinition>, ComponentDefinitionLoader>
 
-  configDefinition: {
-    provider?: InjectableConstructor<ConfigDefinitionProvider>
-    sources: InjectableConstructor<ConfigDefinitionSource>[]
-    selectionStrategy?: ConfigSelectionStrategy
-  }
+  dictionaryDefinition?: IDefinitionSection<DefinitionSource<IDictionaryDefinition>, DictionaryDefinitionLoader>
 
-  /** Opt-in styling: compiled `*.hxs` sources. Enables the `StyleManager` lifecycle. */
-  styleDefinition?: {
-    provider?: InjectableConstructor<StyleDefinitionProvider>
-    sources: InjectableConstructor<StyleDefinitionSource>[]
-    selectionStrategy?: StyleSelectionStrategy
-  }
+  configDefinition?: IDefinitionSection<DefinitionSource<IConfigDefinition>, ConfigDefinitionLoader>
 
-  /** Opt-in theming: compiled `*.hxt` sources. Enables the `ThemeManager` at app start. */
-  themeDefinition?: {
-    provider?: InjectableConstructor<ThemeDefinitionProvider>
-    sources: InjectableConstructor<ThemeDefinitionSource>[]
-  }
+  styleDefinition?: IDefinitionSection<DefinitionSource<IStyleDefinition>, StyleDefinitionLoader>
+
+  themeDefinition?: Omit<
+    IDefinitionSection<AggregateDefinitionSource<IThemeDefinition>, ThemeDefinitionLoader>,
+    "selectionStrategy"
+  >
 
   dimensions?: IDimensionDefinition[]
 
-  platform: {
-    runtime: InjectableConstructor<PlatformRuntime>
-    adapter: InjectableConstructor<PlatformAdapter>
-  }
+  components?: ComponentConstructor[]
 
-  components?: InjectableConstructor<Component>[]
+  converters?: ConverterConstructor[]
 
-  converters?: InjectableConstructor<Converter>[]
+  actions?: ActionConstructor[]
+
+  qualifiers?: StyleQualifierConstructor[]
+
+  services?: ServiceConstructor[]
 }

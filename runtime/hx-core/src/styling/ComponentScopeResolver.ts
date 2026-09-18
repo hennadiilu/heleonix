@@ -1,17 +1,9 @@
 import { Component } from "../components/Component"
-import { StyleScopeResolver } from "./StyleScopeResolver"
+import { IStyleScopeResolver } from "./IStyleScopeResolver"
 
 const SEGMENT_SEPARATOR = "."
 
-/**
- * Resolves a `@hx-style(for: ...)` path against the live component tree: each
- * dot-segment is a control name matched among the descendants of the previous
- * segment's matches (searching through anonymous wrapper elements), starting at
- * the styling component. The final segment's matches are the rule's targets, so
- * a repeated control name (a list) styles every instance. Resolution is over the
- * tree as it stands when the style applies; a dimension change re-resolves it.
- */
-export class ComponentScopeResolver implements StyleScopeResolver<Component> {
+export class ComponentScopeResolver implements IStyleScopeResolver {
   public resolve(component: Component, path: string): readonly Component[] {
     let current: Component[] = [component]
 
@@ -32,6 +24,8 @@ export class ComponentScopeResolver implements StyleScopeResolver<Component> {
     return current
   }
 }
+
+export const componentScopeResolver = new ComponentScopeResolver()
 
 function collectNamed(node: Component, name: string, out: Component[]): void {
   for (const child of node.children) {

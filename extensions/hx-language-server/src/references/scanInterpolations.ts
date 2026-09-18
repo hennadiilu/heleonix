@@ -18,12 +18,6 @@ const KIND_BY_PREFIX: ReadonlyMap<string, ReferenceType> = new Map(
   REFERENCE_TYPES.map((kind) => [REFERENCE_PREFIXES[kind], kind]),
 )
 
-/**
- * Finds every `{ ... }` interpolation in `text` and classifies it. Qualified
- * `{@Name.entry}` / `{#Name.entry}` become `dictionary` / `config` references
- * (with `name`/`entry`); everything else is `state`. Offsets span the
- * whole `{ ... }`.
- */
 export function scanInterpolations(text: string): IInterpolationRef[] {
   const refs: IInterpolationRef[] = []
   const pattern = new RegExp(INTERPOLATION.source, "g")

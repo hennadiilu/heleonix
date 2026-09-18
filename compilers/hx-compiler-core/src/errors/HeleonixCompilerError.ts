@@ -3,11 +3,6 @@ import { IErrorInfo } from "./IErrorInfo"
 export class HeleonixCompilerError extends Error {
   public readonly code: string
 
-  /**
-   * Zero-based offset into the source where the error was detected, when known.
-   * Set by the parsers so editor tooling can map the failure to a precise
-   * range without parsing it out of the formatted message.
-   */
   public offset?: number
 
   public constructor(error: IErrorInfo, ...args: string[]) {

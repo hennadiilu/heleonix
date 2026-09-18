@@ -1,7 +1,7 @@
 import { TextDocument } from "vscode-languageserver-textdocument"
 import type { IComponentInfo } from "@heleonix/hx-analyzer"
 import type { IQualifierDefinition } from "@heleonix/hx-language"
-import { completeQualifier, hoverQualifier } from "../src/languages/styling/qualifierFeature.ts"
+import { completeQualifier, hoverQualifier } from "../src/languages/styling/qualifierFeature"
 import type { MarkupContent } from "vscode-languageserver"
 
 const qualifiers: IQualifierDefinition[] = [

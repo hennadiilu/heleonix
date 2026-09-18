@@ -14,7 +14,8 @@ export function generateDefinitionSource(
   const request = options.request ?? defaultRequest
 
   // Group definitions by name at build time so the generated module is a plain,
-  // static lookup table - no runtime accumulation helper needed.
+  // static lookup table - no runtime accumulation helper needed. The theme is
+  // resolved as a whole rather than by name, so its module keeps a flat list.
   const groups = new Map<string, number[]>()
 
   files.forEach((file, index) => {
@@ -27,11 +28,22 @@ export function generateDefinitionSource(
     }
   })
 
+  const aggregate = kind === "theme"
+
   if (options.loading === "lazy") {
-    return generateLazy(baseClass, className, files, groups, request, options.chunkName, options.importAttributes)
+    return generateLazy(
+      baseClass,
+      className,
+      files,
+      groups,
+      aggregate,
+      request,
+      options.chunkName,
+      options.importAttributes,
+    )
   }
 
-  return generateEager(baseClass, className, files, groups, request, options.importAttributes)
+  return generateEager(baseClass, className, files, groups, aggregate, request, options.importAttributes)
 }
 
 function generateEager(
@@ -39,6 +51,7 @@ function generateEager(
   className: string,
   files: readonly IAssetFile[],
   groups: ReadonlyMap<string, number[]>,
+  aggregate: boolean,
   request: (file: IAssetFile) => string,
   importAttributes?: boolean,
 ): string {
@@ -47,6 +60,20 @@ function generateEager(
   const imports = files
     .map((file, index) => `import _${index} from ${JSON.stringify(request(file))}${attributes}`)
     .join("\n")
+
+  if (aggregate) {
+    return `import { ${baseClass} } from "@heleonix/hx-core"
+${imports}
+
+const definitions = [${files.map((_file, index) => `_${index}`).join(", ")}]
+
+export class ${className} extends ${baseClass} {
+  loadDefinitions(dimension) {
+    return Promise.resolve(definitions)
+  }
+}
+`
+  }
 
   const entries = [...groups]
     .map(([name, indexes]) => `  [${JSON.stringify(name)}, [${indexes.map((index) => `_${index}`).join(", ")}]],`)
@@ -60,16 +87,8 @@ ${entries}
 ])
 
 export class ${className} extends ${baseClass} {
-  static get diName() {
-    return ${JSON.stringify(className)}
-  }
-
-  getDefinitions(name, dimension) {
+  loadDefinitions(name, dimension) {
     return Promise.resolve(groups.get(name) || [])
-  }
-
-  getAllDefinitions() {
-    return Promise.resolve([...groups.values()].flat())
   }
 }
 `
@@ -80,6 +99,7 @@ function generateLazy(
   className: string,
   files: readonly IAssetFile[],
   groups: ReadonlyMap<string, number[]>,
+  aggregate: boolean,
   request: (file: IAssetFile) => string,
   chunkName?: (file: IAssetFile) => string | undefined,
   importAttributes?: boolean,
@@ -93,12 +113,27 @@ function generateLazy(
     return `() => import(${comment}${JSON.stringify(request(file))}${attributes})`
   })
 
+  // The module cache holds dynamic imports, so repeated loadDefinitions calls for
+  // the same name reuse already-loaded modules without extra bookkeeping here.
+  if (aggregate) {
+    return `import { ${baseClass} } from "@heleonix/hx-core"
+
+const loaders = [${thunks.join(", ")}]
+
+export class ${className} extends ${baseClass} {
+  async loadDefinitions(dimension) {
+    const modules = await Promise.all(loaders.map((load) => load()))
+
+    return modules.map((module) => module.default)
+  }
+}
+`
+  }
+
   const entries = [...groups]
     .map(([name, indexes]) => `  [${JSON.stringify(name)}, [${indexes.map((index) => thunks[index]).join(", ")}]],`)
     .join("\n")
 
-  // The module registry caches dynamic imports, so repeated getDefinitions calls for
-  // the same name reuse already-loaded modules without extra bookkeeping here.
   return `import { ${baseClass} } from "@heleonix/hx-core"
 
 const groups = new Map([
@@ -106,11 +141,7 @@ ${entries}
 ])
 
 export class ${className} extends ${baseClass} {
-  static get diName() {
-    return ${JSON.stringify(className)}
-  }
-
-  async getDefinitions(name, dimension) {
+  async loadDefinitions(name, dimension) {
     const loaders = groups.get(name)
 
     if (!loaders) {
@@ -118,12 +149,6 @@ export class ${className} extends ${baseClass} {
     }
 
     const modules = await Promise.all(loaders.map((load) => load()))
-
-    return modules.map((module) => module.default)
-  }
-
-  async getAllDefinitions() {
-    const modules = await Promise.all([...groups.values()].flat().map((load) => load()))
 
     return modules.map((module) => module.default)
   }

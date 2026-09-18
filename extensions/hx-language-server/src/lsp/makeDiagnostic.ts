@@ -3,7 +3,6 @@ import { TextDocument } from "vscode-languageserver-textdocument"
 
 const DIAGNOSTIC_SOURCE = "heleonix"
 
-/** Builds a diagnostic spanning `[start, end)` (clamped to at least one character). */
 export function makeDiagnostic(
   doc: TextDocument,
   start: number,

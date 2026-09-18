@@ -2,11 +2,7 @@ import { pathToFileURL } from "node:url"
 import { TextDocument } from "vscode-languageserver-textdocument"
 import { CompletionItemKind, MarkupContent } from "vscode-languageserver"
 import type { IThemeTokenLocation } from "@heleonix/hx-analyzer"
-import {
-  completeThemeToken,
-  hoverThemeToken,
-  definitionThemeToken,
-} from "../src/languages/styling/themeTokenFeature.ts"
+import { completeThemeToken, hoverThemeToken, definitionThemeToken } from "../src/languages/styling/themeTokenFeature"
 
 const tokens = new Map<string, string>([
   ["Palette.Blue.t60", "#0f62fe"],
@@ -15,7 +11,6 @@ const tokens = new Map<string, string>([
   ["Spacing.xs", "4px"],
 ])
 
-/** Builds a document from text where `|` marks the cursor; returns the doc and cursor offset. */
 function at(text: string): { doc: TextDocument; offset: number } {
   const offset = text.indexOf("|")
 

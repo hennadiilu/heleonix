@@ -1,26 +1,20 @@
 import type { Kind } from "@heleonix/hx-language"
+import { DEFINITION_INTERFACE_NAME } from "./definitionInterfaceName"
 import { DEFINITION_SOURCE_BASE_CLASS } from "./definitionSourceBaseClass"
 
-/**
- * Generates a TypeScript declaration file typing the virtual aggregator modules that
- * {@link generateDefinitionSource} produces. The module names, class names and the set
- * of kinds come from the build's configuration, so the result is project-specific and
- * meant to be written into the consumer's project (not shipped) - regenerated whenever
- * the configuration changes, like `next-env.d.ts`.
- */
 export function generateDefinitionDeclarations(
   kinds: readonly Kind[],
   sources: Readonly<Record<Kind, { className: string; moduleName: string }>>,
 ): string {
   const blocks = kinds.map((kind) => {
     const baseClass = DEFINITION_SOURCE_BASE_CLASS[kind]
+    const definition = DEFINITION_INTERFACE_NAME[kind]
     const { className, moduleName } = sources[kind]
 
     return `declare module ${JSON.stringify(moduleName)} {
   import { ${baseClass} } from "@heleonix/hx-core"
-  export class ${className} extends ${baseClass} {
-    static get diName(): string
-  }
+  import type { ${definition} } from "@heleonix/hx-language"
+  export class ${className} extends ${baseClass}<${definition}> {}
 }`
   })
 

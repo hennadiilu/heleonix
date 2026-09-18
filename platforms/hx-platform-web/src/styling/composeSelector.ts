@@ -18,12 +18,6 @@ const PSEUDO_ELEMENTS = new Set([
   "target-text",
 ])
 
-/**
- * Composes a class name and its neutral {@link StyleFragment}s into a CSS
- * selector: pseudo-classes and `gate` data-attributes attach to the class, the
- * lone pseudo-element (`::before`) is serialized last, and `environment`/`marker`
- * fragments contribute nothing here (media wrapping is `composeRule`'s job).
- */
 export function composeSelector(className: string, fragments: readonly StyleFragment[]): string {
   let selector = `.${className}`
   let element = ""

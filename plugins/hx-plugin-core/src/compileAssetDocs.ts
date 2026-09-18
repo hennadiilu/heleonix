@@ -20,12 +20,6 @@ const COMPILERS: Readonly<Record<string, () => IAssetDocsCompiler>> = {
   [EXT_THEME]: () => new ThemeCompiler(),
 }
 
-/**
- * Compiles one asset's docs sidecar (the `compileDocs` counterpart of
- * {@link compileAsset}): doc comments extracted into an {@link IDocsEntry}, or
- * `undefined` when the source carries none. Docs are emitted as separate
- * `*.docs.json` artifacts so runtime definition payloads never carry them.
- */
 export function compileAssetDocs(
   ext: string,
   source: string,

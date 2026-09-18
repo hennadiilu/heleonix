@@ -7,6 +7,6 @@ props: { /** Visual emphasis of the greeting. */ variant?: 'primary' | 'secondar
 ---
 <Component>
   <div>
-    <span name="label">@Sandbox.greeting</span>
+    <span name="label">{@Sandbox.greeting}</span>
   </div>
 </Component>

@@ -18,7 +18,6 @@ import { entryKeyCompletion } from "../jsonc/entryKeyCompletion"
 import { entryKeyHover } from "../jsonc/entryKeyHover"
 import { frontmatterCompletion } from "../jsonc/frontmatterCompletion"
 
-/** Language service for `*.hxc` configs (full JSONC; no flatness or interpolation rules). */
 export class ConfigLanguageService implements ILanguageService {
   public readonly kind: Kind = "config"
 

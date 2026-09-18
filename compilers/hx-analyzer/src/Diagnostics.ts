@@ -1,11 +1,5 @@
 import type { DiagnosticSeverity } from "./DiagnosticSeverity"
 
-/**
- * The stable diagnostic catalog. Codes never change meaning; messages are
- * always present - the analyzer is tooling, never a runtime payload.
- * Reference resolution failures (00xx) are errors; contract violations (01xx)
- * are errors on declared facts.
- */
 export const Diagnostics = {
   unknownComponent: {
     code: "HX_ANALYZER_0001",
@@ -57,10 +51,11 @@ export const Diagnostics = {
     severity: "error" as DiagnosticSeverity,
     message: "Component override resolves to unknown component '{0}' (for target '{1}').",
   },
-  missingBaseSuffix: {
-    code: "HX_ANALYZER_0013",
+  missingHxName: {
+    code: "HX_ANALYZER_0018",
     severity: "error" as DiagnosticSeverity,
-    message: "Class '{0}' must end with '{1}' - its {1} binding name is derived from the class name.",
+    message:
+      "Class '{0}' must declare its own static hxName - the name templates reference this {1} by. Declared, not derived from the class name, so it survives minification.",
   },
   unknownAction: {
     code: "HX_ANALYZER_0014",

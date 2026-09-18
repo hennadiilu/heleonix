@@ -8,7 +8,7 @@ const toggle = {
   ext: EXT_TEMPLATE,
   name: "Toggle",
   dimension: {},
-  source: `<Component><button click.type="isSaving" /></Component>`,
+  source: `<Component><button click.type={isSaving} /></Component>`,
 }
 
 function analyzerWith(

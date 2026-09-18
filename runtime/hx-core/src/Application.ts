@@ -1,252 +1,142 @@
-import { DIContainer } from "./injection/DIContainer"
-import { Component } from "./components/Component"
-import { ComponentManager } from "./components/ComponentManager"
-import { ComponentDefinitionProvider } from "./components/ComponentDefinitionProvider"
-import { FrameworkComponentDefinitionSource } from "./components/FrameworkComponentDefinitionSource"
-import { DeclarativeComponent } from "./components/DeclarativeComponent"
-import { Content } from "./components/Content"
-import { Children } from "./components/Children"
-import { Scheduler } from "./components/Scheduler"
-import { StateManager } from "./state/StateManager"
-import { DimensionManager } from "./dimension/DimensionManager"
-import { DictionaryDefinitionProvider } from "./dictionaries/DictionaryDefinitionProvider"
-import { Binder } from "./bindings/Binder"
-import { BindingEvaluator } from "./bindings/BindingEvaluator"
-import { ConverterRegistry } from "./bindings/ConverterRegistry"
-import { ConfigDefinitionProvider } from "./configs/ConfigDefinitionProvider"
-import { PlatformAdapter } from "./platform/PlatformAdapter"
-import { PlatformRuntime } from "./platform/PlatformRuntime"
+import type { Component } from "./components/Component"
+import type { IScheduler } from "./platform/IScheduler"
+import type { IDimensionManager } from "./dimension/IDimensionManager"
+import type { IComponentContext } from "./components/IComponentContext"
+import type { IComponentManager } from "./components/IComponentManager"
+import type { IState } from "./state/IState"
+import type { IDictionaryProvider } from "./dictionaries/IDictionaryProvider"
+import type { IConfigProvider } from "./configs/IConfigProvider"
+import type { IActionProvider } from "./actions/IActionProvider"
+import type { IServiceProvider } from "./services/IServiceProvider"
+import type { ApplicationRuntime } from "./platform/ApplicationRuntime"
+import type { PlatformComponent } from "./components/PlatformComponent"
+import type { IApplicationBootstrap } from "./IApplicationBootstrap"
+import type { IClearable } from "./common/IClearable"
+import type { ThemeManager } from "./theming/ThemeManager"
+import type { StyleManager } from "./styling/StyleManager"
 import { HeleonixError } from "./errors/HeleonixError"
 import { Errors } from "./errors/Errors"
-import { FrameworkElement } from "./FrameworkElement"
-import { DictionaryProvider } from "./dictionaries/DictionaryProvider"
-import { ConfigProvider } from "./configs/ConfigProvider"
-import { IApplicationBootstrap } from "./IApplicationBootstrap"
-import { InjectableConstructor } from "./injection/InjectableConstructor"
-import { StyleManager } from "./styling/StyleManager"
-import { ThemeManager } from "./styling/ThemeManager"
-import { StyleDefinitionProvider } from "./styling/StyleDefinitionProvider"
-import { ThemeDefinitionProvider } from "./styling/ThemeDefinitionProvider"
-import { IStyleDefinitionProviderSettings } from "./styling/IStyleDefinitionProviderSettings"
-import { IThemeDefinitionProviderSettings } from "./styling/IThemeDefinitionProviderSettings"
-import { IDimensionManagerSettings } from "./dimension/IDimensionManagerSettings"
-import { IComponentDefinitionProviderSettings } from "./components/IComponentDefinitionProviderSettings"
-import { IConfigDefinitionProviderSettings } from "./configs/IConfigDefinitionProviderSettings"
-import { IDictionaryDefinitionProviderSettings } from "./dictionaries/IDictionaryDefinitionProviderSettings"
+import { composeApplication } from "./composition/composeApplication"
 
-export abstract class Application extends FrameworkElement<
-  | DictionaryProvider
-  | ConfigProvider
-  | StateManager
-  | DimensionManager
-  | ComponentManager
-  | PlatformAdapter
-  | PlatformRuntime
-  | Scheduler
-  | StyleManager
-  | ThemeManager
-  // | Action | Converter | Service
-> {
-  protected readonly platformAdapter = this.inject(PlatformAdapter)
+export abstract class Application {
+  protected readonly scheduler: IScheduler
 
-  protected readonly platformRuntime = this.inject(PlatformRuntime)
+  protected readonly dimensions: IDimensionManager
 
-  protected readonly componentManager = this.inject(ComponentManager)
+  protected readonly state: IState
 
-  protected readonly scheduler = this.inject(Scheduler)
+  protected readonly configs: IConfigProvider
 
-  protected readonly dimensionManager = this.inject(DimensionManager)
+  protected readonly dictionaries: IDictionaryProvider
 
-  protected rootComponent: Component | undefined
+  protected readonly actions: IActionProvider
 
-  private readonly diContainerInstance: DIContainer
+  protected readonly services: IServiceProvider
 
-  private readonly styleConfigured: boolean
+  private readonly componentContext: IComponentContext
 
-  private readonly themeConfigured: boolean
+  private readonly runtime: ApplicationRuntime
+
+  private readonly components: IComponentManager
+
+  private _rootComponent: Component | undefined
+
+  private readonly clearables: readonly IClearable[]
+
+  private readonly isHeadless: boolean
+
+  private isStarted = false
+
+  private readonly themes: ThemeManager | undefined
+
+  private readonly styles: StyleManager | undefined
 
   public constructor(
     protected readonly name: string,
     bootstrap: IApplicationBootstrap,
   ) {
-    const diContainer = new DIContainer()
+    const graph = composeApplication(bootstrap)
 
-    const styleConfigured = bootstrap.styleDefinition !== undefined
-    const themeConfigured = bootstrap.themeDefinition !== undefined
-    const stylingInjectables: InjectableConstructor[] = []
-
-    if (styleConfigured || themeConfigured) {
-      stylingInjectables.push(bootstrap.themeDefinition?.provider ?? ThemeDefinitionProvider)
-      stylingInjectables.push(...(bootstrap.themeDefinition?.sources ?? []))
-    }
-
-    if (themeConfigured) {
-      stylingInjectables.push(ThemeManager)
-    }
-
-    if (bootstrap.styleDefinition) {
-      stylingInjectables.push(bootstrap.styleDefinition.provider ?? StyleDefinitionProvider)
-      stylingInjectables.push(...bootstrap.styleDefinition.sources)
-      stylingInjectables.push(StyleManager)
-    }
-
-    diContainer.registerInjectables([
-      //...bootstrap.actions,
-      //...bootstrap.services,
-
-      ...(bootstrap.components ?? []),
-      ...(bootstrap.converters ?? []),
-
-      bootstrap.platform.adapter,
-      bootstrap.platform.runtime,
-
-      bootstrap.componentDefinition.provider ?? ComponentDefinitionProvider,
-      bootstrap.configDefinition.provider ?? ConfigDefinitionProvider,
-      bootstrap.dictionaryDefinition.provider ?? DictionaryDefinitionProvider,
-
-      ...bootstrap.componentDefinition.sources,
-      ...bootstrap.configDefinition.sources,
-      ...bootstrap.dictionaryDefinition.sources,
-
-      // Framework injectables are placed last to avoid overrides.
-      Children,
-      DeclarativeComponent,
-      Content,
-      FrameworkComponentDefinitionSource,
-      StateManager,
-      Scheduler,
-      ComponentManager,
-      DictionaryProvider,
-      ConfigProvider,
-      BindingEvaluator,
-      ConverterRegistry,
-      Binder,
-      DimensionManager,
-
-      ...stylingInjectables,
-    ])
-
-    diContainer.registerSettings<IDimensionManagerSettings>(DimensionManager.diName, {
-      dimensions: bootstrap.dimensions,
-    })
-
-    diContainer.registerSettings<IComponentDefinitionProviderSettings>(
-      (bootstrap.componentDefinition.provider ?? ComponentDefinitionProvider).diName,
-      {
-        sources: bootstrap.componentDefinition.sources,
-        selectionStrategy: bootstrap.componentDefinition.selectionStrategy,
-      },
-    )
-
-    diContainer.registerSettings<IConfigDefinitionProviderSettings>(
-      (bootstrap.configDefinition.provider ?? ConfigDefinitionProvider).diName,
-      {
-        sources: bootstrap.configDefinition.sources,
-        selectionStrategy: bootstrap.configDefinition.selectionStrategy,
-      },
-    )
-
-    diContainer.registerSettings<IDictionaryDefinitionProviderSettings>(
-      (bootstrap.dictionaryDefinition.provider ?? DictionaryDefinitionProvider).diName,
-      {
-        sources: bootstrap.dictionaryDefinition.sources,
-        selectionStrategy: bootstrap.dictionaryDefinition.selectionStrategy,
-      },
-    )
-
-    if (styleConfigured || themeConfigured) {
-      diContainer.registerSettings<IThemeDefinitionProviderSettings>(
-        (bootstrap.themeDefinition?.provider ?? ThemeDefinitionProvider).diName,
-        { sources: bootstrap.themeDefinition?.sources ?? [] },
-      )
-    }
-
-    if (bootstrap.styleDefinition) {
-      diContainer.registerSettings<IStyleDefinitionProviderSettings>(
-        (bootstrap.styleDefinition.provider ?? StyleDefinitionProvider).diName,
-        {
-          sources: bootstrap.styleDefinition.sources,
-          selectionStrategy: bootstrap.styleDefinition.selectionStrategy,
-        },
-      )
-    }
-
-    super(diContainer)
-
-    this.diContainerInstance = diContainer
-    this.styleConfigured = styleConfigured
-    this.themeConfigured = themeConfigured
-
-    this.dimensionManager.dimensionChanged.on(this.handleDimensionChange)
+    this.runtime = graph.runtime
+    this.scheduler = graph.scheduler
+    this.dimensions = graph.dimensions
+    this.state = graph.state
+    this.configs = graph.configs
+    this.dictionaries = graph.dictionaries
+    this.actions = graph.actions
+    this.services = graph.services
+    this.components = graph.components
+    this.componentContext = graph.componentContext
+    this.themes = graph.themes
+    this.styles = graph.styles
+    this.isHeadless = graph.isHeadless
+    this.clearables = graph.clearables
   }
 
   protected get rootSelector(): string {
     return "body"
   }
 
-  public async run(): Promise<void> {
+  protected get rootComponent(): Component | undefined {
+    return this._rootComponent
+  }
+
+  public async start(): Promise<void> {
+    if (this.isStarted) {
+      throw new HeleonixError(Errors.applicationLifecycle, "start", "the application is already started")
+    }
+
     try {
-      this.platformRuntime.start()
+      this.isStarted = true
 
-      // Establish the application's root host first, so the theme and style
-      // back-ends anchor their platform state to it (the web appends its
-      // `<style>` sheets under this root, not the shared document head) - keeping
-      // multiple application instances on one page isolated.
-      const rootHost = this.platformAdapter.getRootHost(this.rootSelector)
+      this.dimensions.changed.on(this.handleDimensionChange)
 
-      if (!rootHost) {
-        throw new HeleonixError(Errors.noRootElement, this.rootSelector)
+      this.runtime.start()
+
+      const rootHost = this.isHeadless ? undefined : this.resolveRootHost()
+
+      await this.themes?.apply()
+
+      if (rootHost) {
+        const rootUsage = {
+          tag: this.name,
+          name: this.name,
+        }
+
+        this._rootComponent = await this.components.build(rootUsage, undefined, undefined, rootHost)
       }
-
-      if (this.themeConfigured) {
-        await this.inject(ThemeManager).apply()
-      }
-
-      // Injecting the StyleManager activates its component-lifecycle
-      // subscription, so every component built below (the root included) is styled.
-      if (this.styleConfigured) {
-        this.inject(StyleManager)
-      }
-
-      const rootUsage = {
-        tag: this.name,
-        name: this.name,
-      }
-
-      this.rootComponent = await this.componentManager.buildComponent(rootUsage, undefined, undefined, rootHost)
-
-      this.rootComponent.mount()
     } catch (e) {
-      this.platformRuntime.stop()
+      this.stop()
 
       if (e instanceof HeleonixError) {
         throw e
       }
 
-      throw new HeleonixError(Errors.applicationLifecycle, "run", String(e))
+      throw new HeleonixError(Errors.applicationLifecycle, "start", String(e))
     }
   }
 
   public stop(): void {
-    try {
-      if (!this.rootComponent) {
-        this.platformAdapter.dispose()
-        this.platformRuntime.stop()
+    if (!this.isStarted) {
+      return
+    }
 
-        return
+    try {
+      this.isStarted = false
+
+      this.dimensions.changed.off(this.handleDimensionChange)
+
+      if (this._rootComponent) {
+        this.components.destroy(this._rootComponent)
+
+        this._rootComponent = undefined
       }
 
-      this.rootComponent.unmount()
+      for (const clearable of this.clearables) {
+        clearable.clear()
+      }
 
-      this.componentManager.destroyComponent(this.rootComponent)
-
-      this.rootComponent = undefined
-
-      this.platformAdapter.dispose()
-
-      this.platformRuntime.stop()
-
-      this.diContainerInstance.clear()
+      this.runtime.stop()
     } catch (e) {
       if (e instanceof HeleonixError) {
         throw e
@@ -256,12 +146,24 @@ export abstract class Application extends FrameworkElement<
     }
   }
 
-  private readonly handleDimensionChange = (): void => {
-    if (!this.rootComponent) {
-      return
+  private resolveRootHost(): PlatformComponent {
+    const rootHost = this.runtime.componentDriver.getRootHost(this.rootSelector, this.componentContext)
+
+    if (!rootHost) {
+      throw new HeleonixError(Errors.noRootElement, this.rootSelector)
     }
 
-    this.scheduler.scheduleCompute(this.reconcileRootJob)
+    return rootHost
+  }
+
+  private readonly handleDimensionChange = (): void => {
+    void this.themes?.apply()
+
+    void this.styles?.reapply()
+
+    if (this._rootComponent) {
+      this.scheduler.scheduleCompute(this.reconcileRootJob)
+    }
   }
 
   private readonly reconcileRootJob = (): void => {
@@ -269,10 +171,10 @@ export abstract class Application extends FrameworkElement<
   }
 
   private readonly reconcileRoot = async (): Promise<void> => {
-    if (!this.rootComponent) {
+    if (!this._rootComponent) {
       return
     }
 
-    await this.rootComponent.update(this.rootComponent.definition, this.rootComponent.usage)
+    await this._rootComponent.update(this._rootComponent.definition, this._rootComponent.usage)
   }
 }

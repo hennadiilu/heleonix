@@ -2,15 +2,6 @@ import path from "node:path"
 import ts from "typescript"
 import type { ITypeProgramHost } from "./ITypeProgramHost"
 
-/**
- * Builds a disk-backed {@link ITypeProgramHost} for Node hosts (build plugins,
- * the language server): reads `tsconfig.json` (falling back to sane options)
- * and serves source/lib files from the filesystem via TypeScript's own host.
- *
- * This is the only filesystem-touching part of the analyzer. A browser host
- * (StackBlitz, etc.) provides an equivalent {@link ITypeProgramHost} backed by
- * an in-memory virtual filesystem instead, and `TypeResolver` runs unchanged.
- */
 export function createNodeTypeProgramHost(projectRoot: string): ITypeProgramHost {
   const configPath = ts.findConfigFile(projectRoot, (file) => ts.sys.fileExists(file), "tsconfig.json")
 
@@ -39,14 +30,6 @@ export function createNodeTypeProgramHost(projectRoot: string): ITypeProgramHost
   return { options, rootFiles, host: withSourceFileCache(ts.createCompilerHost(options, true)) }
 }
 
-/**
- * Wraps a compiler host so parsed source files are cached by path and reused
- * across program creations, invalidated by modification time. The host is
- * long-lived (one per project), so this avoids re-parsing the standard library
- * and unchanged project files on every analysis, while a saved edit (new mtime)
- * is re-read. The dominant cost of a fresh program is parsing `lib.*.d.ts`; the
- * cache removes it from the second analysis onward.
- */
 function withSourceFileCache(base: ts.CompilerHost): ts.CompilerHost {
   const cache = new Map<string, { mtimeMs: number; file: ts.SourceFile | undefined }>()
   const getSourceFile = base.getSourceFile.bind(base)

@@ -17,6 +17,7 @@ import {
   getOverrideTarget,
   isBindingExpression,
   parseBindingExpression,
+  soleExpression,
 } from "@heleonix/hx-language"
 import { inlineOverrideScopes, scopeOwnerAt } from "../references/inlineOverrideScopes"
 import { scanInterpolations } from "../references/scanInterpolations"
@@ -33,17 +34,6 @@ const HX_EXTS = new Set<string>([EXT_TEMPLATE, EXT_DICTIONARY, EXT_CONFIG])
 // Inline component name declared by a leading comment, e.g. `<!--CustomAddButton-->`.
 const COMPONENT_COMMENT = new RegExp(`<!--\\s*(${IDENTIFIER_PATTERN}(?:\\.${IDENTIFIER_PATTERN})*)`, "g")
 
-/**
- * Definition source that scans `*.hxm`, `*.hxd` and `*.hxc` files under the
- * given workspace roots and extracts the names, entries and properties needed
- * for autocompletion and reference resolution.
- *
- * It supports per-file indexing ({@link indexFile}) so the registry can update
- * one file's contribution on change rather than re-walking the tree. Parsing
- * failures in individual files are ignored here (they surface as diagnostics on
- * the offending document instead), so a single malformed file never breaks
- * indexing of the rest of the workspace.
- */
 export class WorkspaceDefinitionSource implements IIncrementalDefinitionSource {
   public readonly id = "workspace"
 
@@ -202,7 +192,7 @@ function indexComponent(fileName: string, source: string, scan: IXmlScan, result
       }
 
       if (attr.name === NAME_ATTRIBUTE) {
-        if (attr.value) {
+        if (attr.kind === "literal" && attr.value) {
           for (const comp of owners) {
             pushUnique((result.namedControls[compositeKey(comp, attr.value)] ??= []), tag.name)
           }
@@ -214,38 +204,41 @@ function indexComponent(fileName: string, source: string, scan: IXmlScan, result
       // A `target:Component` override is neither a settable property nor a state
       // read; only its dictionary/config value participates as an entry usage.
       if (getOverrideTarget(attr.name) !== undefined) {
-        if (attr.value) {
+        // Only a braced reference contributes an entry usage; quoted text names
+        // the replacement component, which is resolved elsewhere.
+        if (attr.kind === "expression" && attr.value) {
           indexOverrideValue(attr.value, owners, result)
         }
 
         continue
       }
 
-      if (!props.includes(attr.name)) {
+      // The short form's name is the expression itself, so it is not a
+      // separately-written property name on the tag.
+      if (!attr.shorthand && !props.includes(attr.name)) {
         props.push(attr.name)
       }
 
-      if (attr.value) {
+      if (attr.kind === "expression" && attr.value) {
         indexBinding(attr.value, owners, result)
       }
     }
   }
 
+  // Static text references nothing; only a run that is one `{...}` expression does.
   for (const text of scan.texts) {
-    indexBinding(text.value.trim(), ownersAt(text.start), result)
+    const expression = soleExpression(text.value)
+
+    if (expression) {
+      indexBinding(expression.text.trim(), ownersAt(text.start + expression.start), result)
+    }
   }
 }
 
-/** A tag that can be an override target: a real component/HTML tag, not root/content/builtin. */
 function isUsedTag(name: string): boolean {
   return Boolean(name) && name !== ROOT_TAG && name !== CONTENT_TAG && !BUILTIN_TAGS.has(name)
 }
 
-/**
- * A `target:Component` override value names the replacement component. A
- * `@Dic.entry` / `#Cfg.entry` reference contributes an entry usage (so the
- * entry is not flagged unused); a bare component name is resolved elsewhere.
- */
 function indexOverrideValue(raw: string, componentNames: readonly string[], result: IIndexContribution): void {
   const value = raw.trim()
 
@@ -274,12 +267,6 @@ function indexOverrideValue(raw: string, componentNames: readonly string[], resu
   }
 }
 
-/**
- * Classifies one binding occurrence (attribute value or text run) of a
- * component: `@Dic.entry` / `#Cfg.entry` becomes an entry usage (reverse
- * reference), and a bare (unqualified) state path contributes its full path to
- * the component's internal property pool.
- */
 function indexBinding(raw: string, componentNames: readonly string[], result: IIndexContribution): void {
   if (!raw || !isBindingExpression(raw)) {
     return
@@ -319,12 +306,6 @@ function indexBinding(raw: string, componentNames: readonly string[], result: II
   }
 }
 
-/**
- * Records each `@Other.entry` interpolation a dictionary makes into another
- * dictionary as an entry usage (attributed to the referencing dictionary), so a
- * key used only by another dictionary is not flagged as unused. The dictionary's
- * own `{@Entry}` shorthand carries no separator and is not a cross-reference.
- */
 function indexDictionaryReferences(dictName: string, body: string, result: IIndexContribution): void {
   for (const ref of scanInterpolations(body)) {
     if (ref.kind === "dictionary" && ref.name && ref.entry) {
@@ -333,11 +314,6 @@ function indexDictionaryReferences(dictName: string, body: string, result: IInde
   }
 }
 
-/**
- * Records each state `{param}` inside a dictionary value against its entry
- * (`compositeKey(dictName, key)`), so the index can fold the parameters of the
- * entries a component references into that component's consumed-property pool.
- */
 function indexDictionaryParameters(
   dictName: string,
   body: string,
@@ -351,7 +327,6 @@ function indexDictionaryParameters(
   }
 }
 
-/** Records the docs of inline doc comments above the file's top-level entries against their keys. */
 function indexEntryDocs(
   kind: ReferenceType,
   name: string,

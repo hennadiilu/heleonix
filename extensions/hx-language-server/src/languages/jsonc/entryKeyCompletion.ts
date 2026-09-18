@@ -12,12 +12,6 @@ import { definitionName } from "./definitionName"
 // start, optionally inside an opening quote.
 const KEY_POSITION = /(?:^|[{,])\s*"?([A-Za-z_][\w-]*)?$/
 
-/**
- * Completion for `*.hxd`/`*.hxc` entry keys: offers entry names that components
- * reference for this definition (`@Name.key` / `#Name.key`) but that aren't
- * defined yet, so an author can fill in the keys consumers already expect.
- * Returns `undefined` when the cursor is not at a top-level key position.
- */
 export function entryKeyCompletion(
   doc: TextDocument,
   position: Position,

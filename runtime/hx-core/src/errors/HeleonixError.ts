@@ -1,6 +1,8 @@
 import { IErrorInfo } from "./IErrorInfo"
 
 export class HeleonixError extends Error {
+  public static readonly hxName = "HeleonixError"
+
   public readonly code: string
 
   public constructor(error: IErrorInfo, ...args: string[]) {
@@ -10,7 +12,9 @@ export class HeleonixError extends Error {
 
     Object.setPrototypeOf(this, HeleonixError.prototype)
 
-    this.name = this.constructor.name
+    // Declared, never derived from the class identifier: a minified build
+    // would otherwise report a mangled name.
+    this.name = (new.target as { hxName?: string }).hxName ?? HeleonixError.hxName
 
     this.code = error.code
   }

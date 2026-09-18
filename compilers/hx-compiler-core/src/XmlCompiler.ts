@@ -38,12 +38,6 @@ export abstract class XmlCompiler<TResult> {
     return this.compileElement(root, dimension, options ?? {}, header)
   }
 
-  /**
-   * Compiles the docs sidecar of the same source: doc comments
-   * (`<!--* ... -->`) associated with the nodes they precede. Tolerant by
-   * design - docs are optional, so unparsable or undocumented source yields
-   * `undefined` rather than an error (`compile` reports the real problems).
-   */
   public compileDocs(source: string, dimension: IDimension, options?: ICompilerOptions): IDocsEntry | undefined {
     if (!source || !source.trim()) {
       return undefined
@@ -62,7 +56,6 @@ export abstract class XmlCompiler<TResult> {
     return docs ? { kind: this.kind, name: options?.name ?? "", dimension, docs } : undefined
   }
 
-  /** Docs of the file-level doc comment above the root element; per-entry formats override to add `entries`. */
   protected extractDocs(scan: IXmlScan, source: string): IDocs | undefined {
     return xmlRootDocs(scan, source, this.rootTag)
   }

@@ -28,16 +28,6 @@ const NAME_TOKEN: Readonly<Record<ReferenceType, BindingTokenKind>> = {
   config: "configName",
 }
 
-/**
- * Tokenizes a binding expression `source ( "|" converter )*` into classified,
- * offset-bearing spans (see {@link BindingTokenKind}). Error-tolerant: any
- * unexpected character is skipped. Offsets are relative to `expression`.
- *
- *   - `@dict.entry`   -> dictionaryPrefix, dictionaryName, separator, dictionaryName
- *   - `#config.entry` -> configPrefix, configName, separator, configName
- *   - `state.path`    -> stateName (+ separators); a `component:` prefix -> componentName
- *   - `| converter`   -> pipe, converter
- */
 export function tokenizeBinding(expression: string): IBindingToken[] {
   const tokens: IBindingToken[] = []
   const trimmed = expression.trim()

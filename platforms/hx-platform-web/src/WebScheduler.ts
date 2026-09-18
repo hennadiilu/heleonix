@@ -1,27 +1,83 @@
-import { WebSchedulerJob } from "./WebSchedulerJob"
+import { Errors, HeleonixError } from "@heleonix/hx-core"
+import type { IScheduler, SchedulerJob } from "@heleonix/hx-core"
 
-export class WebScheduler {
-  private static readonly commitQueue = new Set<WebSchedulerJob>()
+type SchedulerPhase = "compute" | "commit"
 
-  private static commitScheduled = false
+const reportAsUnhandled = (error: HeleonixError): void => {
+  void Promise.reject(error)
+}
 
-  public static scheduleFrame(job: WebSchedulerJob): void {
+export class WebScheduler implements IScheduler {
+  private readonly computeQueue = new Set<SchedulerJob>()
+
+  private readonly commitQueue = new Set<SchedulerJob>()
+
+  private readonly reportError: (error: HeleonixError) => void
+
+  private computeScheduled = false
+
+  private commitScheduled = false
+
+  public constructor(reportError: (error: HeleonixError) => void = reportAsUnhandled) {
+    this.reportError = reportError
+  }
+
+  public clear(): void {
+    this.computeQueue.clear()
+    this.commitQueue.clear()
+  }
+
+  public scheduleCompute(job: SchedulerJob): void {
+    this.computeQueue.add(job)
+
+    if (!this.computeScheduled) {
+      this.computeScheduled = true
+
+      window.queueMicrotask(this.flushCompute)
+    }
+  }
+
+  public scheduleCommit(job: SchedulerJob): void {
     this.commitQueue.add(job)
 
     if (!this.commitScheduled) {
       this.commitScheduled = true
 
-      window.requestAnimationFrame(this.flushCommit)
+      window.requestAnimationFrame(() => this.flushCommit())
     }
   }
 
-  private static readonly flushCommit = (): void => {
+  private readonly flushCompute = (): void => {
+    this.computeScheduled = false
+
+    this.flush(this.computeQueue, "compute")
+  }
+
+  private readonly flushCommit = (): void => {
     this.commitScheduled = false
 
-    for (const job of this.commitQueue) {
-      void job()
-    }
+    this.flush(this.commitQueue, "commit")
+  }
 
-    this.commitQueue.clear()
+  private flush(queue: Set<SchedulerJob>, phase: SchedulerPhase): void {
+    const jobs = Array.from(queue)
+
+    queue.clear()
+
+    for (const job of jobs) {
+      try {
+        const result = job()
+
+        if (result instanceof Promise) {
+          result.catch((e: unknown) => this.reportJobError(phase, e))
+        }
+      } catch (e) {
+        this.reportJobError(phase, e)
+      }
+    }
+  }
+
+  private reportJobError(phase: SchedulerPhase, error: unknown): void {
+    this.reportError(new HeleonixError(Errors.schedulerJob, phase, String(error)))
   }
 }

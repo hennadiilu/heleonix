@@ -1,7 +1,7 @@
 import { SandboxApplication } from "./SandboxApplication"
 
 const application = new SandboxApplication()
-await application.run()
+await application.start()
 
 //-----------------------------
 

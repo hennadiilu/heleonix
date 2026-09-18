@@ -7,12 +7,6 @@ import type { IFrontmatterDocument } from "./jsonc/IFrontmatterDocument"
 import { Errors } from "./errors/Errors"
 import { HeleonixCompilerError } from "./errors/HeleonixCompilerError"
 
-/**
- * Base for the CSS-subset formats (`*.hxs`, `*.hxt`): splits the frontmatter
- * header, parses the body with the shared block grammar ({@link parseBlocks})
- * and hands the generic AST to the subclass. Mirrors {@link JsoncCompiler} but
- * over blocks instead of JSONC.
- */
 export abstract class BlockCompiler<TResult> {
   protected abstract get kind(): Kind
 
@@ -30,12 +24,6 @@ export abstract class BlockCompiler<TResult> {
     return this.compileDocument(parseBlocks(header.body), header, dimension, options ?? {})
   }
 
-  /**
-   * Compiles the docs sidecar: the file-level `/** ... *\/` comment above the
-   * first node. Tolerant by design - docs are optional, so unparsable or
-   * undocumented source yields `undefined`. Per-entry (token) docs are assembled
-   * by subclasses that override this.
-   */
   public compileDocs(source: string, dimension: IDimension, options?: ICompilerOptions): IDocsEntry | undefined {
     if (!source || !source.trim()) {
       return undefined

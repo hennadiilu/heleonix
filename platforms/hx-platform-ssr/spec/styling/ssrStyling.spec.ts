@@ -1,17 +1,53 @@
-import { StyleEngine, QualifierRegistry } from "@heleonix/hx-core"
-import type { StyleHandle } from "@heleonix/hx-core"
+import { StyleManager } from "../../../../runtime/hx-core/src/styling/StyleManager"
+import type { Component, IQualifierProvider, IState, StyleHandle } from "@heleonix/hx-core"
 import { composeRule, hashClassName } from "@heleonix/hx-platform-web"
 import {
   SsrElementState,
+  SsrStyleDriver,
   SsrStyleEffect,
-  SsrStyleEnginePlatform,
-  SsrStyleEngineState,
   renderElementAttributes,
   renderThemeVariables,
 } from "@heleonix/hx-platform-ssr"
 
+const components = new Map<string, Component>()
+
+function cmp(fqName: string): Component {
+  let component = components.get(fqName)
+
+  if (!component) {
+    component = { fqName } as unknown as Component
+    components.set(fqName, component)
+  }
+
+  return component
+}
+
 function handle(className: string): StyleHandle {
   return { className } as unknown as StyleHandle
+}
+
+const NO_EVENTS = { on: () => {}, off: () => {} }
+
+const NO_QUALIFIERS: IQualifierProvider = { get: () => undefined }
+
+function stateWith(values: Record<string, unknown>): IState {
+  return {
+    changed: NO_EVENTS,
+    getValue: (name: string) => values[name],
+    setValue: () => {},
+    emitEvent: () => {},
+  } as unknown as IState
+}
+
+function managerWith(driver: SsrStyleDriver, values: Record<string, unknown> = {}): StyleManager {
+  return new StyleManager(
+    () => driver,
+    { loadDefinition: () => Promise.resolve(undefined) } as never,
+    { getTheme: () => Promise.resolve(undefined) } as never,
+    stateWith(values),
+    NO_QUALIFIERS,
+    { resolve: () => [] },
+  )
 }
 
 describe("SsrStyleEffect + renderElementAttributes", () => {
@@ -46,30 +82,32 @@ describe("renderThemeVariables", () => {
   })
 })
 
-describe("SsrStyleEnginePlatform", () => {
+describe("SsrStyleDriver", () => {
   it("then composes the same class name and rule as the web platform (hydration parity)", () => {
-    const platform = new SsrStyleEnginePlatform<string>()
+    const driver = new SsrStyleDriver()
     const declarations = { color: "red" }
-    const composed = platform.compose("Hover", [], declarations)
+    const composed = driver.compose("Hover", [], declarations)
 
     const expected = hashClassName(`Hover ${JSON.stringify(declarations)}`)
 
     expect((composed as unknown as { className: string }).className).toBe(expected)
-    expect(platform.css()).toBe(composeRule(expected, [], declarations))
+    expect(driver.css()).toBe(composeRule(expected, [], declarations))
   })
 })
 
 function render(): { css: string; attrs: string } {
-  const platform = new SsrStyleEnginePlatform<string>()
-  const state = new SsrStyleEngineState<string>((_component, prop) => (prop === "size" ? 5 : undefined))
-  const engine = new StyleEngine<string>(new QualifierRegistry(), platform, state)
+  const driver = new SsrStyleDriver()
 
-  engine.apply("A", { name: "Box", dimension: {}, rules: { "": { color: "red", width: "{size}px" } } })
+  managerWith(driver, { "A:size": 5 }).applyDefinition(cmp("A"), {
+    name: "Box",
+    dimension: {},
+    rules: { "": { color: "red", width: "{size}px" } },
+  })
 
-  return { css: platform.css(), attrs: renderElementAttributes(platform.stateFor("A")) }
+  return { css: driver.css(), attrs: renderElementAttributes(driver.stateFor(cmp("A"))) }
 }
 
-describe("SSR styling through the core StyleEngine", () => {
+describe("SSR styling through the core StyleManager", () => {
   it("then is deterministic across independent renders (hydration idempotence)", () => {
     expect(render()).toEqual(render())
   })
@@ -83,21 +121,16 @@ describe("SSR styling through the core StyleEngine", () => {
   })
 
   it("then emits scoped keyframes and rewrites animation references like the web", () => {
-    const platform = new SsrStyleEnginePlatform<string>()
-    const engine = new StyleEngine<string>(
-      new QualifierRegistry(),
-      platform,
-      new SsrStyleEngineState<string>(() => undefined),
-    )
+    const driver = new SsrStyleDriver()
 
-    engine.apply("A", {
+    managerWith(driver).applyDefinition(cmp("B"), {
       name: "Button",
       dimension: {},
       rules: { "": { "animation-name": "pulse" } },
       keyframes: { pulse: { "50%": { transform: "scale(1.1)" } } },
     })
 
-    const css = platform.css()
+    const css = driver.css()
 
     expect(css).toContain("@keyframes hx-Button-pulse")
     expect(css).toContain("animation-name: hx-Button-pulse")

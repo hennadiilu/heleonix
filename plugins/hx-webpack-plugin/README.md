@@ -11,8 +11,8 @@ import { HxWebpackPlugin } from "@heleonix/hx-webpack-plugin"
 export default {
   plugins: [
     new HxWebpackPlugin({
-      dimensions,          // the app's dimension definitions
-      include: ["./src"],  // scanned for sources; aggregated per kind
+      dimensions, // the app's dimension definitions
+      include: ["./src"], // scanned for sources; aggregated per kind
     }),
   ],
 }
@@ -42,9 +42,9 @@ specifier, so no export conditions are needed):
   "files": ["src"],
   "exports": {
     "./components/*": "./src/components/*.hxm",
-    "./dictionaries/*": "./src/dictionaries/*.hxd"
+    "./dictionaries/*": "./src/dictionaries/*.hxd",
     // ...one entry per kind folder you ship
-  }
+  },
 }
 ```
 
@@ -56,10 +56,11 @@ definition:
 
 ```ts
 /// <reference types="@heleonix/hx-plugin-core/sources" />
-import { DictionaryDefinitionSource } from "@heleonix/hx-core"
+import { DefinitionSource } from "@heleonix/hx-core"
+import type { IDictionaryDefinition } from "@heleonix/hx-language"
 import buttons from "@acme/ui/dictionaries/Buttons.hxd" // → compiled IDictionaryDefinition
 
-export class MyDictionaryDefinitionSource extends DictionaryDefinitionSource {
+export class MyDictionaryDefinitionSource extends DefinitionSource<IDictionaryDefinition> {
   // ...assemble/return imported definitions with custom logic
 }
 ```

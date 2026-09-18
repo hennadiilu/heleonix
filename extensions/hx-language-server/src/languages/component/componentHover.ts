@@ -6,6 +6,7 @@ import {
   getOverrideTarget,
   isBindingExpression,
   parseBindingExpression,
+  soleExpression,
 } from "@heleonix/hx-language"
 import { IXmlAttribute, IXmlScan } from "@heleonix/hx-compiler-core"
 import type { IComponentInfo } from "@heleonix/hx-analyzer"
@@ -18,14 +19,6 @@ import { byName, componentDocs, memberOf, memberSummary, memberType } from "./co
 import { headSegment } from "../../references/headSegment"
 import { splitComponentPrefix } from "../../references/splitComponentPrefix"
 
-/**
- * Hover for `*.hxm`: component docs on a tag name, `@prop` docs on an
- * attribute name (resolving any `ctrl:` prefix), and dictionary/config entry
- * docs on a `@Name.entry` / `#Name.entry` binding (attribute value or text
- * content). Tags/attributes the index doesn't document fall back to the
- * platform's component data (HTML elements per W3C/MDN, with reference
- * links). Symbols without docs yield no hover.
- */
 export function hoverComponent(
   doc: TextDocument,
   position: Position,
@@ -64,23 +57,29 @@ export function hoverComponent(
       ) {
         const end = attr.valueEnd ?? attr.valueStart
 
-        return isOverride
-          ? overrideValueHover(doc, attr.value, attr.valueStart, end, index)
-          : referenceHover(doc, attr.value, attr.valueStart, end, index)
+        if (isOverride) {
+          return overrideValueHover(doc, attr.kind === "expression", attr.value, attr.valueStart, end, index)
+        }
+
+        // Quoted text is a static string - it points at nothing to describe.
+        return attr.kind === "expression" ? referenceHover(doc, attr.value, attr.valueStart, end, index) : null
       }
     }
   }
 
   for (const text of scan.texts) {
     if (offset >= text.start && offset <= text.end) {
-      return referenceHover(doc, text.value.trim(), text.start, text.end, index)
+      const expression = soleExpression(text.value)
+
+      return expression
+        ? referenceHover(doc, expression.text.trim(), text.start + expression.start, text.start + expression.end, index)
+        : null
     }
   }
 
   return null
 }
 
-/** Type + docs of the property the attribute sets, resolved on the `ctrl:` chain target(s). */
 function attributeHover(
   doc: TextDocument,
   tagName: string,
@@ -111,9 +110,9 @@ function attributeHover(
   return null
 }
 
-/** Docs of the component a `target:Component` value names (or the entry, for a `@`/`#` value). */
 function overrideValueHover(
   doc: TextDocument,
+  isExpression: boolean,
   raw: string,
   start: number,
   end: number,
@@ -121,7 +120,16 @@ function overrideValueHover(
 ): Hover | null {
   const value = raw.trim()
 
-  if (!value || !isBindingExpression(value)) {
+  if (!value) {
+    return null
+  }
+
+  // Quoted text names the replacement component directly.
+  if (!isExpression) {
+    return componentHover(doc, value, start, end, index)
+  }
+
+  if (!isBindingExpression(value)) {
     return null
   }
 
@@ -131,12 +139,21 @@ function overrideValueHover(
     return referenceHover(doc, raw, start, end, index)
   }
 
-  const docs = index.componentDocs(expression.value)
-
-  return docs ? markdownHover(doc, start, end, renderDocs(`<${expression.value}>`, docs)) : null
+  return componentHover(doc, expression.value, start, end, index)
 }
 
-/** Entry docs of the `@Name.entry` / `#Name.entry` reference the binding points at. */
+function componentHover(
+  doc: TextDocument,
+  name: string,
+  start: number,
+  end: number,
+  index: DefinitionIndex,
+): Hover | null {
+  const docs = index.componentDocs(name)
+
+  return docs ? markdownHover(doc, start, end, renderDocs(`<${name}>`, docs)) : null
+}
+
 function referenceHover(
   doc: TextDocument,
   raw: string,

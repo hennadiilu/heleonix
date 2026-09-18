@@ -1,10 +1,5 @@
 import { IDocs } from "@heleonix/hx-language"
 
-/**
- * Merges two docs of the same symbol (e.g. contributed by different dimension
- * files or sources): `first`'s scalar fields win, record fields are unioned
- * with `first`'s keys taking precedence.
- */
 export function mergeDocs(first: IDocs, second: IDocs): IDocs {
   const result: IDocs = { ...second, ...first }
 

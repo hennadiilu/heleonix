@@ -1,48 +1,28 @@
-import { FrameworkElement } from "../FrameworkElement"
-import { StateManager } from "../state/StateManager"
-import { DictionaryProvider } from "../dictionaries/DictionaryProvider"
-import { ConfigProvider } from "../configs/ConfigProvider"
-import { Binder } from "../bindings/Binder"
-import { PlatformAdapter } from "../platform/PlatformAdapter"
 import type { IComponentDefinition, IComponentUsage } from "@heleonix/hx-language"
-import { Scheduler } from "./Scheduler"
-import { ComponentManager } from "./ComponentManager"
-import { DimensionManager } from "../dimension/DimensionManager"
 import type { PlatformComponent } from "./PlatformComponent"
 import type { DataParams } from "../common/DataParams"
+import type { IComponentContext } from "./IComponentContext"
 
 const EMPTY_COMPONENTS: readonly Component[] = Object.freeze([])
 
-/**
- * Base class for components. A **programmatic** component is a TypeScript class
- * extending this base directly (it has no `*.hxm` file); its prop and event
- * contracts are the `TProps` and `TEvents` type arguments, which the analyzer
- * reads by class scan - exactly as it reads a `*.hxm` component's `props:` /
- * `events:` frontmatter - so usages get the same validation, completion and
- * hover. Both must be data (`DataParams` rejects function-typed members at any
- * depth); events are payload types, callbacks are events themselves. The
- * declarative `*.hxm` base and the platform base leave the arguments at their
- * `object` defaults.
- */
+const ANONYMOUS_KEY_MARKER = "#"
+
+function nextChildKey(usage: IComponentUsage, counters: Map<string, number>): string {
+  if (usage.name !== undefined) {
+    return `${usage.tag}_${usage.name}`
+  }
+
+  const index = counters.get(usage.tag) ?? 0
+
+  counters.set(usage.tag, index + 1)
+
+  return `${usage.tag}_${ANONYMOUS_KEY_MARKER}${index}`
+}
+
 export abstract class Component<
   TProps extends DataParams<TProps> = object,
   TEvents extends DataParams<TEvents> = object,
-> extends FrameworkElement<
-  | ComponentManager
-  | StateManager
-  | Binder
-  | DictionaryProvider
-  | ConfigProvider
-  | Scheduler
-  | PlatformAdapter
-  | DimensionManager
 > {
-  // Phantom, type-only carriers so TypeScript tracks the contract type arguments
-  // for the analyzer to read; `declare` emits no field at runtime.
-  declare protected readonly __props?: TProps
-
-  declare protected readonly __events?: TEvents
-
   private _fqName = ""
 
   private _definition: IComponentDefinition | undefined
@@ -57,9 +37,9 @@ export abstract class Component<
 
   private _children: Component[] | undefined
 
-  public static override get isSingleton(): boolean {
-    return false
-  }
+  private _owner: Component | undefined
+
+  public constructor(protected readonly context: IComponentContext) {}
 
   public get fqName(): string {
     return this._fqName
@@ -89,52 +69,26 @@ export abstract class Component<
     return this._children ?? EMPTY_COMPONENTS
   }
 
-  protected set fqName(value: string) {
-    this._fqName = value
+  protected get ownHost(): PlatformComponent | undefined {
+    return undefined
   }
 
-  protected set definition(value: IComponentDefinition) {
-    this._definition = value
-  }
+  protected get firstHost(): PlatformComponent | undefined {
+    const own = this.ownHost
 
-  protected set usage(value: IComponentUsage) {
-    this._usage = value
-  }
-
-  protected set parent(value: Component | undefined) {
-    this._parent = value
-  }
-
-  protected set platformParent(value: PlatformComponent | undefined) {
-    this._platformParent = value
-  }
-
-  protected set scopedParent(value: Component | undefined) {
-    this._scopedParent = value
-  }
-
-  public appendChild(component: Component): void {
-    if (!this._children) {
-      this._children = []
+    if (own) {
+      return own
     }
 
-    this._children.push(component)
-  }
+    for (const child of this.children) {
+      const host = child.firstHost
 
-  public removeChild(component: Component): void {
-    if (!this._children) {
-      return
+      if (host) {
+        return host
+      }
     }
 
-    const index = this._children.indexOf(component)
-
-    if (index >= 0) {
-      this._children.splice(index, 1)
-    }
-
-    if (this._children.length === 0) {
-      this._children = undefined
-    }
+    return undefined
   }
 
   public build(
@@ -145,21 +99,37 @@ export abstract class Component<
     scopedParent: Component | undefined,
     platformParent: PlatformComponent | undefined,
   ): Promise<void> {
-    this.fqName = fqName
-    this.definition = definition
-    this.usage = usage
-    this.parent = parent
-    this.scopedParent = scopedParent
-    this.platformParent = platformParent
+    this._fqName = fqName
+    this._definition = definition
+    this._usage = usage
+    this._parent = parent
+    this._scopedParent = scopedParent
+    this._platformParent = platformParent
 
     return Promise.resolve()
   }
 
-  public mount(): void {}
+  public mount(anchor?: PlatformComponent): void {
+    const children = this._children
+
+    if (!children) {
+      return
+    }
+
+    let next = anchor
+
+    for (let i = children.length - 1; i >= 0; i--) {
+      const child = children[i]
+
+      child.mount(next)
+
+      next = child.firstHost ?? next
+    }
+  }
 
   public async update(newDefinition: IComponentDefinition, newUsage: IComponentUsage): Promise<void> {
-    this.definition = newDefinition
-    this.usage = newUsage
+    this._definition = newDefinition
+    this._usage = newUsage
 
     return Promise.resolve()
   }
@@ -167,12 +137,159 @@ export abstract class Component<
   public unmount(): void {}
 
   public destroy(): void {
-    this._children = undefined
+    this.destroyChildren()
+
+    this._owner = undefined
     this._platformParent = undefined
     this._scopedParent = undefined
     this._parent = undefined
     this._usage = undefined
     this._definition = undefined
     this._fqName = ""
+  }
+
+  protected async attachChild(
+    usage: IComponentUsage,
+    parent: Component | undefined,
+    scopedParent: Component | undefined,
+    platformParent: PlatformComponent | undefined,
+  ): Promise<Component> {
+    const child = await this.context.components.build(usage, parent, scopedParent, platformParent)
+
+    if (!this._children) {
+      this._children = []
+    }
+
+    child._owner = this
+
+    this._children.push(child)
+
+    return child
+  }
+
+  protected async attachChildren(
+    usages: readonly IComponentUsage[] | undefined,
+    parent: Component | undefined,
+    scopedParent: Component | undefined,
+    platformParent: PlatformComponent | undefined,
+  ): Promise<void> {
+    for (const usage of usages ?? []) {
+      await this.attachChild(usage, parent, scopedParent, platformParent)
+    }
+  }
+
+  protected async reconcileChildren(
+    newUsages: readonly IComponentUsage[] | undefined,
+    parent: Component | undefined,
+    scopedParent: Component | undefined,
+    platformParent: PlatformComponent | undefined,
+  ): Promise<void> {
+    const oldByKey = new Map<string, Component>()
+    const oldCounters = new Map<string, number>()
+    const oldIndexes = new Map<Component, number>()
+    const previous = this.children
+
+    for (let i = 0; i < previous.length; i++) {
+      const child = previous[i]
+
+      oldByKey.set(nextChildKey(child.usage, oldCounters), child)
+      oldIndexes.set(child, i)
+    }
+
+    const newCounters = new Map<string, number>()
+    const reconciled: Component[] = []
+
+    for (const newUsage of newUsages ?? []) {
+      const key = nextChildKey(newUsage, newCounters)
+      const existing = oldByKey.get(key)
+
+      if (existing) {
+        oldByKey.delete(key)
+
+        await this.context.components.update(existing, newUsage)
+
+        reconciled.push(existing)
+      } else {
+        const built = await this.context.components.build(newUsage, parent, scopedParent, platformParent)
+
+        built._owner = this
+
+        reconciled.push(built)
+      }
+    }
+
+    this._children = reconciled.length > 0 ? reconciled : undefined
+
+    // Before placing: a departing child's host must be out of the way, or it
+    // would still be a candidate anchor for the ones that stay.
+    for (const removed of oldByKey.values()) {
+      this.context.components.destroy(removed)
+    }
+
+    this.placeChildren(oldIndexes)
+  }
+
+  private placeChildren(oldIndexes: ReadonlyMap<Component, number>): void {
+    const children = this._children
+
+    if (!children) {
+      return
+    }
+
+    let anchor = this.anchorAfter(children.length)
+    let settledOldIndex = Number.MAX_SAFE_INTEGER
+
+    for (let i = children.length - 1; i >= 0; i--) {
+      const child = children[i]
+      const oldIndex = oldIndexes.get(child)
+
+      if (oldIndex === undefined || oldIndex > settledOldIndex) {
+        child.mount(anchor)
+      } else {
+        settledOldIndex = oldIndex
+      }
+
+      anchor = child.firstHost ?? anchor
+    }
+  }
+
+  private anchorAfter(index: number): PlatformComponent | undefined {
+    const children = this.children
+
+    for (let i = index; i < children.length; i++) {
+      const host = children[i].firstHost
+
+      if (host) {
+        return host
+      }
+    }
+
+    if (this.ownHost) {
+      return undefined
+    }
+
+    const owner = this._owner
+
+    if (!owner) {
+      return undefined
+    }
+
+    const ownIndex = owner._children?.indexOf(this) ?? -1
+
+    return ownIndex < 0 ? undefined : owner.anchorAfter(ownIndex + 1)
+  }
+
+  private destroyChildren(): void {
+    const children = this._children
+
+    if (!children) {
+      return
+    }
+
+    this._children = undefined
+
+    for (const child of children) {
+      this.context.components.destroy(child)
+    }
   }
 }

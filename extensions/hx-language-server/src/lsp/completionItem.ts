@@ -1,10 +1,5 @@
 import { CompletionItem, CompletionItemKind, MarkupKind, Range, TextEdit } from "vscode-languageserver"
 
-/**
- * Completion item with a `textEdit` replacing the typed prefix and a
- * `filterText`; `documentation` (markdown, usually a docs summary) is attached
- * when the symbol is documented.
- */
 export function completionItem(
   label: string,
   kind: CompletionItemKind,

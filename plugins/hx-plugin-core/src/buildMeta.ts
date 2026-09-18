@@ -4,20 +4,15 @@ import type {
   IDocsEntry,
   IMetaDocument,
   IQualifierDefinition,
-  IRegistryMetaEntry,
+  IConverterActionMetaEntry,
 } from "@heleonix/hx-language"
 
-/**
- * Assembles a package's `hx.meta.json` manifest: one bundle per package (no
- * per-file sidecars), sections sorted deterministically so the emitted
- * artifact doesn't churn with scan order.
- */
 export function buildMeta(
   input: {
     docs?: readonly IDocsEntry[]
     components?: readonly IComponentMetaEntry[]
-    converters?: readonly IRegistryMetaEntry[]
-    actions?: readonly IRegistryMetaEntry[]
+    converters?: readonly IConverterActionMetaEntry[]
+    actions?: readonly IConverterActionMetaEntry[]
     themeTokens?: Readonly<Record<string, string>>
     qualifiers?: readonly IQualifierDefinition[]
   },
@@ -60,7 +55,6 @@ export function buildMeta(
   return result
 }
 
-/** Rebuilds a record with its keys in sorted order so the emitted manifest is stable. */
 function sortRecord(record: Readonly<Record<string, string>>): Record<string, string> {
   const sorted: Record<string, string> = {}
 

@@ -17,7 +17,6 @@ import { frontmatterCompletion } from "../jsonc/frontmatterCompletion"
 import { diagnoseDictionary } from "./dictionaryDiagnostics"
 import { parameterCompletion } from "./parameterCompletion"
 
-/** Language service for `*.hxd` dictionaries. */
 export class DictionaryLanguageService implements ILanguageService {
   public readonly kind: Kind = "dictionary"
 

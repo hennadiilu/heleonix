@@ -1,51 +1,70 @@
 import { EventEmitter } from "../common/EventEmitter"
 import { IEventEmitter } from "../common/IEventEmitter"
-import { FrameworkElement } from "../FrameworkElement"
 import { IDimension, IDimensionDefinition, stringifyDimension } from "@heleonix/hx-language"
-import { IDIContainer } from "../injection/IDIContainer"
-import { IDIContainerInternal } from "../injection/IDIContainerInternal"
-import { IDimensionManagerSettings } from "./IDimensionManagerSettings"
+import { HeleonixError } from "../errors/HeleonixError"
+import { Errors } from "../errors/Errors"
+import type { IDimensionManager } from "./IDimensionManager"
 
-export class DimensionManager extends FrameworkElement {
-  public readonly dimensionDefinitions: readonly IDimensionDefinition[]
+export class DimensionManager implements IDimensionManager {
+  public readonly definitions: readonly IDimensionDefinition[]
 
-  private readonly dimensionChangedEmitter = new EventEmitter<(dimension: IDimension) => void>()
+  private readonly changedEmitter = new EventEmitter<(dimension: IDimension) => void>()
 
-  private _currentDimension: IDimension = {}
+  private _current: IDimension = {}
 
-  private _dimensionString: string = ""
+  private _currentKey: string = ""
 
-  public constructor(diContainer: IDIContainer) {
-    super(diContainer)
-
-    const settings = (diContainer as IDIContainerInternal).getSettings<IDimensionManagerSettings>(
-      DimensionManager.diName,
-    )
-
-    this.dimensionDefinitions = settings.dimensions ?? []
+  public constructor(definitions: readonly IDimensionDefinition[]) {
+    this.definitions = definitions
   }
 
-  public static get diName(): string {
-    return "DimensionManager"
+  public get current(): IDimension {
+    return this._current
   }
 
-  public get currentDimension(): IDimension {
-    return this._currentDimension
+  public get currentKey(): string {
+    return this._currentKey
   }
 
-  public get dimensionString(): string {
-    return this._dimensionString
+  public get changed(): IEventEmitter<(dimension: IDimension) => void> {
+    return this.changedEmitter
   }
 
-  public get dimensionChanged(): IEventEmitter<(dimension: IDimension) => void> {
-    return this.dimensionChangedEmitter
+  public update(diff: IDimension): void {
+    // An undeclared name or value would leave `current` and `currentKey` disagreeing,
+    // so a definition cached under one dimension would be served for another.
+    this.validate(diff)
+
+    if (!this.hasChanges(diff)) {
+      return
+    }
+
+    this._current = { ...this._current, ...diff }
+
+    this._currentKey = stringifyDimension(this.current, this.definitions)
+
+    this.changedEmitter.emit(this.current)
   }
 
-  public updateDimension(diff: IDimension): void {
-    this._currentDimension = { ...this._currentDimension, ...diff }
+  private validate(diff: IDimension): void {
+    for (const name of Object.keys(diff)) {
+      const definition = this.definitions.find((candidate) => candidate.name === name)
 
-    this._dimensionString = stringifyDimension(this.currentDimension, this.dimensionDefinitions)
+      if (!definition) {
+        throw new HeleonixError(
+          Errors.unknownDimension,
+          name,
+          this.definitions.map((candidate) => candidate.name).join(", "),
+        )
+      }
 
-    this.dimensionChangedEmitter.emit(this.currentDimension)
+      if (!definition.values.includes(diff[name])) {
+        throw new HeleonixError(Errors.invalidDimensionValue, diff[name], name, definition.values.join(", "))
+      }
+    }
+  }
+
+  private hasChanges(diff: IDimension): boolean {
+    return Object.keys(diff).some((name) => this._current[name] !== diff[name])
   }
 }

@@ -1,95 +1,54 @@
 import {
-  DICTIONARY_ENTRY_SEPARATOR,
   EXPRESSION_PATTERN,
-  FQDictionaryEntryName,
+  joinFQPropertyName,
   parseBindingExpression,
   parseConverterCall,
 } from "@heleonix/hx-language"
-import type { IBindingExpression } from "@heleonix/hx-language"
-import { FrameworkElement } from "../FrameworkElement"
-import { HeleonixError } from "../errors/HeleonixError"
-import { Errors } from "../errors/Errors"
-import { ConfigDefinitionProvider } from "../configs/ConfigDefinitionProvider"
-import { resolveConfigEntry } from "../configs/resolveConfigEntry"
-import { DictionaryDefinitionProvider } from "../dictionaries/DictionaryDefinitionProvider"
-import { ConverterRegistry } from "./ConverterRegistry"
+import type { BindingType, FQComponentName, FQPropertyName, IBindingExpression } from "@heleonix/hx-language"
+import type { MaybePromise } from "../common/MaybePromise"
+import { isThenable } from "../common/isThenable"
+import { thenMaybe } from "../common/thenMaybe"
+import type { IConverterProvider } from "../converters/IConverterProvider"
+import type { IValueSource } from "./IValueSource"
 
-/**
- * The single owner of binding-expression semantics: resolving a source, running
- * a converter `format`/`parse` chain, interpolating a dictionary template, and
- * listing the state paths a binding depends on. Both component-property bindings
- * and dictionary-entry interpolations go through this one implementation, so the
- * two can never drift. State is read through the caller-supplied `get` (a scoped
- * path -> value lookup); every other source kind is resolved here against the
- * config and dictionary layers. Converters are pulled per-call from the
- * {@link ConverterRegistry} so this element never depends on them statically.
- */
-export class BindingEvaluator extends FrameworkElement<
-  ConfigDefinitionProvider | DictionaryDefinitionProvider | ConverterRegistry
-> {
-  private readonly configDefinitionProvider = this.inject(ConfigDefinitionProvider)
+const EXPRESSION_REGEX = new RegExp(EXPRESSION_PATTERN, "g")
 
-  private readonly dictionaryDefinitionProvider = this.inject(DictionaryDefinitionProvider)
+const EMPTY_ARGS: Record<string, unknown> = Object.freeze({})
 
-  private readonly converters = this.inject(ConverterRegistry)
+const LEAF_TYPES: ReadonlySet<BindingType> = new Set<BindingType>(["state", "literal"])
 
-  public static get diName(): string {
-    return "BindingEvaluator"
+type ConverterCall = ReturnType<typeof parseConverterCall>
+
+export class BindingEvaluator {
+  private readonly sources: Map<BindingType, IValueSource>
+
+  private readonly argEntries = new WeakMap<ConverterCall, [string, IBindingExpression][]>()
+
+  public constructor(
+    private readonly converters: IConverterProvider,
+    sources: readonly IValueSource[],
+  ) {
+    this.sources = new Map(sources.map((source) => [source.type, source]))
   }
 
-  public async resolve(binding: IBindingExpression, get: (path: string) => unknown): Promise<unknown> {
-    let value = await this.resolveSource(binding, get)
-
-    for (const segment of binding.converters ?? []) {
-      const call = parseConverterCall(segment)
-
-      value = await this.converters.get(call.name).format(value, await this.resolveArgs(call, get))
-    }
-
-    return value
+  public resolve(binding: IBindingExpression, scopeFQ: FQComponentName): MaybePromise<unknown> {
+    return this.applyFormat(this.resolveSource(binding, scopeFQ), binding.converters ?? [], 0, scopeFQ)
   }
 
-  public async resolveBack(
+  public resolveBack(
     targetValue: unknown,
     binding: IBindingExpression,
-    get: (path: string) => unknown,
-  ): Promise<unknown> {
+    scopeFQ: FQComponentName,
+  ): MaybePromise<unknown> {
     const converters = binding.converters ?? []
-    let value = targetValue
 
-    for (let index = converters.length - 1; index >= 0; index--) {
-      const call = parseConverterCall(converters[index])
-
-      value = await this.converters.get(call.name).parse(value, await this.resolveArgs(call, get))
-    }
-
-    return value
+    return this.applyParse(targetValue, converters, converters.length - 1, scopeFQ)
   }
 
-  public async getDictionaryValue(
-    path: FQDictionaryEntryName,
-    get: (path: string) => unknown,
-  ): Promise<string | undefined> {
-    const template = await this.getDictionaryEntry(path)
+  public collectParameters(binding: IBindingExpression, scopeFQ: FQComponentName): MaybePromise<FQPropertyName[]> {
+    const params = new Set<FQPropertyName>()
 
-    if (template === undefined) {
-      return undefined
-    }
-
-    return this.interpolate(template, get)
-  }
-
-  public async getDictionaryEntry(path: FQDictionaryEntryName): Promise<string | undefined> {
-    const splitIndex = path.lastIndexOf(DICTIONARY_ENTRY_SEPARATOR)
-    const name = path.slice(0, splitIndex)
-
-    const definition = await this.dictionaryDefinitionProvider.getDefinition(name)
-
-    if (!definition) {
-      throw new HeleonixError(Errors.dictionaryDefinitionProviding, name)
-    }
-
-    return definition.entries[path.slice(splitIndex + 1)]
+    return thenMaybe(this.collectInto(binding, scopeFQ, params), () => [...params])
   }
 
   public isDimensionSensitive(binding: IBindingExpression): boolean {
@@ -108,65 +67,192 @@ export class BindingEvaluator extends FrameworkElement<
     return false
   }
 
-  public getDependencies(binding: IBindingExpression): string[] {
-    const params: string[] = []
+  private applyFormat(
+    value: MaybePromise<unknown>,
+    converters: readonly string[],
+    index: number,
+    scopeFQ: FQComponentName,
+  ): MaybePromise<unknown> {
+    while (index < converters.length) {
+      if (isThenable(value)) {
+        const next = index
 
-    if (binding.type === "state" && binding.value) {
-      params.push(binding.value)
-    }
-
-    for (const segment of binding.converters ?? []) {
-      for (const expression of Object.values(parseConverterCall(segment).args)) {
-        if (expression.type === "state" && expression.value) {
-          params.push(expression.value)
-        }
+        return value.then((source) => this.applyFormat(source, converters, next, scopeFQ))
       }
+
+      const call = parseConverterCall(converters[index])
+      const args = this.resolveArgs(call, scopeFQ)
+      const source = value
+      const next = index + 1
+
+      if (isThenable(args)) {
+        return args.then((resolved) =>
+          this.applyFormat(this.converters.get(call.name).format(source, resolved), converters, next, scopeFQ),
+        )
+      }
+
+      value = this.converters.get(call.name).format(source, args)
+      index = next
     }
 
-    return params
+    return value
   }
 
-  private async resolveSource(expression: IBindingExpression, get: (path: string) => unknown): Promise<unknown> {
-    switch (expression.type) {
-      case "state":
-        return get(expression.value)
-      case "literal":
-        return JSON.parse(expression.value)
-      case "config":
-        return resolveConfigEntry(this.configDefinitionProvider, expression.value)
-      case "dictionary":
-        return this.getDictionaryValue(expression.value, get)
-      default:
-        return undefined
+  private applyParse(
+    value: MaybePromise<unknown>,
+    converters: readonly string[],
+    index: number,
+    scopeFQ: FQComponentName,
+  ): MaybePromise<unknown> {
+    while (index >= 0) {
+      if (isThenable(value)) {
+        const next = index
+
+        return value.then((target) => this.applyParse(target, converters, next, scopeFQ))
+      }
+
+      const call = parseConverterCall(converters[index])
+      const args = this.resolveArgs(call, scopeFQ)
+      const target = value
+      const next = index - 1
+
+      if (isThenable(args)) {
+        return args.then((resolved) =>
+          this.applyParse(this.converters.get(call.name).parse(target, resolved), converters, next, scopeFQ),
+        )
+      }
+
+      value = this.converters.get(call.name).parse(target, args)
+      index = next
     }
+
+    return value
   }
 
-  private async resolveArgs(
-    call: ReturnType<typeof parseConverterCall>,
-    get: (path: string) => unknown,
-  ): Promise<Record<string, unknown>> {
-    const args: Record<string, unknown> = {}
+  private resolveSource(expression: IBindingExpression, scopeFQ: FQComponentName): MaybePromise<unknown> {
+    const source = this.sources.get(expression.type)
 
-    for (const [name, expression] of Object.entries(call.args)) {
-      args[name] = await this.resolveSource(expression, get)
+    if (!source) {
+      return undefined
     }
 
-    return args
+    const raw = source.get(this.pathFor(expression, scopeFQ))
+
+    return LEAF_TYPES.has(expression.type) ? raw : this.interpolateMaybe(raw, scopeFQ)
   }
 
-  private async interpolate(template: string, get: (path: string) => unknown): Promise<string> {
-    const pattern = new RegExp(EXPRESSION_PATTERN, "g")
+  private interpolateMaybe(raw: MaybePromise<unknown>, scopeFQ: FQComponentName): MaybePromise<unknown> {
+    if (isThenable(raw)) {
+      return raw.then((value) => this.interpolateMaybe(value, scopeFQ))
+    }
 
+    return typeof raw === "string" ? this.interpolate(raw, scopeFQ) : raw
+  }
+
+  private async interpolate(template: string, scopeFQ: FQComponentName): Promise<string> {
     let result = ""
     let lastIndex = 0
-    let match: RegExpExecArray | null
 
-    while ((match = pattern.exec(template)) !== null) {
+    for (const match of template.matchAll(EXPRESSION_REGEX)) {
       result += template.slice(lastIndex, match.index)
-      result += String(await this.resolve(parseBindingExpression(match[1]), get))
+      result += String(await this.resolve(parseBindingExpression(match[1]), scopeFQ))
       lastIndex = match.index + match[0].length
     }
 
     return result + template.slice(lastIndex)
+  }
+
+  private collectInto(
+    expression: IBindingExpression,
+    scopeFQ: FQComponentName,
+    params: Set<FQPropertyName>,
+  ): MaybePromise<void> {
+    let sourcePart: MaybePromise<void> = undefined
+
+    if (expression.type === "state") {
+      if (expression.value) {
+        params.add(joinFQPropertyName(scopeFQ, expression.value))
+      }
+    } else if (!LEAF_TYPES.has(expression.type)) {
+      const source = this.sources.get(expression.type)
+
+      if (source) {
+        sourcePart = this.collectFromTemplate(source.get(this.pathFor(expression, scopeFQ)), scopeFQ, params)
+      }
+    }
+
+    return thenMaybe(sourcePart, () => this.collectArgs(expression, scopeFQ, params))
+  }
+
+  private collectFromTemplate(
+    raw: MaybePromise<unknown>,
+    scopeFQ: FQComponentName,
+    params: Set<FQPropertyName>,
+  ): MaybePromise<void> {
+    if (isThenable(raw)) {
+      return raw.then((value) => this.collectFromTemplate(value, scopeFQ, params))
+    }
+
+    if (typeof raw !== "string") {
+      return undefined
+    }
+
+    let chain: MaybePromise<void> = undefined
+
+    for (const match of raw.matchAll(EXPRESSION_REGEX)) {
+      const inner = match[1]
+
+      chain = thenMaybe(chain, () => this.collectInto(parseBindingExpression(inner), scopeFQ, params))
+    }
+
+    return chain
+  }
+
+  private collectArgs(
+    expression: IBindingExpression,
+    scopeFQ: FQComponentName,
+    params: Set<FQPropertyName>,
+  ): MaybePromise<void> {
+    let chain: MaybePromise<void> = undefined
+
+    for (const segment of expression.converters ?? []) {
+      for (const argExpression of Object.values(parseConverterCall(segment).args)) {
+        chain = thenMaybe(chain, () => this.collectInto(argExpression, scopeFQ, params))
+      }
+    }
+
+    return chain
+  }
+
+  private pathFor(expression: IBindingExpression, scopeFQ: FQComponentName): string {
+    return expression.type === "state" ? joinFQPropertyName(scopeFQ, expression.value) : expression.value
+  }
+
+  private resolveArgs(call: ConverterCall, scopeFQ: FQComponentName): MaybePromise<Record<string, unknown>> {
+    let entries = this.argEntries.get(call)
+
+    if (entries === undefined) {
+      entries = Object.entries(call.args)
+      this.argEntries.set(call, entries)
+    }
+
+    if (entries.length === 0) {
+      return EMPTY_ARGS
+    }
+
+    const args: Record<string, unknown> = {}
+    let pending: Promise<void>[] | undefined
+
+    for (const [name, expression] of entries) {
+      const value = this.resolveSource(expression, scopeFQ)
+
+      if (isThenable(value)) {
+        ;(pending ??= []).push(value.then((resolved) => void (args[name] = resolved)))
+      } else {
+        args[name] = value
+      }
+    }
+
+    return pending ? Promise.all(pending).then(() => args) : args
   }
 }

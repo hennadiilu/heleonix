@@ -7,12 +7,6 @@ import { makeDiagnostic } from "../../lsp/makeDiagnostic"
 import { REFERENCE_MESSAGES } from "../../references/referenceMessages"
 import { definitionName } from "./definitionName"
 
-/**
- * Flags every top-level entry of a `*.hxd`/`*.hxc` whose key is never referenced
- * (`@Name.entry` / `#Name.entry`) by any component - and, for dictionaries, by
- * any other dictionary. `severity` is `undefined` when the check is turned off.
- * `entries` and `bodyStart` come from the body parse so offsets land on the key.
- */
 export function diagnoseUnusedEntries(
   doc: TextDocument,
   kind: ReferenceType,

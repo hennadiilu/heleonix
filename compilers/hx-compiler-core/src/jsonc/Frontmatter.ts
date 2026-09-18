@@ -11,27 +11,6 @@ const FRONTMATTER_PATTERN = new RegExp(
 )
 const OPENS_FRONTMATTER = new RegExp(FRONTMATTER_OPEN_PATTERN)
 
-/**
- * Splits a Heleonix source into an optional frontmatter header and the
- * document body. The header uses the CSS-like dialect shared by every format:
- *
- * ```text
- * ---
- * usage: extend
- * /** Detached (blank line below): the file-level summary. *\/
- *
- * props: { variant?: 'primary' | 'secondary' }
- * ---
- * { ...body... }
- * ```
- *
- * Comments are `// line` and `/* block *\/`. A `/** *\/` doc comment followed
- * by a blank line is detached - the file summary; one directly above an entry
- * documents it. Top-level lines are scalar `key: value` facts; the typing keys
- * `props:` / `events:` / `params:` capture opaque TypeScript type text (a name
- * or a brace-balanced literal) handed to the compiler unparsed. Values are raw
- * text - no unquoting.
- */
 export function splitFrontmatter(source: string): IFrontmatterDocument {
   const match = FRONTMATTER_PATTERN.exec(source)
 
@@ -56,11 +35,6 @@ const DETACHED = /^[ \t]*\r?\n[ \t]*(\r?\n|$)/
 // name or an inline `{ … }` literal), never parsed by the DSL.
 const TYPE_KEY = /^(props|events|params)[ \t]*:/
 
-/**
- * Parses header-dialect text without fences - the grammar of frontmatter
- * headers, for header-only parsing.
- * The returned `body` is always empty.
- */
 export function parseHeader(header: string): IFrontmatterDocument {
   const result: IFrontmatterDocument = { frontmatter: {}, body: "" }
 
@@ -209,13 +183,6 @@ function skipToLineEnd(text: string, from: number): number {
   return lineEnd === -1 ? text.length : lineEnd
 }
 
-/**
- * Captures an opaque TypeScript type value starting at `from`: a type name or
- * an inline `{ … }` literal. The value spans newlines only while inside
- * unbalanced braces; a newline at brace depth 0 ends it. String and comment
- * spans are tracked so their braces and newlines never miscount. The DSL does
- * not interpret the captured text - it is handed to the TypeScript compiler.
- */
 function captureTypeValue(text: string, from: number): { value: string; end: number } {
   let i = from
   let depth = 0
@@ -265,7 +232,6 @@ function captureTypeValue(text: string, from: number): { value: string; end: num
   return { value: text.slice(start, i).trim(), end: i }
 }
 
-/** Index just past the closing `quote`, tolerating `\`-escapes. */
 function skipString(text: string, from: number, quote: string): number {
   let i = from + 1
 
@@ -288,7 +254,6 @@ function skipString(text: string, from: number, quote: string): number {
   return i
 }
 
-/** Cuts a trailing `//` or `/*` comment start outside single quotes. */
 function stripTrailingComment(line: string): string {
   let quoted = false
 

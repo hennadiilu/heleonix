@@ -18,14 +18,6 @@ type Context =
   | { kind: "arg-name"; qualifier: string; partial: string }
   | { kind: "arg-value"; qualifier: string; arg: string; inBrace: boolean; inner: string }
 
-/**
- * Completion for `@hx-*` style qualifiers in `*.hxs`/`*.hxt`: the qualifier name
- * (`@hx-i` -> `@hx-if`), its argument names, and argument values routed by the
- * arg's TypeScript type - enum unions offer their members, `PropertyRef`/
- * `EventRef` offer the styled component's state (`ThemeTokenRef` `{$...}` values
- * are served by {@link completeThemeToken}, tried first). Returns `undefined`
- * outside a qualifier so the caller falls back.
- */
 export function completeQualifier(
   doc: TextDocument,
   offset: number,
@@ -96,12 +88,6 @@ function argValues(
   return []
 }
 
-/**
- * Completion for `@hx-style(for: ...)` scope segments: offers the styled
- * component's control names (its definition-tree children), completing one
- * dot-segment at a time. The analyzer also accepts component types and builtins
- * as segments, but the component's own controls are the useful suggestions.
- */
 function completeScopePath(
   doc: TextDocument,
   offset: number,
@@ -115,12 +101,6 @@ function completeScopePath(
   return controls.filter((name) => name.startsWith(partial)).map((name) => item(name, CompletionItemKind.Field, range))
 }
 
-/**
- * Hover for an `@hx-*` qualifier name in `*.hxs`/`*.hxt`: its full signature
- * (each argument rendered with its branded ref type / enum union / value kind)
- * plus any argument documentation. Returns `null` unless the cursor is on the
- * `@hx-<name>` token itself, so the caller can fall back.
- */
 export function hoverQualifier(
   doc: TextDocument,
   offset: number,
@@ -150,7 +130,6 @@ export function hoverQualifier(
   return { contents: { kind: MarkupKind.Markdown, value: lines.join("\n") } }
 }
 
-/** The qualifier name (PascalCase) when the cursor sits on an `@hx-<name>` token, else undefined. */
 function qualifierNameAt(text: string, offset: number): string | undefined {
   let start = offset
 
@@ -185,11 +164,6 @@ function argType(arg: IQualifierArg): string {
   return arg.kind
 }
 
-/**
- * Classifies the cursor's position within the nearest `@hx-...` construct, or
- * undefined. Bounded by newline/`;` only (a qualifier prelude is one line) - not
- * by `{`/`}`, since those delimit binding sources inside the argument list.
- */
 function contextAt(text: string, offset: number): Context | undefined {
   const boundary = Math.max(
     text.lastIndexOf("\n", offset - 1),
@@ -250,12 +224,10 @@ function signature(arg: IQualifierArg): string {
   return `${arg.name}${arg.optional ? "?" : ""}: ${type}`
 }
 
-/** A range that replaces the `partial` characters immediately before the cursor. */
 function replacing(doc: TextDocument, offset: number, partial: string): Range {
   return Range.create(doc.positionAt(offset - partial.length), doc.positionAt(offset))
 }
 
-/** The last top-level (brace/paren/quote-aware) comma segment of an argument list. */
 function lastSegment(args: string): string {
   let depth = 0
   let quote = ""

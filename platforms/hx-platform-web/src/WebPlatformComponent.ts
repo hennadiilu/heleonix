@@ -1,8 +1,7 @@
 import { Component, PlatformComponent } from "@heleonix/hx-core"
+import type { SchedulerJob } from "@heleonix/hx-core"
 import type { IComponentDefinition, IComponentUsage } from "@heleonix/hx-language"
 import { PROPERTY_NAME_SEGMENT_SEPARATOR, getPropertySegments, joinFQPropertyName } from "@heleonix/hx-language"
-import { WebScheduler } from "./WebScheduler"
-import { WebSchedulerJob } from "./WebSchedulerJob"
 
 type PropertyClassification = "event" | "property" | "attribute"
 
@@ -14,11 +13,12 @@ interface DomListenerEntry {
 
 interface EventSubscriptionEntry {
   remove: () => void
-  /** Active logical subpaths (e.g. `target.value`) sharing one native listener — Model B set, not refcount. */
   activeSubPaths: Set<string>
 }
 
 export class WebPlatformComponent extends PlatformComponent {
+  public static readonly hxName = "WebPlatformComponent"
+
   private native!: HTMLElement
 
   private readonly pendingProperties = new Map<string, unknown>()
@@ -29,17 +29,12 @@ export class WebPlatformComponent extends PlatformComponent {
 
   private readonly domListeners = new Map<string, DomListenerEntry>()
 
-  public static get diName(): string {
-    return "WebPlatformComponent"
+  public get roots(): readonly HTMLElement[] {
+    return this.native ? [this.native] : []
   }
 
   public adoptNative(element: HTMLElement): void {
     this.native = element
-  }
-
-  /** The component's root elements, that styling classes and variables land on. */
-  public get roots(): readonly HTMLElement[] {
-    return this.native ? [this.native] : []
   }
 
   public override setContent(content: string): void {
@@ -63,18 +58,21 @@ export class WebPlatformComponent extends PlatformComponent {
     return super.build(fqName, definition, usage, parent, scopedParent, platformParent)
   }
 
-  public override mount(): void {
+  public override mount(anchor?: PlatformComponent): void {
     const host = this.platformParent
 
     if (!(host instanceof WebPlatformComponent)) {
       return
     }
 
-    if (host.native.contains(this.native)) {
+    const anchorNative = anchor instanceof WebPlatformComponent ? anchor.native : null
+    const before = anchorNative && anchorNative.parentNode === host.native ? anchorNative : null
+
+    if (this.native.parentNode === host.native && this.native.nextSibling === before) {
       return
     }
 
-    host.native.appendChild(this.native)
+    host.native.insertBefore(this.native, before)
   }
 
   public override unmount(): void {
@@ -103,7 +101,7 @@ export class WebPlatformComponent extends PlatformComponent {
     this.pendingProperties.clear()
   }
 
-  public activateBinding(sourceLocalPath: string): void {
+  public override activateBinding(sourceLocalPath: string): void {
     const kind = this.classify(sourceLocalPath)
 
     switch (kind) {
@@ -126,7 +124,7 @@ export class WebPlatformComponent extends PlatformComponent {
     }
   }
 
-  public deactivateBinding(sourceLocalPath: string): void {
+  public override deactivateBinding(sourceLocalPath: string): void {
     const kind = this.classify(sourceLocalPath)
 
     switch (kind) {
@@ -161,7 +159,7 @@ export class WebPlatformComponent extends PlatformComponent {
       const remove = this.addDomListener(eventName, (event) => {
         const payload = this.buildEventPayload(event, activeSubPaths)
 
-        this.stateManager.emitEvent(joinFQPropertyName(this.fqName, eventName), payload)
+        this.context.state.emitEvent(joinFQPropertyName(this.fqName, eventName), payload)
       })
 
       entry = { remove, activeSubPaths }
@@ -289,10 +287,10 @@ export class WebPlatformComponent extends PlatformComponent {
   private scheduleWrite(property: string, value: unknown): void {
     this.pendingProperties.set(property, value)
 
-    WebScheduler.scheduleFrame(this.flushProperties)
+    this.context.scheduler.scheduleCommit(this.flushProperties)
   }
 
-  private readonly flushProperties: WebSchedulerJob = () => {
+  private readonly flushProperties: SchedulerJob = () => {
     for (const [name, value] of this.pendingProperties) {
       const kind = this.classify(name)
 

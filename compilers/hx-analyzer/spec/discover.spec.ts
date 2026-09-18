@@ -27,6 +27,7 @@ describe("TypeResolver.discover", () => {
          ellipsis?: 'dots' | 'none'
        }
        export class TruncateConverter extends Converter<string, string, TruncateParams> {
+         static readonly hxName = "Truncate"
          async format(value: string, params: TruncateParams) { return value.slice(0, params.length) }
        }`,
     )
@@ -34,13 +35,14 @@ describe("TypeResolver.discover", () => {
       path.join(root, "SubmitAction.ts"),
       `import { Action } from "./bases"
        export class SubmitAction extends Action<{ id: number }> {
+         static readonly hxName = "Submit"
          async Execute(params: { id: number }) { void params }
        }`,
     )
     fs.writeFileSync(
       path.join(root, "BadConverter.ts"),
       `import { Converter } from "./bases"
-       // Missing the required 'Converter' suffix.
+       // Declares no static hxName.
        export class Weird extends Converter<string, string, { n: number }> {
          async format(value: string) { return value }
        }`,
@@ -52,13 +54,13 @@ describe("TypeResolver.discover", () => {
   })
 
   describe("when the project is scanned", () => {
-    it("then finds converter and action classes with derived names and resolved params", () => {
+    it("then finds converter and action classes with declared names and resolved params", () => {
       const found = new Map(new TypeResolver(createNodeTypeProgramHost(root)).discover().map((c) => [c.className, c]))
 
       const truncate = found.get("TruncateConverter")!
       expect(truncate.base).toBe("Converter")
       expect(truncate.name).toBe("Truncate")
-      expect(truncate.suffixOk).toBeTrue()
+      expect(truncate.hasHxName).toBeTrue()
       const params = new Map(truncate.params.map((p) => [p.name, p]))
       expect(params.get("length")).toEqual(
         jasmine.objectContaining({ kind: "number", optional: false, docs: "Max length." }),
@@ -73,10 +75,11 @@ describe("TypeResolver.discover", () => {
       expect(submit.params.map((p) => p.name)).toEqual(["id"])
     })
 
-    it("then flags a class missing its base suffix", () => {
+    it("then flags a class declaring no static hxName", () => {
       const found = new Map(new TypeResolver(createNodeTypeProgramHost(root)).discover().map((c) => [c.className, c]))
 
-      expect(found.get("Weird")!.suffixOk).toBeFalse()
+      expect(found.get("Weird")!.hasHxName).toBeFalse()
+      expect(found.get("Weird")!.name).toBe("Weird")
     })
   })
 })

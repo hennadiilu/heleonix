@@ -6,7 +6,7 @@ import {
   memberOf,
   memberSummary,
   memberType,
-} from "../src/languages/component/componentInfoLookup.ts"
+} from "../src/languages/component/componentInfoLookup"
 
 const button: IComponentInfo = {
   name: "button",

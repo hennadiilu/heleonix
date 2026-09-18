@@ -4,12 +4,6 @@ import { RULE_KEY_SEPARATOR } from "./RULE_KEY_SEPARATOR"
 const IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]*$/
 const ARG_BOUNDARY = /^\s*[A-Za-z_][A-Za-z0-9_]*\s*:/
 
-/**
- * Parses a compiled style rule key into its qualifier segments. The empty key
- * (the root rule `""`) yields an empty list. Reading is paren/bracket/brace and
- * quote aware, so opaque values (`Media(query:(400px <= width <= 700px),print)`,
- * `16/9`, `{$Colors.x}`) are preserved verbatim. Inverse of {@link stringifyRuleKey}.
- */
 export function parseRuleKey(key: string): IQualifierUsage[] {
   const trimmed = key.trim()
 
@@ -49,12 +43,6 @@ function parseSegment(segment: string): IQualifierUsage {
   return positional !== undefined ? { name, args, positional } : { name, args }
 }
 
-/**
- * Splits an argument list on a top-level `,` only when the next argument opens a
- * named argument (`identifier:`). A comma followed by anything else is value
- * text - a media-query list (`...),print`) or a functional-pseudo selector list
- * (`.a,.b`) stays in one value.
- */
 function splitArguments(input: string): string[] {
   const result: string[] = []
   let depth = 0

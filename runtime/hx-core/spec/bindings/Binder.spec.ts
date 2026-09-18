@@ -1,15 +1,18 @@
 import {
-  Binder,
   BindingEvaluator,
+  ConfigValueSource,
   Converter,
-  ConverterRegistry,
-  DIContainer,
-  FrameworkElement,
+  DictionaryValueSource,
+  LiteralValueSource,
+  StateValueSource,
 } from "@heleonix/hx-core"
+import { Binder } from "../../src/bindings/Binder"
+import { ConverterProvider } from "../../src/converters/ConverterProvider"
+import type { IConverterContext } from "@heleonix/hx-core"
 import { joinFQPropertyName } from "@heleonix/hx-language"
 import type { IBindingExpression } from "@heleonix/hx-language"
 
-class FakeStateManager extends FrameworkElement {
+class FakeStateManager {
   public readonly changed = {
     on: (fq: string, handler: () => void): void => {
       let set = this.handlers.get(fq)
@@ -26,10 +29,6 @@ class FakeStateManager extends FrameworkElement {
   private readonly store = new Map<string, unknown>()
 
   private readonly handlers = new Map<string, Set<() => void>>()
-
-  public static get diName(): string {
-    return "StateManager"
-  }
 
   public getValue(fq: string): unknown {
     return this.store.get(fq)
@@ -49,31 +48,19 @@ class FakeStateManager extends FrameworkElement {
   public unbind(): void {}
 }
 
-class FakeDictionaryDefinitionProvider extends FrameworkElement {
-  public static get diName(): string {
-    return "DictionaryDefinitionProvider"
-  }
-
-  public getDefinition(name: string): Promise<{ entries: Record<string, string> }> {
+class FakeDictionaryDefinitionLoader {
+  public loadDefinition(name: string): Promise<{ entries: Record<string, string> }> {
     return Promise.resolve({ entries: { hi: `dict:${name}.hi` } })
   }
 }
 
-class FakeConfigDefinitionProvider extends FrameworkElement {
-  public static get diName(): string {
-    return "ConfigDefinitionProvider"
-  }
-
-  public getDefinition(name: string): Promise<{ entries: Record<string, string> }> {
+class FakeConfigDefinitionLoader {
+  public loadDefinition(name: string): Promise<{ entries: Record<string, string> }> {
     return Promise.resolve({ entries: { size: `cfg:${name}.size` } })
   }
 }
 
 class UpperConverter extends Converter<string, string> {
-  public static get diName(): string {
-    return "UpperConverter"
-  }
-
   public format(value: string): Promise<string> {
     return Promise.resolve(String(value).toUpperCase())
   }
@@ -85,10 +72,6 @@ class UpperConverter extends Converter<string, string> {
 
 // A reversible converter (format doubles, parse halves) for two-way / chaining.
 class DoubleConverter extends Converter<number, number> {
-  public static get diName(): string {
-    return "DoubleConverter"
-  }
-
   public format(value: number): Promise<number> {
     return Promise.resolve(value * 2)
   }
@@ -98,30 +81,84 @@ class DoubleConverter extends Converter<number, number> {
   }
 }
 
-function binderWith(): { binder: Binder; state: FakeStateManager } {
-  const container = new DIContainer()
-
-  container.registerInjectables([
-    Binder,
-    BindingEvaluator,
-    ConverterRegistry,
-    FakeStateManager,
-    FakeDictionaryDefinitionProvider,
-    FakeConfigDefinitionProvider,
-    UpperConverter,
-    DoubleConverter,
-  ] as never[])
-
-  return {
-    binder: container.inject<Binder>("Binder"),
-    state: container.inject<FakeStateManager>("StateManager"),
+// A synchronous reversible converter: returns values directly, no promise.
+class SyncDoubleConverter extends Converter<number, number> {
+  public format(value: number): number {
+    return value * 2
   }
+
+  public parse(value: number): number {
+    return value / 2
+  }
+}
+
+function binderWith(): { binder: Binder; state: FakeStateManager } {
+  const state = new FakeStateManager()
+  const converterProvider = new ConverterProvider(
+    new Map<string, new (context: IConverterContext) => Converter>([
+      ["Upper", UpperConverter],
+      ["Double", DoubleConverter],
+      ["SyncDouble", SyncDoubleConverter],
+    ]),
+    () => ({}) as IConverterContext,
+  )
+
+  const evaluator = new BindingEvaluator(converterProvider, [
+    new StateValueSource(state as never),
+    new LiteralValueSource(),
+    new ConfigValueSource(new FakeConfigDefinitionLoader() as never),
+    new DictionaryValueSource(new FakeDictionaryDefinitionLoader() as never),
+  ])
+
+  return { binder: new Binder(state as never, evaluator), state }
 }
 
 const flush = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0))
 const upperOf = (value: string, converters: string[]): IBindingExpression => ({ type: "state", value, converters })
 
 describe("Binder", () => {
+  it("then a synchronous converter recomputes in the same tick, without a microtask", async () => {
+    const { binder, state } = binderWith()
+
+    state.setValue(joinFQPropertyName("app", "n"), 5)
+    await binder.bind("app:m", { type: "state", value: "n", converters: ["SyncDouble"] }, "app")
+    expect(state.getValue("app:m")).toBe(10)
+
+    // No flush: a sync converter must write the target within setValue itself.
+    state.setValue(joinFQPropertyName("app", "n"), 7)
+    expect(state.getValue("app:m")).toBe(14)
+  })
+
+  it("then parses a sync converter back into the source synchronously (two-way)", async () => {
+    const { binder, state } = binderWith()
+
+    state.setValue(joinFQPropertyName("app", "n"), 5)
+    await binder.bind("app:m", { type: "state", value: "n", converters: ["SyncDouble"] }, "app")
+
+    state.setValue("app:m", 20)
+    expect(state.getValue(joinFQPropertyName("app", "n"))).toBe(10)
+  })
+
+  it("then binds a bare state source synchronously (no promise)", () => {
+    const { binder, state } = binderWith()
+
+    state.setValue(joinFQPropertyName("app", "a"), 3)
+    const result = binder.bind("app:b", { type: "state", value: "a" }, "app")
+
+    expect(result instanceof Promise).toBe(false)
+    expect(state.getValue("app:b")).toBe(3)
+  })
+
+  it("then binds a synchronous converter binding synchronously (no promise)", () => {
+    const { binder, state } = binderWith()
+
+    state.setValue(joinFQPropertyName("app", "n"), 5)
+    const result = binder.bind("app:m", { type: "state", value: "n", converters: ["SyncDouble"] }, "app")
+
+    expect(result instanceof Promise).toBe(false)
+    expect(state.getValue("app:m")).toBe(10)
+  })
+
   it("then writes the source through the converter format chain to the target", async () => {
     const { binder, state } = binderWith()
 
@@ -229,6 +266,113 @@ describe("Binder", () => {
 
       expect(state.getValue("app:b")).toBe(50)
       expect(state.getValue(joinFQPropertyName("app", "a"))).toBe(25)
+    })
+  })
+
+  describe("given the endpoints a binding reaches components by", () => {
+    it("then activates both ends of a plain state edge", () => {
+      const { binder } = binderWith()
+      const activated: string[] = []
+
+      binder.endpointActivated.on("Card", (_componentFQ, localPath) => activated.push(localPath))
+      void binder.bind("Card:title", { type: "state", value: "name" }, "app")
+
+      expect(activated).toEqual(["title"])
+      expect(binder.getActiveEndpoints("app")).toEqual(["name"])
+    })
+
+    it("then activates the target of a converted binding, which reaches no state edge", async () => {
+      const { binder } = binderWith()
+      const activated: string[] = []
+
+      binder.endpointActivated.on("Input", (_componentFQ, localPath) => activated.push(localPath))
+      await binder.bind("Input:click", upperOf("name", ["Upper"]), "app")
+
+      expect(activated).toEqual(["click"])
+    })
+
+    it("then a literal write reaches no component endpoint", () => {
+      const { binder } = binderWith()
+
+      void binder.bind("Card:title", { type: "literal", value: '"hi"' }, "app")
+
+      expect(binder.getActiveEndpoints("Card")).toEqual([])
+    })
+
+    it("then keeps an endpoint active while another binding still reaches it", async () => {
+      const { binder } = binderWith()
+      const deactivated: string[] = []
+
+      binder.endpointDeactivated.on("app", (_componentFQ, localPath) => deactivated.push(localPath))
+
+      await binder.bind("Card:title", upperOf("name", ["Upper"]), "app")
+      await binder.bind("Card:label", upperOf("name", ["Upper"]), "app")
+
+      binder.unbind("Card:title")
+      expect(deactivated).toEqual([])
+
+      binder.unbind("Card:label")
+      expect(deactivated).toEqual(["name"])
+    })
+
+    it("then reports endpoints already live to a component built after them", async () => {
+      const { binder } = binderWith()
+
+      await binder.bind("Card:title", upperOf("name", ["Upper"]), "app")
+      expect(binder.getActiveEndpoints("Card")).toEqual(["title"])
+
+      binder.unbind("Card:title")
+      expect(binder.getActiveEndpoints("Card")).toEqual([])
+    })
+
+    it("then holds an endpoint through a rebind, across the async resolve of the new parameters", async () => {
+      const { binder } = binderWith()
+      const events: string[] = []
+
+      binder.endpointActivated.on("Input", (_componentFQ, localPath) => events.push(`+${localPath}`))
+      binder.endpointDeactivated.on("Input", (_componentFQ, localPath) => events.push(`-${localPath}`))
+
+      // A dictionary source is dimension-sensitive, so a dimension switch
+      // re-establishes this binding - the event must not lapse in between.
+      const binding: IBindingExpression = { type: "dictionary", value: "D.hi", converters: ["Upper"] }
+
+      await binder.bind("Input:click.type", binding, "app")
+      expect(events).toEqual(["+click.type"])
+
+      binder.rebind("Input:click.type", binding, "app")
+      expect(binder.getActiveEndpoints("Input")).toEqual(["click.type"])
+
+      await flush()
+      expect(events).toEqual(["+click.type"])
+      expect(binder.getActiveEndpoints("Input")).toEqual(["click.type"])
+    })
+
+    it("then releases only the endpoints a rebind leaves behind, acquiring the arrivals first", async () => {
+      const { binder } = binderWith()
+      const scope: string[] = []
+      const target: string[] = []
+
+      binder.endpointActivated.on("app", (_componentFQ, localPath) => scope.push(`+${localPath}`))
+      binder.endpointDeactivated.on("app", (_componentFQ, localPath) => scope.push(`-${localPath}`))
+      binder.endpointActivated.on("Card", (_componentFQ, localPath) => target.push(`+${localPath}`))
+      binder.endpointDeactivated.on("Card", (_componentFQ, localPath) => target.push(`-${localPath}`))
+
+      await binder.bind("Card:title", upperOf("a", ["Upper"]), "app")
+      await binder.bind("Card:title", upperOf("b", ["Upper"]), "app")
+
+      expect(scope).toEqual(["+a", "+b", "-a"])
+      expect(target).toEqual(["+title"])
+    })
+
+    it("then releases the endpoints of a binding replaced by a literal", () => {
+      const { binder } = binderWith()
+
+      void binder.bind("Card:title", { type: "state", value: "name" }, "app")
+      expect(binder.getActiveEndpoints("app")).toEqual(["name"])
+
+      void binder.bind("Card:title", { type: "literal", value: '"hi"' }, "app")
+      expect(binder.getActiveEndpoints("app")).toEqual([])
+      expect(binder.getActiveEndpoints("Card")).toEqual([])
     })
   })
 })

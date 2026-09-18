@@ -21,11 +21,6 @@ interface Artifacts {
   counterStyles: Record<string, IStyleDeclarations>
 }
 
-/**
- * Compiles `*.hxt` source (the shared CSS-subset block grammar) into an
- * {@link IThemeDefinition}: an arbitrary token tree plus the well-known
- * `@`-artifacts, with `{$...}` aliases and `{prop}` interpolations kept verbatim.
- */
 export class ThemeCompiler extends BlockCompiler<IThemeDefinition> {
   protected get kind(): Kind {
     return "theme"

@@ -16,13 +16,6 @@ import { definitionName } from "../jsonc/definitionName"
 
 const WORD_TAIL = new RegExp(`${IDENTIFIER_PART}*$`)
 
-/**
- * Completion for state parameters inside a dictionary value's `{...}`: property
- * heads and named-control names drawn from the components that reference the
- * enclosing entry. After a `ctrl:` qualifier, suggests that control's
- * properties. Returns `undefined` when the cursor is not inside a non-reference
- * `{...}` of a string value.
- */
 export function parameterCompletion(
   doc: TextDocument,
   position: Position,

@@ -29,13 +29,6 @@ export abstract class JsoncCompiler<TResult> {
     return this.compileDocument(frontmatter, root, dimension, options ?? {})
   }
 
-  /**
-   * Compiles the docs sidecar of the same source: a `/** ... *\/` doc comment
-   * above the root object plus inline doc comments above top-level entries.
-   * Tolerant by design - docs are optional, so unparsable or undocumented
-   * source yields `undefined` rather than an error (`compile` reports the real
-   * problems).
-   */
   public compileDocs(source: string, dimension: IDimension, options?: ICompilerOptions): IDocsEntry | undefined {
     if (!source || !source.trim()) {
       return undefined
@@ -71,11 +64,6 @@ export abstract class JsoncCompiler<TResult> {
     return { kind: this.kind, name: options?.name ?? "", dimension, docs }
   }
 
-  /**
-   * Parses the JSONC body into a value. Defaults to permissive parsing (nesting
-   * allowed, as in `*.hxc`); subclasses may override to enforce a stricter
-   * shape, e.g. the flat string object required by `*.hxd`.
-   */
   protected parseBody(body: string): unknown {
     return this.parser.parse(body)
   }

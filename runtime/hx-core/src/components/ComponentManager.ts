@@ -1,7 +1,5 @@
-import { FrameworkElement } from "../FrameworkElement"
 import { Component } from "./Component"
-import { ComponentDefinitionProvider } from "./ComponentDefinitionProvider"
-import { IDIContainer } from "../injection/IDIContainer"
+import { ComponentDefinitionLoader } from "./ComponentDefinitionLoader"
 import type { PlatformComponent } from "./PlatformComponent"
 import { HeleonixError } from "../errors/HeleonixError"
 import { Errors } from "../errors/Errors"
@@ -14,37 +12,23 @@ import {
   joinFQComponentName,
   joinFQPropertyName,
 } from "@heleonix/hx-language"
-import { EventEmitter } from "../common/EventEmitter"
-import type { IEventEmitter } from "../common/IEventEmitter"
-import { IDIContainerInternal } from "../injection/IDIContainerInternal"
-import { DimensionManager } from "../dimension/DimensionManager"
-import { DictionaryProvider } from "../dictionaries/DictionaryProvider"
-import { ConfigProvider } from "../configs/ConfigProvider"
-import { StateManager } from "../state/StateManager"
+import type { ComponentConstructor } from "./ComponentConstructor"
+import type { StyleManager } from "../styling/StyleManager"
+import type { IComponentContext } from "./IComponentContext"
+import type { IDimensionProvider } from "../dimension/IDimensionProvider"
+import type { IDictionaryProvider } from "../dictionaries/IDictionaryProvider"
+import type { IConfigProvider } from "../configs/IConfigProvider"
+import type { IComponentManager } from "./IComponentManager"
+import type { IClearable } from "../common/IClearable"
 
 const EMPTY_OVERRIDES: readonly IComponentOverride[] = Object.freeze([])
 
-/** The swap override selected for a usage plus the remainders inherited by the built instance. */
 interface OverrideResolution {
   swap: IComponentOverride | undefined
   inherited: IComponentOverride[]
 }
 
-export class ComponentManager extends FrameworkElement<
-  ComponentDefinitionProvider | DimensionManager | DictionaryProvider | ConfigProvider | StateManager
-> {
-  private readonly componentDefinitionProvider = this.inject(ComponentDefinitionProvider)
-
-  private readonly dimensionManager = this.inject(DimensionManager)
-
-  private readonly dictionaryProvider = this.inject(DictionaryProvider)
-
-  private readonly configProvider = this.inject(ConfigProvider)
-
-  private readonly stateManager = this.inject(StateManager)
-
-  private readonly diContainerInstance: IDIContainerInternal
-
+export class ComponentManager implements IComponentManager, IClearable {
   private anonymousComponentCounter = 0
 
   // Descent remainders (`sub.Button:Component`) pushed onto the instance that
@@ -52,29 +36,26 @@ export class ComponentManager extends FrameworkElement<
   // definition. Keyed weakly so entries drop when the component is collected.
   private readonly inheritedOverrides = new WeakMap<Component, readonly IComponentOverride[]>()
 
-  private readonly componentBuiltEmitter = new EventEmitter<(fq: FQComponentName, instance: Component) => void>()
+  public constructor(
+    // Absent when the application bootstraps no component definitions: it has no
+    // components at all, so every tag resolves to nothing.
+    private readonly loader: ComponentDefinitionLoader | undefined,
+    private readonly dimensions: IDimensionProvider,
+    private readonly dictionaries: IDictionaryProvider,
+    private readonly configs: IConfigProvider,
+    private readonly componentCtors: ReadonlyMap<string, ComponentConstructor>,
+    // A thunk: the context holds this manager as its `components`, so it is
+    // created after the manager. Resolved lazily when a component is first built.
+    private readonly context: () => IComponentContext,
+    // Absent when the application bootstraps no style definitions.
+    private readonly styles: StyleManager | undefined,
+  ) {}
 
-  private readonly componentDestroyedEmitter = new EventEmitter<(fq: FQComponentName, instance: Component) => void>()
-
-  public constructor(diContainer: IDIContainer) {
-    super(diContainer)
-
-    this.diContainerInstance = diContainer as IDIContainerInternal
+  public clear(): void {
+    this.anonymousComponentCounter = 0
   }
 
-  public static get diName(): string {
-    return "ComponentManager"
-  }
-
-  public get componentBuilt(): IEventEmitter<(fq: FQComponentName, instance: Component) => void> {
-    return this.componentBuiltEmitter
-  }
-
-  public get componentDestroyed(): IEventEmitter<(fq: FQComponentName, instance: Component) => void> {
-    return this.componentDestroyedEmitter
-  }
-
-  public async buildComponent(
+  public async build(
     usage: IComponentUsage,
     parent: Component | undefined,
     scopedParent: Component | undefined,
@@ -97,80 +78,19 @@ export class ComponentManager extends FrameworkElement<
 
     await instance.build(fqComponentName, definition, usage, parent, scopedParent, platformParent)
 
-    this.componentBuiltEmitter.emit(fqComponentName, instance)
+    await this.styles?.apply(instance)
+
+    instance.mount()
 
     return instance
   }
 
-  public destroyComponent(component: Component): void {
-    this.inheritedOverrides.delete(component)
-
-    component.destroy()
-
-    this.componentDestroyedEmitter.emit(component.fqName, component)
-  }
-
-  public async reconcileChildren(
-    host: Component,
-    newUsages: IComponentUsage[] | undefined,
-    buildParent: Component | undefined,
-    scopedParent: Component | undefined,
-    platformParent: PlatformComponent | undefined,
-  ): Promise<void> {
-    const oldByKey = new Map<string, Component>()
-
-    for (const child of host.children) {
-      const key = `${child.usage.tag}_${child.usage.name ?? ""}`
-
-      oldByKey.set(key, child)
-    }
-
-    for (const newUsage of newUsages ?? []) {
-      const key = `${newUsage.tag}_${newUsage.name ?? ""}`
-      const existing = oldByKey.get(key)
-
-      if (existing) {
-        await this.updateComponent(existing, newUsage)
-        oldByKey.delete(key)
-      } else {
-        const child = await this.buildComponent(newUsage, buildParent, scopedParent, platformParent)
-
-        host.appendChild(child)
-
-        child.mount()
-      }
-    }
-
-    for (const removed of oldByKey.values()) {
-      removed.unmount()
-      host.removeChild(removed)
-
-      this.destroyComponent(removed)
-    }
-  }
-
-  public getTargetFQPropertyName(component: Component, propertyName: string): FQPropertyName {
-    return joinFQPropertyName(component.fqName, propertyName)
-  }
-
-  public getSourceFQPropertyName(component: Component, bindingValue: string): FQPropertyName {
-    const scopeFQ = component.scopedParent?.fqName
-
-    return joinFQPropertyName(scopeFQ ?? "", bindingValue)
-  }
-
-  public getTargetScopedPropertyName(component: Component, fqPropertyName: FQPropertyName): string {
-    return getScopedPropertyName(component.fqName, fqPropertyName)
-  }
-
-  private async updateComponent(component: Component, newUsage: IComponentUsage | undefined): Promise<void> {
-    const effectiveUsage = newUsage ?? component.usage
-
-    const resolution = this.resolveScopeOverrides(effectiveUsage, component.scopedParent)
-    const newDefinition = await this.resolveDefinition(effectiveUsage, resolution.swap, component.scopedParent)
+  public async update(component: Component, newUsage: IComponentUsage): Promise<void> {
+    const resolution = this.resolveScopeOverrides(newUsage, component.scopedParent)
+    const newDefinition = await this.resolveDefinition(newUsage, resolution.swap, component.scopedParent)
 
     if (!newDefinition) {
-      throw new HeleonixError(Errors.unknownComponent, effectiveUsage.tag)
+      throw new HeleonixError(Errors.unknownComponent, newUsage.tag)
     }
 
     if (resolution.inherited.length > 0) {
@@ -179,15 +99,27 @@ export class ComponentManager extends FrameworkElement<
       this.inheritedOverrides.delete(component)
     }
 
-    await component.update(newDefinition, effectiveUsage)
+    await component.update(newDefinition, newUsage)
   }
 
-  /**
-   * Matches `scopedParent`'s active overrides against `usage`: a single-segment
-   * target selects the swap for this usage (a `name` match wins over a `tag`
-   * match), while a multi-segment target whose first segment names this usage
-   * contributes its remainder to the instance's inherited overrides.
-   */
+  public destroy(component: Component): void {
+    component.unmount()
+
+    this.styles?.remove(component)
+
+    this.inheritedOverrides.delete(component)
+
+    component.destroy()
+  }
+
+  public getTargetFQPropertyName(component: Component, propertyName: string): FQPropertyName {
+    return joinFQPropertyName(component.fqName, propertyName)
+  }
+
+  public getTargetScopedPropertyName(component: Component, fqPropertyName: FQPropertyName): string {
+    return getScopedPropertyName(component.fqName, fqPropertyName)
+  }
+
   private resolveScopeOverrides(usage: IComponentUsage, scopedParent: Component | undefined): OverrideResolution {
     const active = this.activeOverridesOf(scopedParent)
 
@@ -236,22 +168,16 @@ export class ComponentManager extends FrameworkElement<
     return [...own, ...inherited]
   }
 
-  /**
-   * The definition to build `usage` with. Without a swap this is the usual
-   * lookup by tag; a swap replaces it with the inline children, the component
-   * named by the swap's binding (bare name, or a dictionary/config entry value),
-   * or an empty definition that renders nothing.
-   */
   private async resolveDefinition(
     usage: IComponentUsage,
     swap: IComponentOverride | undefined,
     scopedParent: Component | undefined,
   ): Promise<IComponentDefinition | undefined> {
     if (!swap) {
-      return this.componentDefinitionProvider.getDefinition(usage.tag)
+      return this.loader?.loadDefinition(usage.tag)
     }
 
-    const dimension = this.dimensionManager.currentDimension
+    const dimension = this.dimensions.current
 
     if (swap.children) {
       return { tag: usage.tag, dimension, children: swap.children }
@@ -259,7 +185,7 @@ export class ComponentManager extends FrameworkElement<
 
     if (swap.binding) {
       const name = await this.resolveOverrideName(swap, scopedParent)
-      const definition = name ? await this.componentDefinitionProvider.getDefinition(name) : undefined
+      const definition = name ? await this.loader?.loadDefinition(name) : undefined
 
       if (!definition) {
         throw new HeleonixError(Errors.invalidOverrideComponent, name ?? "", swap.target)
@@ -281,30 +207,31 @@ export class ComponentManager extends FrameworkElement<
       case "state":
         return binding.value
       case "config": {
-        const value = await this.configProvider.getValue(binding.value)
+        const value = await this.configs.get(binding.value)
 
         return typeof value === "string" ? value : undefined
       }
-      case "dictionary": {
-        const scopeFQ = scopedParent?.fqName ?? ""
+      case "dictionary":
+        return this.dictionaries.get(binding.value, scopedParent?.fqName ?? "")
+      case "literal": {
+        // Quoted static text names the replacement component directly.
+        const value: unknown = JSON.parse(binding.value)
 
-        return this.dictionaryProvider.getValue(binding.value, (param) =>
-          this.stateManager.getValue(joinFQPropertyName(scopeFQ, param)),
-        )
+        return typeof value === "string" ? value : undefined
       }
-      case "literal":
-        return undefined
     }
   }
 
   private createComponent(definition: IComponentDefinition): Component {
     const typeName = definition.type ?? "DeclarativeComponent"
 
-    try {
-      return this.diContainerInstance.inject<Component>(typeName)
-    } catch {
+    const ctor = this.componentCtors.get(typeName)
+
+    if (!ctor) {
       throw new HeleonixError(Errors.componentCreation, typeName)
     }
+
+    return new ctor(this.context())
   }
 
   private computeNewFQComponentName(usage: IComponentUsage, parent: Component | undefined): FQComponentName {

@@ -2,7 +2,7 @@ import { IKeyedEventEmitter } from "./IKeyedEventEmitter"
 
 export class KeyedEventEmitter<
   TKey,
-  TEventHandler extends (key: TKey, ...args: unknown[]) => void,
+  TEventHandler extends (key: TKey, ...args: never[]) => void,
 > implements IKeyedEventEmitter<TKey, TEventHandler> {
   public readonly handlers = new Map<TKey, Set<TEventHandler>>()
 
@@ -50,5 +50,9 @@ export class KeyedEventEmitter<
     if (handlers.size === 0) {
       this.handlers.delete(key)
     }
+  }
+
+  public clear(): void {
+    this.handlers.clear()
   }
 }

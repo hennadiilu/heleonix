@@ -27,7 +27,6 @@ import { buildComponentSemanticTokens } from "./componentSemanticTokens"
 import { XmlScanCache } from "../../xml/XmlScanCache"
 import { LEGEND } from "./tokenLegend"
 
-/** Language service for `*.hxm` component templates. */
 export class ComponentLanguageService implements ILanguageService {
   public readonly kind: Kind = "component"
 

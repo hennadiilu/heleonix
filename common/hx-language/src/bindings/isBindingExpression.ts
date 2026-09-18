@@ -26,32 +26,6 @@ function isEntryRef(ref: string, separator: string): boolean {
   return QUALIFIED_NAME.test(name) && IDENTIFIER.test(entry)
 }
 
-/**
- * Grammar of binding expressions as used in `*.hxm` templates and any
- * other Heleonix source that accepts bindings.
- *
- *   expression  := source ( "|" converter )*
- *   converter   := identifier [ "(" args ")" ]
- *   source      := literal | stateRef | dictRef | configRef
- *   literal     := "true" | "false" | number | "'" text "'"
- *   stateRef    := identifier ( "." identifier )*
- *   dictRef     := "@" dictionaryName "." entryName
- *   configRef   := "#" configName "." entryName
- *   dictionaryName := identifier ( "." identifier )*
- *   configName     := identifier ( "." identifier )*
- *   entryName      := identifier
- *
- * A string literal is single-quoted (`'primary'`); it is only valid where a
- * vocabulary or `string` type is declared, and the analyzer type-checks it -
- * a bare unquoted string is always a reference, never a literal.
- *
- * Examples:
- *   "data.user"                            - state      "data.user"
- *   "@Buttons.add"                         - dictionary "Buttons.add"
- *   "#UIConfig.isReadonly | converter1"    - config     "UIConfig.isReadonly" with converter
- *   "'primary'"                            - literal    (string, enum-typed)
- *   "true", "42", "-1.5"                   - literal    (boolean/number)
- */
 export function isBindingExpression(raw: string): boolean {
   const trimmed = raw.trim()
 

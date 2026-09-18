@@ -21,7 +21,7 @@ const button = {
 props: { variant?: 'primary' | 'default' }
 ---
 <Component>
-  <button>@Buttons.save</button>
+  <button>{@Buttons.save}</button>
 </Component>`,
 }
 
@@ -49,7 +49,7 @@ describe("Analyzer", () => {
       ext: EXT_TEMPLATE,
       name: "Form",
       dimension: {},
-      source: `<Component><Button name="save" title="@Buttons.save" /></Component>`,
+      source: `<Component><Button name="save" title={@Buttons.save} /></Component>`,
     }
 
     describe("when the snapshot is analyzed", () => {
@@ -97,7 +97,7 @@ describe("Analyzer", () => {
       ext: EXT_TEMPLATE,
       name: "Form",
       dimension: {},
-      source: `<Component><Button title="@Buttons.save | Lib(length: 3, size: 5)" /></Component>`,
+      source: `<Component><Button title={@Buttons.save | Lib(length: 3, size: 5)} /></Component>`,
     }
 
     function metaAnalyzer(): Analyzer {
@@ -130,7 +130,7 @@ describe("Analyzer", () => {
       ext: EXT_TEMPLATE,
       name: "Form",
       dimension: {},
-      source: `<Component><Button title="@Buttons.save | truncat" /></Component>`,
+      source: `<Component><Button title={@Buttons.save | truncat} /></Component>`,
     }
 
     describe("when the snapshot is analyzed", () => {
@@ -163,7 +163,7 @@ describe("Analyzer", () => {
 
     describe("when a read resolves to a state path written by an event capture", () => {
       it("then reports no diagnostics", async () => {
-        const result = await stateAnalyzer(`<input input.target.value="userName" /><span>userName</span>`).analyze()
+        const result = await stateAnalyzer(`<input input.target.value={userName} /><span>{userName}</span>`).analyze()
 
         expect(result).toEqual([])
       })
@@ -172,7 +172,7 @@ describe("Analyzer", () => {
     describe("when a read resolves to a named child via control addressing", () => {
       it("then reports no diagnostics", async () => {
         const result = await stateAnalyzer(
-          `<button name="actionBtn" click.type="lastEvent" /><span>actionBtn:click.type</span>`,
+          `<button name="actionBtn" click.type={lastEvent} /><span>{actionBtn:click.type}</span>`,
         ).analyze()
 
         expect(result).toEqual([])
@@ -181,7 +181,7 @@ describe("Analyzer", () => {
 
     describe("when a read resolves to nothing in the state pool", () => {
       it("then warns with the unknown-state-binding code", async () => {
-        const result = await stateAnalyzer(`<input input.target.value="userName" /><span>usrName</span>`).analyze()
+        const result = await stateAnalyzer(`<input input.target.value={userName} /><span>{usrName}</span>`).analyze()
 
         expect(result.map((entry) => entry.code)).toEqual(["HX_ANALYZER_0104"])
       })
@@ -224,7 +224,7 @@ describe("Analyzer", () => {
 
     describe("when a valid enum value is bound", () => {
       it("then reports no diagnostics", async () => {
-        const result = await nativeAnalyzer(`<Component><button type="'submit'" /></Component>`).analyze()
+        const result = await nativeAnalyzer(`<Component><button type="submit" /></Component>`).analyze()
 
         expect(result).toEqual([])
       })
@@ -232,7 +232,7 @@ describe("Analyzer", () => {
 
     describe("when an out-of-enum value is bound to the typed attribute", () => {
       it("then reports the prop type mismatch", async () => {
-        const result = await nativeAnalyzer(`<Component><button type="'toggle'" /></Component>`).analyze()
+        const result = await nativeAnalyzer(`<Component><button type="toggle" /></Component>`).analyze()
 
         expect(result.map((entry) => entry.code)).toEqual(["HX_ANALYZER_0102"])
       })
@@ -240,7 +240,7 @@ describe("Analyzer", () => {
 
     describe("when an attribute outside the enumerated contract is bound", () => {
       it("then allows it (the element is open) and reports no diagnostics", async () => {
-        const result = await nativeAnalyzer(`<Component><button data-role="'x'" class="'btn'" /></Component>`).analyze()
+        const result = await nativeAnalyzer(`<Component><button data-role="x" class="btn" /></Component>`).analyze()
 
         expect(result).toEqual([])
       })
@@ -306,7 +306,7 @@ props: { variant?: 'primary' | 'default'; count?: number; active?: boolean }
 
     describe("when a valid enum value and a known prop are bound", () => {
       it("then reports no diagnostics", async () => {
-        const result = await typedAnalyzer(`<Component><Button variant="'primary'" /></Component>`).analyze()
+        const result = await typedAnalyzer(`<Component><Button variant="primary" /></Component>`).analyze()
 
         expect(result).toEqual([])
       })
@@ -314,7 +314,7 @@ props: { variant?: 'primary' | 'default'; count?: number; active?: boolean }
 
     describe("when an out-of-enum literal is bound", () => {
       it("then reports the prop type mismatch", async () => {
-        const result = await typedAnalyzer(`<Component><Button variant="'flashy'" /></Component>`).analyze()
+        const result = await typedAnalyzer(`<Component><Button variant="flashy" /></Component>`).analyze()
 
         expect(result.map((entry) => entry.code)).toEqual(["HX_ANALYZER_0102"])
       })
@@ -322,7 +322,7 @@ props: { variant?: 'primary' | 'default'; count?: number; active?: boolean }
 
     describe("when an undeclared prop is bound", () => {
       it("then reports the unknown prop", async () => {
-        const result = await typedAnalyzer(`<Component><Button tone="'x'" /></Component>`).analyze()
+        const result = await typedAnalyzer(`<Component><Button tone="x" /></Component>`).analyze()
 
         expect(result.map((entry) => entry.code)).toEqual(["HX_ANALYZER_0103"])
       })
@@ -330,7 +330,7 @@ props: { variant?: 'primary' | 'default'; count?: number; active?: boolean }
 
     describe("when a number literal matches a number prop", () => {
       it("then reports no diagnostics", async () => {
-        const result = await typedAnalyzer(`<Component><Button count="5" /></Component>`).analyze()
+        const result = await typedAnalyzer(`<Component><Button count={5} /></Component>`).analyze()
 
         expect(result).toEqual([])
       })
@@ -338,7 +338,7 @@ props: { variant?: 'primary' | 'default'; count?: number; active?: boolean }
 
     describe("when a string literal is bound to a number prop", () => {
       it("then reports the value kind mismatch", async () => {
-        const result = await typedAnalyzer(`<Component><Button count="'5'" /></Component>`).analyze()
+        const result = await typedAnalyzer(`<Component><Button count="5" /></Component>`).analyze()
 
         expect(result.map((entry) => entry.code)).toEqual(["HX_ANALYZER_0105"])
       })
@@ -346,7 +346,7 @@ props: { variant?: 'primary' | 'default'; count?: number; active?: boolean }
 
     describe("when a number literal is bound to a boolean prop", () => {
       it("then reports the value kind mismatch", async () => {
-        const result = await typedAnalyzer(`<Component><Button active="1" /></Component>`).analyze()
+        const result = await typedAnalyzer(`<Component><Button active={1} /></Component>`).analyze()
 
         expect(result.map((entry) => entry.code)).toEqual(["HX_ANALYZER_0105"])
       })
@@ -354,7 +354,7 @@ props: { variant?: 'primary' | 'default'; count?: number; active?: boolean }
 
     describe("when a dictionary reference (always string) is bound to a number prop", () => {
       it("then reports the value kind mismatch", async () => {
-        const result = await typedAnalyzer(`<Component><Button count="@Labels.count" /></Component>`).analyze()
+        const result = await typedAnalyzer(`<Component><Button count={@Labels.count} /></Component>`).analyze()
 
         expect(result.map((entry) => entry.code)).toEqual(["HX_ANALYZER_0105"])
       })
@@ -362,7 +362,7 @@ props: { variant?: 'primary' | 'default'; count?: number; active?: boolean }
 
     describe("when a config reference whose value type matches the prop is bound", () => {
       it("then reports no diagnostics", async () => {
-        const result = await typedAnalyzer(`<Component><Button count="#Settings.max" /></Component>`).analyze()
+        const result = await typedAnalyzer(`<Component><Button count={#Settings.max} /></Component>`).analyze()
 
         expect(result).toEqual([])
       })
@@ -370,7 +370,7 @@ props: { variant?: 'primary' | 'default'; count?: number; active?: boolean }
 
     describe("when a config reference whose value type mismatches the prop is bound", () => {
       it("then reports the value kind mismatch", async () => {
-        const result = await typedAnalyzer(`<Component><Button count="#Settings.title" /></Component>`).analyze()
+        const result = await typedAnalyzer(`<Component><Button count={#Settings.title} /></Component>`).analyze()
 
         expect(result.map((entry) => entry.code)).toEqual(["HX_ANALYZER_0105"])
       })
@@ -378,7 +378,7 @@ props: { variant?: 'primary' | 'default'; count?: number; active?: boolean }
 
     describe("when a state binding is bound to a typed prop", () => {
       it("then stays gradual and reports no diagnostics", async () => {
-        const result = await typedAnalyzer(`<Component><Button count="counter" /></Component>`).analyze()
+        const result = await typedAnalyzer(`<Component><Button count={counter} /></Component>`).analyze()
 
         expect(result).toEqual([])
       })
@@ -397,6 +397,7 @@ props: { variant?: 'primary' | 'default'; count?: number; active?: boolean }
           `import { Converter } from "./bases"
            interface TruncateParams { length: number; ellipsis?: 'dots' | 'none' }
            export class TruncateConverter extends Converter<string, string, TruncateParams> {
+             static readonly hxName = "Truncate"
              async format(value: string, params: TruncateParams) { return value.slice(0, params.length) }
            }`,
         )
@@ -405,6 +406,7 @@ props: { variant?: 'primary' | 'default'; count?: number; active?: boolean }
           `import { Converter } from "./bases"
            interface WrapParams { items: string[]; meta: { threshold: number } }
            export class WrapConverter extends Converter<string, string, WrapParams> {
+             static readonly hxName = "Wrap"
              async format(value: string, params: WrapParams) { return value + params.items.length + params.meta.threshold }
            }`,
         )
@@ -420,7 +422,7 @@ props: { variant?: 'primary' | 'default'; count?: number; active?: boolean }
           ext: EXT_TEMPLATE,
           name: "Form",
           dimension: {},
-          source: `<Component><span>data | ${chain}</span></Component>`,
+          source: `<Component><span>{data | ${chain}}</span></Component>`,
         })
 
         return analyzer
@@ -461,6 +463,55 @@ props: { variant?: 'primary' | 'default'; count?: number; active?: boolean }
 
         expect(result.map((entry) => entry.code)).toEqual(["HX_ANALYZER_0011"])
       })
+
+      function convertedPropAnalyzer(value: string): Analyzer {
+        const analyzer = new Analyzer()
+
+        analyzer.setTypeProgramHost(createNodeTypeProgramHost(root))
+        analyzer.addMeta({ schemaVersion: 1, components: [{ name: "button", dimension: {}, open: true }] })
+        analyzer.setFile(typedButton)
+        analyzer.setFile(settings)
+        analyzer.setFile({
+          path: path.join(root, "Form.hxm"),
+          ext: EXT_TEMPLATE,
+          name: "Form",
+          dimension: {},
+          source: `<Component><Button count={${value}} /></Component>`,
+        })
+
+        return analyzer
+      }
+
+      it("then stays gradual on a typed prop, since the chain and not the source reaches it", async () => {
+        // '#Settings.title' is a string and 'count' a number: converting between
+        // them is what the chain is there for, not a mismatch.
+        const result = await convertedPropAnalyzer(`#Settings.title | Truncate(length: 3)`).analyze()
+
+        expect(result).toEqual([])
+      })
+
+      it("then still validates the chain of a converted value bound to a typed prop", async () => {
+        const result = await convertedPropAnalyzer(`#Settings.title | Truncate(size: 3)`).analyze()
+
+        expect(result.map((entry) => entry.code)).toEqual(["HX_ANALYZER_0010", "HX_ANALYZER_0011"])
+      })
+
+      it("then still reports an unknown prop when the value is converted", async () => {
+        const analyzer = new Analyzer()
+
+        analyzer.setTypeProgramHost(createNodeTypeProgramHost(root))
+        analyzer.addMeta({ schemaVersion: 1, components: [{ name: "button", dimension: {}, open: true }] })
+        analyzer.setFile(typedButton)
+        analyzer.setFile({
+          path: path.join(root, "Form.hxm"),
+          ext: EXT_TEMPLATE,
+          name: "Form",
+          dimension: {},
+          source: `<Component><Button tone={'x' | Truncate(length: 3)} /></Component>`,
+        })
+
+        expect((await analyzer.analyze()).map((entry) => entry.code)).toEqual(["HX_ANALYZER_0103"])
+      })
     })
 
     describe("when an action is declared as a discovered TypeScript class", () => {
@@ -478,6 +529,7 @@ props: { variant?: 'primary' | 'default'; count?: number; active?: boolean }
           `import { Action } from "./actionBases"
            interface SubmitParams { readonly id: number; readonly label?: string; result: string }
            export class SubmitAction extends Action<SubmitParams> {
+             static readonly hxName = "Submit"
              async Execute(params: SubmitParams) { void params }
            }`,
         )
@@ -500,13 +552,13 @@ props: { variant?: 'primary' | 'default'; count?: number; active?: boolean }
       }
 
       it("then recognizes a valid call with a readonly input and a writable in-out param", async () => {
-        const result = await executeAnalyzer(`action="Submit" id="1" result="output"`).analyze()
+        const result = await executeAnalyzer(`action="Submit" id={1} result={output}`).analyze()
 
         expect(result).toEqual([])
       })
 
       it("then accepts a non-writable source (dictionary) for a readonly input", async () => {
-        const result = await executeAnalyzer(`action="Submit" id="1" result="output" label="@Labels.count"`).analyze()
+        const result = await executeAnalyzer(`action="Submit" id={1} result={output} label="@Labels.count"`).analyze()
 
         expect(result).toEqual([])
       })
@@ -518,31 +570,31 @@ props: { variant?: 'primary' | 'default'; count?: number; active?: boolean }
       })
 
       it("then reports an unknown action argument", async () => {
-        const result = await executeAnalyzer(`action="Submit" id="1" result="output" bogus="2"`).analyze()
+        const result = await executeAnalyzer(`action="Submit" id={1} result={output} bogus={2}`).analyze()
 
         expect(result.map((entry) => entry.code)).toEqual(["HX_ANALYZER_0015"])
       })
 
       it("then reports a missing required action argument", async () => {
-        const result = await executeAnalyzer(`action="Submit" result="output"`).analyze()
+        const result = await executeAnalyzer(`action="Submit" result={output}`).analyze()
 
         expect(result.map((entry) => entry.code)).toEqual(["HX_ANALYZER_0016"])
       })
 
       it("then reports a value kind mismatch on a data argument", async () => {
-        const result = await executeAnalyzer(`action="Submit" id="'x'" result="output"`).analyze()
+        const result = await executeAnalyzer(`action="Submit" id="x" result={output}`).analyze()
 
         expect(result.map((entry) => entry.code)).toEqual(["HX_ANALYZER_0105"])
       })
 
       it("then reports a non-writable binding for a mutable in-out param", async () => {
-        const result = await executeAnalyzer(`action="Submit" id="1" result="'frozen'"`).analyze()
+        const result = await executeAnalyzer(`action="Submit" id={1} result="frozen"`).analyze()
 
         expect(result.map((entry) => entry.code)).toEqual(["HX_ANALYZER_0017"])
       })
 
       it("then skips validation for a dynamic action name", async () => {
-        const result = await executeAnalyzer(`action="state.action"`).analyze()
+        const result = await executeAnalyzer(`action={state.action}`).analyze()
 
         expect(result).toEqual([])
       })
@@ -561,7 +613,9 @@ props: { variant?: 'primary' | 'default'; count?: number; active?: boolean }
           path.join(root, "Card.ts"),
           `import { Component } from "./componentBases"
            interface CardProps { variant?: 'primary' | 'secondary'; count?: number }
-           export class Card extends Component<CardProps> {}`,
+           export class Card extends Component<CardProps> {
+             static readonly hxName = "Card"
+           }`,
         )
       })
 
@@ -581,31 +635,31 @@ props: { variant?: 'primary' | 'default'; count?: number; active?: boolean }
       }
 
       it("then recognizes the tag (class name) and accepts a valid prop", async () => {
-        const result = await cardAnalyzer(`variant="'primary'" count="3"`).analyze()
+        const result = await cardAnalyzer(`variant="primary" count={3}`).analyze()
 
         expect(result).toEqual([])
       })
 
       it("then reports an out-of-enum prop value", async () => {
-        const result = await cardAnalyzer(`variant="'huge'"`).analyze()
+        const result = await cardAnalyzer(`variant="huge"`).analyze()
 
         expect(result.map((entry) => entry.code)).toEqual(["HX_ANALYZER_0102"])
       })
 
       it("then reports an undeclared prop", async () => {
-        const result = await cardAnalyzer(`bogus="1"`).analyze()
+        const result = await cardAnalyzer(`bogus={1}`).analyze()
 
         expect(result.map((entry) => entry.code)).toEqual(["HX_ANALYZER_0103"])
       })
 
       it("then reports a value kind mismatch", async () => {
-        const result = await cardAnalyzer(`count="'x'"`).analyze()
+        const result = await cardAnalyzer(`count="x"`).analyze()
 
         expect(result.map((entry) => entry.code)).toEqual(["HX_ANALYZER_0105"])
       })
 
       it("then exposes the component with its members and class location", async () => {
-        const analyzer = cardAnalyzer(`variant="'primary'"`)
+        const analyzer = cardAnalyzer(`variant="primary"`)
         await analyzer.analyze()
 
         const card = analyzer.components().find((info) => info.name === "Card")

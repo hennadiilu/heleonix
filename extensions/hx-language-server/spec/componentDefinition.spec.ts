@@ -1,7 +1,7 @@
 import { pathToFileURL } from "node:url"
 import { scanXml } from "@heleonix/hx-compiler-core"
 import type { IComponentInfo } from "@heleonix/hx-analyzer"
-import { definitionComponent } from "../src/languages/component/componentDefinition.ts"
+import { definitionComponent } from "../src/languages/component/componentDefinition"
 
 const components: IComponentInfo[] = [
   { name: "Card", open: false, members: [], file: "C:/proj/Card.ts", line: 3, character: 13 },

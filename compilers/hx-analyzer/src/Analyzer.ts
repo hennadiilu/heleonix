@@ -42,7 +42,7 @@ import type { IDiscoveredClass } from "./IDiscoveredClass"
 import type { IDiscoveredComponent } from "./IDiscoveredComponent"
 import type { IDiscoveredQualifier } from "./IDiscoveredQualifier"
 import type { IMemberType } from "./IMemberType"
-import type { IRegistryInfo } from "./IRegistryInfo"
+import type { IConverterActionInfo } from "./IConverterActionInfo"
 import type { ITypeProgramHost } from "./ITypeProgramHost"
 import { TypeResolver } from "./TypeResolver"
 import type { ITypeRequest } from "./TypeResolver"
@@ -90,12 +90,6 @@ interface IStyleBindings {
   config: string[]
 }
 
-/**
- * The resolved props/events contract of one component, merged across dimensions.
- * `open` marks a component with an extensible attribute set (native elements
- * delivered via meta): its enumerated members are value-checked, but unknown
- * attributes are allowed rather than reported.
- */
 interface IDeclared {
   members: Map<string, IMemberType>
   present: boolean
@@ -106,7 +100,7 @@ interface IDeclared {
 interface IIndex {
   components: Set<string>
   declared: Map<string, IDeclared>
-  // Registry name -> resolved param members from discovered TS classes. `null`
+  // Hx name -> resolved param members from discovered TS classes. `null`
   // marks a header-declared converter whose params are not type-checked (name
   // resolution only) - it skips argument validation until it migrates to a
   // class. An empty array means a class that genuinely takes no params.
@@ -123,18 +117,6 @@ interface IIndex {
   diagnostics: IDiagnostic[]
 }
 
-/**
- * The shared cross-file analysis engine: one index, one severity policy, one
- * set of diagnostic codes - build plugins and editors are thin hosts around
- * it, so the IDE and CI can never disagree.
- *
- * The reference/existence layer (unknown components, unresolved references,
- * converters, override targets) is filesystem-free. When a TypeScript program
- * host is supplied via {@link setTypeProgramHost}, component props/events are
- * additionally resolved and validated through the TypeScript compiler; the
- * host keeps that layer filesystem-free too (Node reads disk, a browser host
- * serves an in-memory virtual filesystem).
- */
 export class Analyzer {
   private readonly files = new Map<string, IFileState>()
 
@@ -171,7 +153,7 @@ export class Analyzer {
   private discovered: IDiscoveredClass[] = []
 
   // Programmatic components (classes extending `Component<TProps, TEvents>`) from
-  // the most recent scan; their contracts feed the component registry.
+  // the most recent scan; their contracts feed the component index.
   private discoveredComponents: IDiscoveredComponent[] = []
 
   // The most recent component contracts (workspace + native), retained so the
@@ -191,7 +173,6 @@ export class Analyzer {
     this.files.delete(path)
   }
 
-  /** Adds a dependency package's compile-time facts (its `hx.meta.json`). */
   public addMeta(meta: IMetaDocument): void {
     for (const entry of meta.components ?? []) {
       const existing = this.metaComponents.get(entry.name) ?? { members: new Map<string, IMemberType>(), open: false }
@@ -232,27 +213,23 @@ export class Analyzer {
     }
   }
 
-  /** Converters known to the editor: discovered classes (with locations) plus meta-delivered ones. */
-  public converters(): IRegistryInfo[] {
-    return this.registryInfos("Converter", this.metaConverters)
+  public converters(): IConverterActionInfo[] {
+    return this.converterActionInfos("Converter", this.metaConverters)
   }
 
-  /** Actions known to the editor: discovered classes (with locations) plus meta-delivered ones. */
-  public actions(): IRegistryInfo[] {
-    return this.registryInfos("Action", this.metaActions)
+  public actions(): IConverterActionInfo[] {
+    return this.converterActionInfos("Action", this.metaActions)
   }
 
-  /** Components known to the editor (workspace + native), from the most recent analysis. */
   public components(): IComponentInfo[] {
     return [...this.componentInfos.values()].sort((a, b) => a.name.localeCompare(b.name))
   }
 
-  /** Style qualifiers known to the editor: discovered classes plus meta-delivered contracts (discovered win). */
   public qualifiers(): IQualifierDefinition[] {
     const byName = new Map<string, IQualifierDefinition>(this.metaQualifiers)
 
     for (const found of this.discoveredQualifiers) {
-      if (found.suffixOk) {
+      if (found.hasHxName) {
         byName.set(found.name, { name: found.name, args: found.args })
       }
     }
@@ -260,7 +237,6 @@ export class Analyzer {
     return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name))
   }
 
-  /** The merged theme token space (workspace `*.hxt` partials + dependency meta): path -> value. */
   public themeTokens(): Map<string, string> {
     const tokens = new Map<string, string>(this.metaThemeTokens)
 
@@ -273,12 +249,6 @@ export class Analyzer {
     return tokens
   }
 
-  /**
-   * Where each theme token is defined, for `{$...}` go-to-definition. Only
-   * workspace `*.hxt` partials contribute (a token defined in several dimension
-   * overlays resolves to the last one analyzed); dependency-meta tokens have no
-   * local source and are absent.
-   */
   public themeTokenLocations(): Map<string, IThemeTokenLocation> {
     const locations = new Map<string, IThemeTokenLocation>()
 
@@ -291,11 +261,6 @@ export class Analyzer {
     return locations
   }
 
-  /**
-   * Every control name reachable in a component's definition tree, keyed by
-   * component name (workspace definitions + dependency meta), for resolving and
-   * completing `@hx-style(for: ...)` scope segments.
-   */
   public controlNames(): Map<string, string[]> {
     const names = new Map<string, Set<string>>()
 
@@ -362,7 +327,6 @@ export class Analyzer {
     return diagnostics
   }
 
-  /** Retains the analyzed component contracts (members, docs, openness) for editor queries. */
   private snapshotComponents(index: IIndex): void {
     const docs = new Map<string, string>()
 
@@ -419,12 +383,6 @@ export class Analyzer {
     }
   }
 
-  /**
-   * Maps each component to the set of plain (non-event) property names bound on
-   * it at any usage across the workspace. Those names are extra state slots a
-   * parent supplies dynamically, so a component reading one of them is resolved
-   * even when the prop is not declared in its typings.
-   */
   private collectBoundAtUsage(): Map<string, Set<string>> {
     const result = new Map<string, Set<string>>()
 
@@ -558,11 +516,6 @@ export class Analyzer {
     return index
   }
 
-  /**
-   * Discovers converter/action TypeScript classes in the project and registers
-   * their names + resolved param members. Reports classes missing the required
-   * `Converter`/`Action` suffix. Skipped in reference-only mode (no host).
-   */
   private discoverClasses(index: IIndex): void {
     const resolver = this.typeResolver
 
@@ -575,23 +528,45 @@ export class Analyzer {
     this.discoveredComponents = resolver.components()
 
     for (const found of this.discovered) {
-      if (!found.suffixOk) {
+      if (!found.hasHxName) {
         index.diagnostics.push(
-          diagnostic(Diagnostics.missingBaseSuffix, found.file, found.className, found.className, found.base),
+          diagnostic(Diagnostics.missingHxName, found.file, found.className, found.className, found.base.toLowerCase()),
         )
 
         continue
       }
 
-      const registry = found.base === "Converter" ? index.converters : index.actions
+      const pool = found.base === "Converter" ? index.converters : index.actions
 
-      registry.set(found.name, found.params)
+      pool.set(found.name, found.params)
+    }
+
+    for (const qualifier of this.discoveredQualifiers) {
+      if (!qualifier.hasHxName) {
+        index.diagnostics.push(
+          diagnostic(
+            Diagnostics.missingHxName,
+            qualifier.file,
+            qualifier.className,
+            qualifier.className,
+            "style qualifier",
+          ),
+        )
+      }
     }
 
     // Programmatic components are recognized tags; their props/events form a
     // closed contract (like a `*.hxm` frontmatter), validated only when declared
     // so a contract-less class stays gradual rather than rejecting every prop.
     for (const component of this.discoveredComponents) {
+      if (!component.hasHxName) {
+        index.diagnostics.push(
+          diagnostic(Diagnostics.missingHxName, component.file, component.className, component.className, "component"),
+        )
+
+        continue
+      }
+
       index.components.add(component.name)
 
       if (component.props.length === 0 && component.events.length === 0) {
@@ -609,8 +584,8 @@ export class Analyzer {
     }
   }
 
-  private registryInfos(base: "Converter" | "Action", meta: Map<string, IMemberType[]>): IRegistryInfo[] {
-    const byName = new Map<string, IRegistryInfo>()
+  private converterActionInfos(base: "Converter" | "Action", meta: Map<string, IMemberType[]>): IConverterActionInfo[] {
+    const byName = new Map<string, IConverterActionInfo>()
 
     for (const [name, params] of meta) {
       byName.set(name, { name, params })
@@ -619,8 +594,8 @@ export class Analyzer {
     // Discovered classes win over meta entries of the same name and add a
     // source location + docs for go-to-implementation and hover.
     for (const found of this.discovered) {
-      if (found.suffixOk && found.base === base) {
-        const info: IRegistryInfo = {
+      if (found.hasHxName && found.base === base) {
+        const info: IConverterActionInfo = {
           name: found.name,
           params: found.params,
           file: found.file,
@@ -639,13 +614,6 @@ export class Analyzer {
     return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name))
   }
 
-  /**
-   * Batch-resolves the props/events type text of every workspace component
-   * header through the TypeScript compiler and records the merged contract per
-   * component. Reports unresolvable types and function-typed props (the
-   * no-functions guardrail). Skipped when no type program host is configured
-   * (reference-only mode, e.g. runtime/browser compilation without types).
-   */
   private resolveHeaderTypes(index: IIndex): void {
     const resolver = this.typeResolver
 
@@ -832,11 +800,6 @@ export class Analyzer {
     }
   }
 
-  /**
-   * Validates a converter/action call's `name: value` argument text against its
-   * TypeScript params. Parses the argument list into name/binding pairs, then
-   * defers to {@link diagnoseArgBindings} - the same path `<Execute>` uses.
-   */
   private diagnoseNamedArgs(
     argText: string,
     members: IMemberType[] | null,
@@ -856,15 +819,6 @@ export class Analyzer {
     this.diagnoseArgBindings(pairs, members, ownerName, ownerKind, unknownArg, missingArg, file, index, diagnostics)
   }
 
-  /**
-   * Validates already-parsed named argument bindings against a params contract:
-   * every value is reference-checked; when the params are known (a discovered
-   * class, not a header), argument names must exist, required params must be
-   * present, and value kinds must match. A mutable (non-`readonly`) action
-   * parameter is in-out and must bind a writable state path; `readonly`
-   * parameters are inputs and accept any source. One path for converter args,
-   * action args and `<Execute>`.
-   */
   private diagnoseArgBindings(
     pairs: readonly { name: string; binding: IBindingExpression }[],
     members: IMemberType[] | null,
@@ -918,17 +872,10 @@ export class Analyzer {
     }
   }
 
-  /**
-   * Validates an `<Execute action="Name" .../>` call: the `action` attribute
-   * names an action in the registry (an unknown static name is an error; a
-   * dynamic, non-identifier value is skipped), and the sibling attributes are
-   * its named arguments, validated against the action's params - `readonly`
-   * inputs and mutable in-out parameters alike.
-   */
   private diagnoseExecute(usage: IComponentUsage, file: string, index: IIndex, diagnostics: IDiagnostic[]): void {
     const properties = usage.properties ?? []
     const actionProp = properties.find((property) => property.name === ACTION_ATTRIBUTE)
-    const name = actionProp?.binding.value.trim()
+    const name = actionProp ? staticName(actionProp.binding) : undefined
 
     if (!name || !IDENTIFIER.test(name)) {
       return
@@ -957,13 +904,6 @@ export class Analyzer {
     )
   }
 
-  /**
-   * Resolves every `{$...}` theme reference against the merged token space:
-   * aliases inside `*.hxt` token values and references inside `*.hxs` values
-   * must name a defined token (0004), and the theme alias graph must be acyclic
-   * (0005). Only workspace tokens carry diagnostics - dependency-delivered
-   * tokens have no local source to point at.
-   */
   private diagnoseThemeReferences(index: IIndex, diagnostics: IDiagnostic[]): void {
     const aliasGraph = new Map<string, string[]>()
     const tokenFile = new Map<string, string>()
@@ -1003,15 +943,6 @@ export class Analyzer {
     }
   }
 
-  /**
-   * Validates every `@hx-style(for: ...)` scope segment against the styled
-   * component's registry. A segment resolves if it names a control in the
-   * component's own definition tree, the base type `Component`, a builtin, or
-   * any known component type - the last is-a-safe (a derived type cannot be
-   * disproved without a hierarchy). Only styles whose component has a workspace
-   * definition are checked, so a dependency's internal controls never
-   * false-positive.
-   */
   private diagnoseStyleScopes(index: IIndex, diagnostics: IDiagnostic[]): void {
     for (const state of this.files.values()) {
       const facts = state.facts
@@ -1043,13 +974,6 @@ export class Analyzer {
     }
   }
 
-  /**
-   * Warns on a style's `@hx-if`/`{prop}` state reads that resolve to nothing
-   * against its component's state pool - the same 0104 inference as a component's
-   * own template, applied to its `*.hxs`. Only styles whose component has a
-   * workspace definition (a knowable, inferable pool) are checked, so
-   * parent-supplied state on an externally-sourced component never false-positives.
-   */
   private diagnoseStyleState(index: IIndex, boundAtUsage: Map<string, Set<string>>, diagnostics: IDiagnostic[]): void {
     const definitions = new Map<string, IComponentDefinition>()
 
@@ -1086,11 +1010,6 @@ export class Analyzer {
     }
   }
 
-  /**
-   * Resolves a style's `{@Dictionary.key}` and `{#Config.path}` references
-   * against the workspace index - the same resolution `*.hxm` bindings use, so a
-   * style and a template report an unknown entry identically.
-   */
   private diagnoseStyleReferences(index: IIndex, diagnostics: IDiagnostic[]): void {
     for (const state of this.files.values()) {
       const bindings = state.facts?.styleBindings
@@ -1110,7 +1029,6 @@ export class Analyzer {
   }
 }
 
-/** The theme token paths referenced via `{$...}` in a value (skips `{prop}`/`{@}`/`{#}` sources). */
 function themeRefsOf(value: string): string[] {
   const refs: string[] = []
 
@@ -1125,7 +1043,6 @@ function themeRefsOf(value: string): string[] {
   return refs
 }
 
-/** The set of theme token paths that lie on an alias cycle, via DFS three-colouring. */
 function findAliasCycles(graph: Map<string, string[]>): Set<string> {
   const onCycle = new Set<string>()
   const state = new Map<string, "visiting" | "done">()
@@ -1160,16 +1077,6 @@ function findAliasCycles(graph: Map<string, string[]>): Set<string> {
   return onCycle
 }
 
-/**
- * Warns on state reads that resolve to nothing (0104). A component's state pool
- * is its declared props/events, the state paths written by its event captures
- * (`click.type="x"`), the names of its child components (addressable as
- * `child:...`), and any plain props a parent binds at a usage of it. A `state`
- * read whose root segment is outside that pool is a dangling reference - almost
- * always a typo. Skipped when the pool is empty (a component the analyzer has no
- * facts about), to avoid noise. It stays a warning: the pool is inferred, not
- * authoritative.
- */
 function diagnoseStateInference(
   definition: IComponentDefinition,
   index: IIndex,
@@ -1190,14 +1097,6 @@ function diagnoseStateInference(
   }
 }
 
-/**
- * The state pool of a component and the state paths it reads. The pool is its
- * declared props/events, the state it writes via event captures, its child
- * component names, and any plain props a parent binds at a usage of it.
- * `inferable` is false when the component has neither declared members nor
- * self-written state - it reads entirely dynamic, parent-supplied state, so
- * inference would be guesswork and the caller should skip it.
- */
 function buildComponentPool(
   definition: IComponentDefinition,
   index: IIndex,
@@ -1227,7 +1126,6 @@ function buildComponentPool(
   return { pool, inferable, reads }
 }
 
-/** Collects child names into `pool`, event-capture write targets into `writes`, and state reads into `reads`. */
 function collectState(
   usages: readonly IComponentUsage[],
   pool: Set<string>,
@@ -1267,14 +1165,12 @@ function collectState(
   }
 }
 
-/** The leading segment of a state path, before the first `.` or `:` addresser. */
 function rootSegment(path: string): string {
   const match = /^[^.:]+/.exec(path)
 
   return match ? match[0] : path
 }
 
-/** Validates one property binding against its target component's resolved props/events contract. */
 function diagnoseProp(
   property: IComponentProperty,
   declared: IDeclared,
@@ -1306,13 +1202,6 @@ function diagnoseProp(
   diagnoseMemberValue(property.binding, member, name, `<${tag}>`, file, index, diagnostics)
 }
 
-/**
- * Validates a bound value against a declared member's type. A bound value with
- * a resolvable scalar kind - a literal's JSON type, a dictionary reference
- * (always string), or a config reference (its JSON value type) - must match the
- * member's scalar kind; state bindings and object/array members stay gradual.
- * Enum members additionally require a literal string value to be a declared one.
- */
 function diagnoseMemberValue(
   binding: IBindingExpression,
   member: IMemberType,
@@ -1322,16 +1211,27 @@ function diagnoseMemberValue(
   index: IIndex,
   diagnostics: IDiagnostic[],
 ): void {
+  if (binding.converters?.length) {
+    return
+  }
+
   const expected = member.kind === "enum" ? "string" : member.kind
 
   if (expected === "string" || expected === "number" || expected === "boolean") {
     const source = sourceScalarKind(binding, index)
 
     if (source !== undefined && source !== expected) {
-      const subject = displaySource(binding)
-
       diagnostics.push(
-        diagnostic(Diagnostics.valueKindMismatch, file, subject, subject, memberName, ownerDesc, expected, source),
+        diagnostic(
+          Diagnostics.valueKindMismatch,
+          file,
+          sourceSubject(binding),
+          displaySource(binding),
+          memberName,
+          ownerDesc,
+          expected,
+          source,
+        ),
       )
 
       return
@@ -1341,23 +1241,22 @@ function diagnoseMemberValue(
   const bad = outOfEnumValue(binding, member)
 
   if (bad !== undefined) {
-    const subject = `'${bad}'`
-
     diagnostics.push(
-      diagnostic(
-        Diagnostics.propTypeMismatch,
-        file,
-        subject,
-        subject,
-        memberName,
-        ownerDesc,
-        member.enumValues!.join(" | "),
-      ),
+      diagnostic(Diagnostics.propTypeMismatch, file, bad, bad, memberName, ownerDesc, member.enumValues!.join(" | ")),
     )
   }
 }
 
-/** The offending value of a literal binding that is not in its member's enum, or undefined. */
+function staticName(binding: IBindingExpression): string | undefined {
+  if (binding.type !== "literal") {
+    return undefined
+  }
+
+  const value: unknown = safeParse(binding.value)
+
+  return typeof value === "string" ? value.trim() : undefined
+}
+
 function outOfEnumValue(binding: IBindingExpression, member: IMemberType): string | undefined {
   if (member.kind !== "enum" || !member.enumValues || binding.type !== "literal") {
     return undefined
@@ -1368,7 +1267,6 @@ function outOfEnumValue(binding: IBindingExpression, member: IMemberType): strin
   return typeof value === "string" && !member.enumValues.includes(value) ? value : undefined
 }
 
-/** The scalar kind of a bound value's source, or undefined when gradual (state) or unresolved. */
 function sourceScalarKind(binding: IBindingExpression, index: IIndex): "string" | "number" | "boolean" | undefined {
   switch (binding.type) {
     case "literal":
@@ -1382,14 +1280,12 @@ function sourceScalarKind(binding: IBindingExpression, index: IIndex): "string" 
   }
 }
 
-/** The scalar `MemberKind` of a runtime value, or undefined when it is not a scalar. */
 function scalarOf(value: unknown): "string" | "number" | "boolean" | undefined {
   const type = typeof value
 
   return type === "string" || type === "number" || type === "boolean" ? type : undefined
 }
 
-/** The compiled value of a config reference, or undefined when unresolved. */
 function resolveConfigValue(ref: string, index: Map<string, IConfigEntryDefinition[]>): unknown {
   const splitIndex = ref.lastIndexOf(ENTRY_SEPARATOR)
 
@@ -1408,7 +1304,16 @@ function resolveConfigValue(ref: string, index: Map<string, IConfigEntryDefiniti
   return undefined
 }
 
-/** The source spelling of a bound value, for diagnostic messages. */
+function sourceSubject(binding: IBindingExpression): string {
+  if (binding.type === "literal") {
+    const value: unknown = safeParse(binding.value)
+
+    return typeof value === "string" ? value : binding.value
+  }
+
+  return displaySource(binding)
+}
+
 function displaySource(binding: IBindingExpression): string {
   switch (binding.type) {
     case "literal": {
@@ -1425,7 +1330,6 @@ function displaySource(binding: IBindingExpression): string {
   }
 }
 
-/** Parses a converter/action argument list `name: value, name: value` into name/value pairs. */
 function parseNamedArgs(input: string): { name: string; value: string }[] {
   const result: { name: string; value: string }[] = []
 
@@ -1503,7 +1407,6 @@ async function compileFacts(file: IAnalyzerFile): Promise<IFileFacts> {
   }
 }
 
-/** The distinct `@hx-style(for: ...)` scope paths of a style, each split into segments. */
 function collectScopePaths(definition: IStyleDefinition): string[][] {
   const seen = new Set<string>()
   const paths: string[][] = []
@@ -1522,13 +1425,6 @@ function collectScopePaths(definition: IStyleDefinition): string[][] {
   return paths
 }
 
-/**
- * Every `{...}` binding source in a style, split by kind. Scans qualifier
- * arguments (so `@hx-if(value:{prop})` subjects and `@media (...{$token}...)`
- * queries are covered), declaration values and keyframe values - the one unified
- * pass behind theme (`{$}`), state (`{prop}`), dictionary (`{@}`) and config
- * (`{#}`) resolution.
- */
 function collectStyleBindings(definition: IStyleDefinition): IStyleBindings {
   const buckets: Record<IBindingExpression["type"], Set<string>> = {
     theme: new Set(),
@@ -1643,7 +1539,6 @@ function diagnostic(
   return result
 }
 
-/** Splits a converter argument list on top-level commas, quote/paren-aware. */
 function splitArguments(input: string): string[] {
   const result: string[] = []
   let depth = 0

@@ -6,14 +6,6 @@ interface ISourcePosition {
 
 const SPECIAL = /[.*+?^${}()|[\]\\]/g
 
-/**
- * Locates a theme token's leaf declaration in a `*.hxt` source by its dot-path,
- * narrowing through each ancestor group block (`Group {`) before matching the
- * leaf `name:` declaration, so same-named leaves in different groups resolve to
- * the right one. Returns the leaf name's zero-based line/character and length,
- * or `undefined` when the path is not textually present (a naive, comment-
- * unaware scan - consistent with the analyzer's subject-based range mapping).
- */
 export function locateThemeToken(source: string, path: string): ISourcePosition | undefined {
   const segments = path.split(".")
   let from = 0
@@ -34,21 +26,18 @@ export function locateThemeToken(source: string, path: string): ISourcePosition 
   return at < 0 ? undefined : { ...lineCharacterOf(source, at), length: leaf.length }
 }
 
-/** Index just past the `{` opening the group named `name` at or after `from`, or -1. */
 function groupOpenAfter(source: string, name: string, from: number): number {
   const match = boundedMatch(source, name, "\\{", from)
 
   return match ? match.index + match.length : -1
 }
 
-/** Index of the `name` token of a `name:` declaration at or after `from`, or -1. */
 function declarationAfter(source: string, name: string, from: number): number {
   const match = boundedMatch(source, name, ":", from)
 
   return match ? match.index : -1
 }
 
-/** First `<boundary>name<ws><terminator>` at or after `from`, with the name's start index and match length. */
 function boundedMatch(
   source: string,
   name: string,

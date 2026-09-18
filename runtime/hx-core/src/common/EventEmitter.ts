@@ -16,4 +16,8 @@ export class EventEmitter<TEventHandler extends (...args: never[]) => void> impl
   public off(handler: TEventHandler): void {
     this.handlers.delete(handler)
   }
+
+  public clear(): void {
+    this.handlers.clear()
+  }
 }

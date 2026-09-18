@@ -2,13 +2,6 @@ import type { IDimension } from "./IDimension"
 import type { IDimensionDefinition } from "./IDimensionDefinition"
 import type { DimensionUsage } from "./DimensionUsage"
 
-/**
- * Resolves `definitions` against the current `dimension` by merging matches from least
- * to most specific. `base` seeds the accumulation with an already-resolved result (a
- * previous layer, e.g. a library package's resolved definition), so callers can fold
- * layers in precedence order: matches with `usage: "extend"` merge onto it, while a
- * `usage: "override"` match discards it.
- */
 export function mergeDimensions<T extends { dimension: IDimension; usage?: DimensionUsage }>(
   definitions: readonly T[],
   dimension: IDimension,

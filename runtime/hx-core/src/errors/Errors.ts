@@ -6,13 +6,13 @@ export const Errors = {
     code: "HX_CORE_0001",
     ...(DEV && { message: "The '{0}' component is unknown (probably it was not provided)." }),
   },
-  invalidInjectable: {
+
+  duplicateHxName: {
     code: "HX_CORE_0002",
-    ...(DEV && { message: "Cannot create injectable: '{0}' is missing or invalid." }),
-  },
-  unknownFrameworkElement: {
-    code: "HX_CORE_0003",
-    ...(DEV && { message: "The '{0}' framework element is unknown (probably it was not provided)." }),
+    ...(DEV && {
+      message:
+        "Two classes are registered under the name '{0}'. A subclass inherits its base's static hxName - declare its own.",
+    }),
   },
 
   // Application errors 0100-0199
@@ -65,5 +65,43 @@ export const Errors = {
   configEntryRetrieval: {
     code: "HX_CORE_0401",
     ...(DEV && { message: "Could not find a config entry: '{0}'." }),
+  },
+
+  // Binding errors 0500-0599
+  unknownConverter: {
+    code: "HX_CORE_0500",
+    ...(DEV && { message: "The '{0}' converter is unknown (probably it was not provided)." }),
+  },
+
+  // Scheduler errors 0600-0699
+  schedulerJob: {
+    code: "HX_CORE_0600",
+    ...(DEV && { message: "A scheduled '{0}' job failed due to: {1}." }),
+  },
+
+  // Action errors 0700-0799
+  unknownAction: {
+    code: "HX_CORE_0700",
+    ...(DEV && { message: "The '{0}' action is unknown (probably it was not provided)." }),
+  },
+
+  // Service errors 0800-0899
+  unknownService: {
+    code: "HX_CORE_0800",
+    ...(DEV && { message: "The '{0}' service is unknown (probably it was not provided)." }),
+  },
+  circularServiceDependency: {
+    code: "HX_CORE_0801",
+    ...(DEV && { message: "The '{0}' service depends on itself through its own constructor." }),
+  },
+
+  // Dimension errors 0900-0999
+  unknownDimension: {
+    code: "HX_CORE_0900",
+    ...(DEV && { message: "The '{0}' dimension is not declared. Declared dimensions: {1}." }),
+  },
+  invalidDimensionValue: {
+    code: "HX_CORE_0901",
+    ...(DEV && { message: "The '{0}' value is not declared for the '{1}' dimension. Declared values: {2}." }),
   },
 } as const satisfies Record<string, IErrorInfo>

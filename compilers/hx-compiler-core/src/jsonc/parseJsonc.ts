@@ -35,28 +35,6 @@ const CC_u_LOWER = 117
 
 const NUMBER_PATTERN = /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/
 
-/**
- * Error-tolerant JSONC parser for Heleonix data formats (`*.hxd` dictionaries
- * and `*.hxc` configs).
- *
- * Supported syntax on top of strict JSON:
- *   - Line comments: `// ...`
- *   - Block comments: `/* ... *\/`
- *   - Trailing commas in objects and arrays
- *
- * Walks the source string once, producing plain JavaScript values (objects,
- * arrays, strings, numbers, booleans and `null`), and collects every
- * document-root flatness violation - a non-object root, or a nested/non-string
- * value - into `issues` in document order. Flatness is the `*.hxd` dictionary
- * constraint; `*.hxc` configs ignore `issues` and may nest.
- *
- * Like {@link parseXml}, structural problems are tolerated and collected rather
- * than thrown; unlike it, JSONC *syntax* errors are thrown, because a recursive
- * descent parser cannot meaningfully recover mid-value (a {@link
- * HeleonixCompilerError} carrying the source offset). The strict {@link
- * JsoncParser} wraps this and returns just the value, so the build and the
- * language server share one walk and can never drift.
- */
 export function parseJsonc(source: string): IJsoncParseResult {
   return new JsoncWalker(source).parse()
 }

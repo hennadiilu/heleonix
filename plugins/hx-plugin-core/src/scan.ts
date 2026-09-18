@@ -3,20 +3,6 @@ import path from "node:path"
 import { HeleonixPluginError } from "./errors/HeleonixPluginError"
 import { Errors } from "./errors/Errors"
 
-/**
- * Recursively collects every file under `dirs` whose extension is in `exts`.
- *
- * Each `exclude` entry is skipped during the walk and is interpreted as either:
- *   - a bare folder name (no path separator) - skipped wherever it appears in the
- *     tree, e.g. `"node_modules"`; or
- *   - a folder path - absolute, or relative to `baseDir`.
- *
- * Hidden entries (names starting with `.`) are always skipped.
- *
- * A missing top-level `dirs` entry is a configuration mistake and throws; any other
- * read failure (e.g. permissions) is surfaced rather than silently ignored. A nested
- * directory that disappears mid-walk is the only case skipped quietly.
- */
 export function scan(
   dirs: readonly string[],
   exts: ReadonlySet<string>,

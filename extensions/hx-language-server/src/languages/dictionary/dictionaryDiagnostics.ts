@@ -12,11 +12,6 @@ import { diagnoseUnusedEntries } from "../jsonc/diagnoseUnusedEntries"
 import { DICTIONARY_MESSAGES } from "./dictionaryMessages"
 import { parameterIssue } from "./resolveParameter"
 
-/**
- * Diagnostics for `*.hxd`: the shared data envelope, the dictionary-only rules
- * (a flat object of string values, resolvable `{@..}` references), state
- * `{param}` resolution against referencing components, and unreferenced entries.
- */
 export function diagnoseDictionary(
   doc: TextDocument,
   index: DefinitionIndex,

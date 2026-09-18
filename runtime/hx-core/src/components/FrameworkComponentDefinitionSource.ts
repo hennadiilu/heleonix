@@ -1,13 +1,8 @@
-import type { IComponentDefinition } from "@heleonix/hx-language"
-import type { IDimension } from "@heleonix/hx-language"
-import { ComponentDefinitionSource } from "./ComponentDefinitionSource"
+import type { IComponentDefinition, IDimension } from "@heleonix/hx-language"
+import { DefinitionSource } from "../definitions/DefinitionSource"
 
-export class FrameworkComponentDefinitionSource extends ComponentDefinitionSource {
-  public static get diName(): string {
-    return "FrameworkComponentDefinitionSource"
-  }
-
-  public getDefinitions(name: string, dimension: IDimension): Promise<readonly IComponentDefinition[]> {
+export class FrameworkComponentDefinitionSource extends DefinitionSource<IComponentDefinition> {
+  public loadDefinitions(name: string, dimension: IDimension): Promise<readonly IComponentDefinition[]> {
     switch (name) {
       case "Content":
       case "Children":

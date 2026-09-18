@@ -18,7 +18,7 @@
     "clean": "rimraf dist",
     "build": "node esbuild.mjs",
     "watch": "node esbuild.mjs --watch",
-    "test": "node --experimental-strip-types spec/run.ts"
+    "test": "tsx --tsconfig ../../tsconfig.json ../../tools/runSpecs.ts"
   },
   "dependencies": {
     "@heleonix/hx-analyzer": "workspace:*",

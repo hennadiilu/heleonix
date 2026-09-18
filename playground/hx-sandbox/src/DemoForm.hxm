@@ -1,36 +1,36 @@
 <Component>
-  <span name="title">@Sandbox.appTitle | Truncate(length: 40)</span>
-  <Greeting name="greeting" variant="'primary'" />
+  <span name="title">{@Sandbox.appTitle | Truncate(length: 40)}</span>
+  <Greeting name="greeting" variant="primary" />
 
-  <span name="litEcho">42</span>
+  <span name="litEcho">{42}</span>
 
-  <span name="rowName">@Sandbox.nameLabel</span>
+  <span name="rowName">{@Sandbox.nameLabel}</span>
   <input
     name="nameInput"
-    value="userName"
-    input.target.value="userName"
-    placeholder="@Sandbox.namePlaceholder"
-    type="#Sandbox.inputType"
-    class="#Sandbox.rowClass"
+    value={userName}
+    input.target.value={userName}
+    placeholder={@Sandbox.namePlaceholder}
+    type={#Sandbox.inputType}
+    class={#Sandbox.rowClass}
   />
-  <span name="echo">userName</span>
-  <span name="truncName">@Sandbox.truncatedName</span>
+  <span name="echo">{userName}</span>
+  <span name="truncName">{@Sandbox.truncatedName}</span>
 
-  <span name="rowEvent">@Sandbox.eventLabel</span>
-  <button name="actionBtn" click.type="lastEvent" type="#Sandbox.buttonType">@Sandbox.actionLabel</button>
-  <span name="evtEcho">lastEvent</span>
+  <span name="rowEvent">{@Sandbox.eventLabel}</span>
+  <button name="actionBtn" click.type={lastEvent} type={#Sandbox.buttonType}>{@Sandbox.actionLabel}</button>
+  <span name="evtEcho">{lastEvent}</span>
 
-  <span name="rowRemote">@Sandbox.remoteEventLabel</span>
-  <span add:name="add:remoteEvt">actionBtn:click.type</span>
-  <span name="rowBlur">@Sandbox.blurLabel</span>
+  <span name="rowRemote">{@Sandbox.remoteEventLabel}</span>
+  <span add:name="add:remoteEvt">{actionBtn:click.type}</span>
+  <span name="rowBlur">{@Sandbox.blurLabel}</span>
   <input
     name="blurInput"
-    value="draftName"
-    input.target.value="draftName"
-    change.target.value="committedName"
-    placeholder="@Sandbox.blurPlaceholder"
-    type="#Sandbox.inputType"
+    value={draftName}
+    input.target.value={draftName}
+    change.target.value={committedName}
+    placeholder={@Sandbox.blurPlaceholder}
+    type={#Sandbox.inputType}
   />
-  <span name="rowCommitted">@Sandbox.committedLabel</span>
-  <span name="committed">committedName</span>
+  <span name="rowCommitted">{@Sandbox.committedLabel}</span>
+  <span name="committed">{committedName}</span>
 </Component>

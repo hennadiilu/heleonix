@@ -19,7 +19,7 @@ export async function activate(context: ExtensionContext): Promise<void> {
   await client.start()
 
   // Restart so the server picks up changed settings (exclude list, diagnostics
-  // toggle), or a newly granted workspace trust (which enables custom loader modules).
+  // toggle), or a newly granted workspace trust (which enables custom transport modules).
   const restart = async (): Promise<void> => {
     await client?.stop()
     client = createClient(context)
@@ -68,7 +68,7 @@ function createClient(context: ExtensionContext): LanguageClient {
       unknownReferenceSeverity: config.get<string>("diagnostics.unknownReferenceSeverity", "warning"),
       unusedEntrySeverity: config.get<string>("diagnostics.unusedEntrySeverity", "information"),
       definitionSources: config.get<string[]>("definitionSources", []),
-      // Custom loader modules execute workspace code, so the server only loads
+      // Custom transport modules execute workspace code, so the server only loads
       // them when the workspace is trusted (see onDidGrantWorkspaceTrust below).
       workspaceTrusted: workspace.isTrusted,
     },

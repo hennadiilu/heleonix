@@ -1,10 +1,5 @@
 import { IDocs } from "@heleonix/hx-language"
 
-/**
- * Renders {@link IDocs} as the markdown shown in hovers and completion
- * documentation: title, deprecation notice, summary, `@prop`/`@param` lists,
- * fenced examples and `@see` links.
- */
 export function renderDocs(title: string, docs: IDocs): string {
   const parts: string[] = [`**\`${title}\`**`]
 

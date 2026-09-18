@@ -4,12 +4,12 @@ import path from "node:path"
 import { pathToFileURL } from "node:url"
 import { DiagnosticSeverity } from "vscode-languageserver"
 import { TextDocument } from "vscode-languageserver-textdocument"
-import { AnalyzerHost } from "../src/analysis/AnalyzerHost.ts"
+import { AnalyzerHost } from "../src/analysis/AnalyzerHost"
 
 describe("AnalyzerHost", () => {
   describe("given a workspace with a dictionary and a component with a bad reference", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "hx-analyzer-host-"))
-    const formSource = `<Component><span>@Buttons.missing</span></Component>`
+    const formSource = `<Component><span>{@Buttons.missing}</span></Component>`
     const formPath = path.join(root, "Form.hxm")
 
     beforeAll(() => {
@@ -58,7 +58,7 @@ describe("AnalyzerHost", () => {
 
   describe("given a TypeScript-typed component and a workspace with a tsconfig", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "hx-analyzer-host-ts-"))
-    const formSource = `<Component><Greeting variant="'flashy'" /></Component>`
+    const formSource = `<Component><Greeting variant="flashy" /></Component>`
     const formPath = path.join(root, "Form.hxm")
 
     beforeAll(() => {
@@ -90,7 +90,7 @@ describe("AnalyzerHost", () => {
         const start = document.offsetAt(result[0].range.start)
         const end = document.offsetAt(result[0].range.end)
 
-        expect(formSource.slice(start, end)).toBe("'flashy'")
+        expect(formSource.slice(start, end)).toBe("flashy")
       })
     })
   })

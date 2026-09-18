@@ -7,12 +7,6 @@ import { markdownHover } from "../../lsp/markdownHover"
 import { renderDocs } from "../../lsp/renderDocs"
 import { definitionName } from "./definitionName"
 
-/**
- * Hover for `*.hxd`/`*.hxc` entry keys: the entry's docs from the index, which
- * may come from another dimension file of the same definition or a shipped
- * docs artifact - so this shows documentation the current file doesn't carry
- * itself. Keys without docs yield no hover.
- */
 export function entryKeyHover(
   doc: TextDocument,
   position: Position,

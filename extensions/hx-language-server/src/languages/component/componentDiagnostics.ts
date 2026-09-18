@@ -8,8 +8,9 @@ import {
   getOverrideTarget,
   isBindingExpression,
   parseBindingExpression,
+  soleExpression,
 } from "@heleonix/hx-language"
-import { IXmlAttribute, IXmlScan, IXmlTag } from "@heleonix/hx-compiler-core"
+import { IXmlAttribute, IXmlScan, IXmlTag, XmlAttributeKind } from "@heleonix/hx-compiler-core"
 import { Diagnostic, DiagnosticSeverity } from "vscode-languageserver"
 import { TextDocument } from "vscode-languageserver-textdocument"
 import { DefinitionIndex } from "../../index/DefinitionIndex"
@@ -22,18 +23,6 @@ import { splitComponentPrefix } from "../../references/splitComponentPrefix"
 import { COMPONENT_MESSAGES } from "./componentMessages"
 import { currentComponents } from "./currentComponents"
 
-/**
- * Validates `*.hxm` binding expressions (attribute values and text content) and
- * resolves their dictionary/config references against the index. `refSeverity`
- * is `undefined` when unresolved-reference reporting is turned off.
- *
- * It additionally checks, at the same severity:
- *   - state-binding values (`prop="some.state"`) against the property pool the
- *     file's component(s) receive at their usages, and
- *   - attribute names (`<Child prop.sub="...">`) against the property pool the
- *     target component reads internally,
- * both resolving any `ctrl:` / `ctrl.nested:` named-control prefix first.
- */
 export function diagnoseComponent(
   doc: TextDocument,
   scan: IXmlScan,
@@ -86,7 +75,9 @@ export function diagnoseComponent(
         validatePropertyName(doc, tag.name, attr.name, attr.nameStart, attr.nameEnd, index, refSeverity, diagnostics)
       }
 
-      if (attr.name === NAME_ATTRIBUTE || attr.value === undefined || attr.valueStart === undefined) {
+      // Only a braced value is an expression; quoted text is a static string
+      // and a value-less flag stands for `true`, so neither resolves anything.
+      if (attr.name === NAME_ATTRIBUTE || attr.kind !== "expression" || attr.valueStart === undefined) {
         continue
       }
 
@@ -97,7 +88,7 @@ export function diagnoseComponent(
         continue
       }
 
-      if (attr.value !== "") {
+      if (attr.value) {
         validateBinding(
           doc,
           attr.value,
@@ -116,17 +107,23 @@ export function diagnoseComponent(
     }
   }
 
+  // Static text binds as a string literal; only a text run that is one
+  // `{...}` expression carries references to resolve.
   for (const node of scan.texts) {
-    validateBinding(
-      doc,
-      node.value.trim(),
-      node.start,
-      node.end,
-      bindingComponents(node.start),
-      index,
-      refSeverity,
-      diagnostics,
-    )
+    const expression = soleExpression(node.value)
+
+    if (expression) {
+      validateBinding(
+        doc,
+        expression.text.trim(),
+        node.start + expression.start,
+        node.start + expression.end,
+        bindingComponents(node.start + expression.start),
+        index,
+        refSeverity,
+        diagnostics,
+      )
+    }
   }
 
   return diagnostics
@@ -162,13 +159,6 @@ function validateBinding(
   }
 }
 
-/**
- * A state-binding value reads a property of the component(s) defined in this
- * file (or of a named control of one of them, when `ctrl:`-qualified). The
- * readable pool is what callers set on that component across the workspace
- * ({@link DefinitionIndex.incomingProperties}); when the pool is empty there is
- * no evidence to validate against, so it is left alone.
- */
 function validateStateValue(
   doc: TextDocument,
   value: string,
@@ -209,15 +199,6 @@ function validateStateValue(
   out.push(makeDiagnostic(doc, start, end, message, severity))
 }
 
-/**
- * An attribute name sets a property on the component being used (or on a named
- * control of it, when `ctrl:`-qualified). The settable pool is what that
- * component reads internally, directly or through the `{param}`s of the
- * dictionary entries it references ({@link DefinitionIndex.consumedProperties}).
- * Since indexing sees a component's whole definition, an empty pool is positive
- * evidence that nothing is settable. Tags the index doesn't know are checked
- * against the platform's component data (HTML attributes per W3C/MDN) instead.
- */
 function validatePropertyName(
   doc: TextDocument,
   tagName: string,
@@ -270,11 +251,6 @@ function validatePropertyName(
   out.push(makeDiagnostic(doc, start, end, message, severity))
 }
 
-/**
- * Validates a `target:Component` override attribute: the target chain against
- * the used component's definition and the value (empty, a known component, or a
- * dictionary/config reference).
- */
 function validateOverrideAttribute(
   doc: TextDocument,
   tagName: string,
@@ -287,7 +263,8 @@ function validateOverrideAttribute(
 ): void {
   validateOverrideTarget(doc, tagName, target, attr.nameStart, attr.nameEnd, index, severity, out)
 
-  if (attr.value === undefined || attr.valueStart === undefined) {
+  // A value-less override leaves its target rendering nothing, which is legal.
+  if (attr.kind === "flag" || attr.value === undefined || attr.valueStart === undefined) {
     return
   }
 
@@ -296,13 +273,18 @@ function validateOverrideAttribute(
     return
   }
 
-  validateOverrideValue(doc, attr.value, attr.valueStart, attr.valueEnd ?? attr.valueStart, index, severity, out)
+  validateOverrideValue(
+    doc,
+    attr.kind,
+    attr.value,
+    attr.valueStart,
+    attr.valueEnd ?? attr.valueStart,
+    index,
+    severity,
+    out,
+  )
 }
 
-/**
- * Validates an inline `<target:Component>` override element: it must sit inside
- * a component usage, carry no attributes, and name a valid target of that usage.
- */
 function validateInlineOverride(
   doc: TextDocument,
   tag: IXmlTag,
@@ -327,11 +309,6 @@ function validateInlineOverride(
   validateOverrideTarget(doc, hostTag, target, tag.nameStart, tag.nameEnd, index, severity, out)
 }
 
-/**
- * Resolves an override target chain inside `tagName`'s definition. Only real
- * components are checked - the internals of HTML/builtin tags are unknown, so a
- * target on one is left alone (mirrors {@link validatePropertyName}).
- */
 function validateOverrideTarget(
   doc: TextDocument,
   tagName: string,
@@ -363,13 +340,9 @@ function validateOverrideTarget(
   }
 }
 
-/**
- * Validates a `target:Component` value: empty renders nothing; `@Dic.entry` /
- * `#Cfg.entry` resolves like any reference; a PascalCase bare name must be a
- * known component (a lowercase bare name is assumed to be a platform tag).
- */
 function validateOverrideValue(
   doc: TextDocument,
+  kind: XmlAttributeKind,
   raw: string,
   start: number,
   end: number,
@@ -380,6 +353,13 @@ function validateOverrideValue(
   const value = raw.trim()
 
   if (!value) {
+    return
+  }
+
+  // Quoted text names the replacement component directly.
+  if (kind === "literal") {
+    validateOverrideComponent(doc, value, start, end, index, severity, out)
+
     return
   }
 
@@ -400,12 +380,23 @@ function validateOverrideValue(
     return
   }
 
-  if (severity !== undefined && /^[A-Z]/.test(expression.value) && !index.isComponent(expression.value)) {
-    out.push(makeDiagnostic(doc, start, end, COMPONENT_MESSAGES.unknownOverrideComponent(expression.value), severity))
+  validateOverrideComponent(doc, expression.value, start, end, index, severity, out)
+}
+
+function validateOverrideComponent(
+  doc: TextDocument,
+  name: string,
+  start: number,
+  end: number,
+  index: DefinitionIndex,
+  severity: DiagnosticSeverity | undefined,
+  out: Diagnostic[],
+): void {
+  if (severity !== undefined && /^[A-Z]/.test(name) && !index.isComponent(name)) {
+    out.push(makeDiagnostic(doc, start, end, COMPONENT_MESSAGES.unknownOverrideComponent(name), severity))
   }
 }
 
-/** Components a `ctrl.nested:` prefix resolves to from `starts`, or `undefined` when it names no known control. */
 function resolveTargets(starts: readonly string[], prefix: string, index: DefinitionIndex): Set<string> | undefined {
   if (!prefix) {
     return new Set(starts)

@@ -7,13 +7,6 @@ import { ILanguageService } from "../ILanguageService"
 import { completeThemeToken, hoverThemeToken, definitionThemeToken } from "./themeTokenFeature"
 import { completeQualifier, hoverQualifier } from "./qualifierFeature"
 
-/**
- * Editor support for the CSS-subset formats `*.hxs` (styles) and `*.hxt`
- * (themes): `{$Theme.token}` completion/hover and `@hx-*` qualifier
- * completion/hover. Diagnostics come from the shared analyzer (fed via
- * `AnalyzerHost`), so this service adds none - it only contributes the editor
- * features the analyzer cannot.
- */
 export class StylingLanguageService implements ILanguageService {
   public readonly kind: Kind
 

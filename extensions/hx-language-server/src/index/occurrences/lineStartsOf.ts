@@ -1,9 +1,3 @@
-/**
- * Offsets at which each line begins, so an absolute offset can later be mapped
- * to an LSP position (line + character) without keeping the file's text. Counts
- * `\n`, `\r` and `\r\n` as line breaks, matching how `TextDocument` splits lines,
- * so ranges line up with the editor's own view of open documents.
- */
 export function lineStartsOf(text: string): number[] {
   const starts = [0]
   const length = text.length

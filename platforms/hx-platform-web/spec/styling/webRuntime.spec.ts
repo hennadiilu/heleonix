@@ -1,7 +1,25 @@
-import { StyleEngine, QualifierRegistry } from "@heleonix/hx-core"
-import type { StyleEngineState } from "@heleonix/hx-core"
+import { StyleManager } from "../../../../runtime/hx-core/src/styling/StyleManager"
+import type { Component, IQualifierProvider, IScheduler, IState } from "@heleonix/hx-core"
 import type { IStyleDefinition } from "@heleonix/hx-language"
-import { WebStyleEnginePlatform, RefcountedStyleSheet, DomStyleSheet } from "@heleonix/hx-platform-web"
+import { WebStyleDriver, RefcountedStyleSheet, DomStyleSheet } from "@heleonix/hx-platform-web"
+
+const immediate: IScheduler = {
+  scheduleCompute: (job) => void job(),
+  scheduleCommit: (job) => void job(),
+}
+
+const components = new Map<string, Component>()
+
+function cmp(fqName: string): Component {
+  let component = components.get(fqName)
+
+  if (!component) {
+    component = { fqName } as unknown as Component
+    components.set(fqName, component)
+  }
+
+  return component
+}
 
 class FakeStyle {
   public readonly props = new Map<string, string>()
@@ -24,50 +42,46 @@ class FakeElement {
   public removeAttribute(): void {}
 }
 
-class FakeState implements StyleEngineState<string> {
-  public values: Record<string, unknown>
-  private readonly handlers = new Map<string, (() => void)[]>()
+function stateWith(values: Record<string, unknown>): IState {
+  return {
+    changed: { on: () => {}, off: () => {} },
+    getValue: (name: string) => values[name],
+    setValue: () => {},
+    emitEvent: () => {},
+  } as unknown as IState
+}
 
-  public constructor(values: Record<string, unknown>) {
-    this.values = values
-  }
-
-  public subscribe(_component: string, prop: string, handler: () => void): () => void {
-    const list = this.handlers.get(prop) ?? []
-    list.push(handler)
-    this.handlers.set(prop, list)
-
-    return () =>
-      this.handlers.set(
-        prop,
-        (this.handlers.get(prop) ?? []).filter((h) => h !== handler),
-      )
-  }
-
-  public getValue(_component: string, prop: string): unknown {
-    return this.values[prop]
-  }
+function managerWith(driver: WebStyleDriver, qualifiers: IQualifierProvider, values: Record<string, unknown>) {
+  return new StyleManager(
+    () => driver,
+    { loadDefinition: () => Promise.resolve(undefined) } as never,
+    { getTheme: () => Promise.resolve(undefined) } as never,
+    stateWith(values),
+    qualifiers,
+    { resolve: () => [] },
+  )
 }
 
 function def(rules: IStyleDefinition["rules"]): IStyleDefinition {
   return { name: "Card", dimension: {}, rules }
 }
 
-describe("web styling runtime (StyleEngine + WebStyleEnginePlatform)", () => {
+describe("web styling runtime (StyleManager + WebStyleDriver)", () => {
   it("then applies a compiled style end to end: sheet rules, classes and {prop} variables", () => {
     const element = { textContent: null as string | null }
     const sheet = new RefcountedStyleSheet(new DomStyleSheet(element))
     const root = new FakeElement()
 
-    const registry = new QualifierRegistry()
-    registry.register("Hover", { build: () => ({ pseudo: "Hover" }) })
+    const hover = { build: () => ({ pseudo: "Hover" }) }
+    const qualifiers: IQualifierProvider = { get: (name) => (name === "Hover" ? hover : undefined) }
 
-    const platform = new WebStyleEnginePlatform<string>(sheet, (c) =>
-      c === "A" ? [root as unknown as HTMLElement] : [],
+    const driver = new WebStyleDriver(sheet, (c) => (c === cmp("A") ? [root as unknown as HTMLElement] : []), immediate)
+    const manager = managerWith(driver, qualifiers, { "A:someProp": "5" })
+
+    manager.applyDefinition(
+      cmp("A"),
+      def({ "": { color: "{$Colors.Roles.Primary.bg}" }, Hover: { padding: "{someProp}px" } }),
     )
-    const engine = new StyleEngine<string>(registry, platform, new FakeState({ someProp: "5" }))
-
-    engine.apply("A", def({ "": { color: "{$Colors.Roles.Primary.bg}" }, Hover: { padding: "{someProp}px" } }))
 
     // Two content-hashed classes on the root.
     expect(root.classes.size).toBe(2)
@@ -84,11 +98,11 @@ describe("web styling runtime (StyleEngine + WebStyleEnginePlatform)", () => {
     const element = { textContent: null as string | null }
     const sheet = new RefcountedStyleSheet(new DomStyleSheet(element))
     const root = new FakeElement()
-    const platform = new WebStyleEnginePlatform<string>(sheet, () => [root as unknown as HTMLElement])
-    const engine = new StyleEngine<string>(new QualifierRegistry(), platform, new FakeState({ p: 1 }))
+    const driver = new WebStyleDriver(sheet, () => [root as unknown as HTMLElement], immediate)
+    const manager = managerWith(driver, { get: () => undefined }, { "B:p": 1 })
 
-    engine.apply("A", def({ "": { width: "{p}px" } }))
-    engine.remove("A")
+    manager.applyDefinition(cmp("B"), def({ "": { width: "{p}px" } }))
+    manager.remove(cmp("B"))
 
     expect(root.classes.size).toBe(0)
     expect(root.style.props.has("--hx-p")).toBeFalse()

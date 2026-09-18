@@ -1,5 +1,6 @@
 import { Errors } from "../errors/Errors"
 import { IErrorInfo } from "../errors/IErrorInfo"
+import { IXmlAttributeValue } from "./IXmlAttributeValue"
 import { IXmlElement } from "./IXmlElement"
 import { IXmlError } from "./IXmlError"
 import { IXmlParseResult } from "./IXmlParseResult"
@@ -11,16 +12,6 @@ const CC_HASH = 35
 const CC_X_LOWER = 120
 const CC_X_UPPER = 88
 
-/**
- * Error-tolerant XML tree builder layered on top of {@link scanXml}.
- *
- * It walks the flat scan once, assembling the nested {@link IXmlElement} tree the
- * compilers consume, and collects every structural/lexical problem (mismatched
- * or unclosed tags, multiple roots, invalid attributes) into `errors` in
- * document order rather than throwing. Attribute values and text are
- * entity-decoded here; CDATA runs are kept verbatim. The strict
- * {@link XmlParser} wraps this and fails when `errors` is non-empty.
- */
 export function parseXml(source: string): IXmlParseResult {
   const scan = scanXml(source)
   const errors: IXmlError[] = []
@@ -142,8 +133,8 @@ function handleTag(
 function toAttributes(
   tag: IXmlTag,
   addError: (info: IErrorInfo, args: string[], offset: number) => void,
-): Record<string, string> {
-  const attributes: Record<string, string> = {}
+): Record<string, IXmlAttributeValue> {
+  const attributes: Record<string, IXmlAttributeValue> = {}
 
   for (const attr of tag.attrs) {
     if (!attr.name) {
@@ -156,7 +147,12 @@ function toAttributes(
       addError(Errors.xmlInvalidAttribute, [String(attr.nameStart)], attr.nameStart)
     }
 
-    attributes[attr.name] = attr.value === undefined ? "" : decodeEntities(attr.value)
+    // A literal is markup text, so its entities are decoded; an expression is
+    // source to be parsed and is kept exactly as written. A flag has no value.
+    attributes[attr.name] = {
+      kind: attr.kind,
+      value: attr.kind === "literal" ? decodeEntities(attr.value ?? "") : (attr.value ?? ""),
+    }
   }
 
   return attributes

@@ -1,5 +1,5 @@
 <Component>
   <div>
-    <strong name="label">@Sandbox.fancyGreeting</strong>
+    <strong name="label">{@Sandbox.fancyGreeting}</strong>
   </div>
 </Component>

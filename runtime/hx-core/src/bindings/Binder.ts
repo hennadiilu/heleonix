@@ -1,101 +1,122 @@
-import { FrameworkElement } from "../FrameworkElement"
-import { collectStateParameters, joinFQPropertyName } from "@heleonix/hx-language"
+import { getComponentName, getPropertyName, joinFQPropertyName } from "@heleonix/hx-language"
 import type { FQComponentName, FQPropertyName, IBindingExpression } from "@heleonix/hx-language"
 import { StateManager } from "../state/StateManager"
-import { HeleonixError } from "../errors/HeleonixError"
-import { Errors } from "../errors/Errors"
+import type { MaybePromise } from "../common/MaybePromise"
+import { isThenable } from "../common/isThenable"
+import { thenMaybe } from "../common/thenMaybe"
+import { KeyedEventEmitter } from "../common/KeyedEventEmitter"
+import type { IKeyedEventEmitter } from "../common/IKeyedEventEmitter"
+import type { IClearable } from "../common/IClearable"
 import { BindingEvaluator } from "./BindingEvaluator"
+import type { BindingEndpointHandler } from "./BindingEndpointHandler"
+import type { IBinder } from "./IBinder"
+
+const EMPTY_ENDPOINTS: readonly string[] = Object.freeze([])
 
 interface BindingRecord {
   binding: IBindingExpression
+
   scopeFQ: FQComponentName
+
   targetFQ: FQPropertyName
-  // Fully-qualified state paths whose change re-runs `format` (source + args, or
-  // a dictionary template's parameters).
+
   formatParams: FQPropertyName[]
-  // The writable source path `parse` writes back to, set only for a two-way
-  // state source behind a converter chain.
+
   sourceFQ?: FQPropertyName
-  // A dictionary entry may resolve to `undefined` while its definition loads;
-  // unlike a converter result, that must not overwrite the target.
+
   skipUndefined: boolean
+
   formatHandler: () => void
-  parseHandler: () => void
-  // Re-entrancy guard: true only while this record writes, so its own writes
-  // never trigger its opposite direction (self-echo).
+
+  parseHandler?: () => void
+
   writing: boolean
 }
 
-/**
- * The single owner of property-binding lifecycle. Given a target property, its
- * binding expression, and the scope its sources resolve against - the enclosing
- * declarative component that wrote the usage, so state paths, converter
- * arguments and dictionary interpolation parameters all resolve the same way -
- * it picks the cheapest correct strategy: a symmetric state-edge alias for a
- * bare state source, a one-shot write for a literal or config value, and a
- * reactive record (subscribe -> `format` -> write, plus two-way `parse` when the
- * source is writable state) for dictionary and converter bindings. All
- * expression semantics go through the one {@link BindingEvaluator}; this element
- * owns only subscription, direction and write-back. Re-resolving a binding on a
- * dimension switch is driven by the component reconcile (which already walks the
- * tree then), through {@link refresh} - not a subscription here.
- */
-export class Binder extends FrameworkElement<StateManager | BindingEvaluator> {
-  private readonly stateManager = this.inject(StateManager)
-
-  private readonly evaluator = this.inject(BindingEvaluator)
-
+export class Binder implements IBinder, IClearable {
   private readonly records = new Map<FQPropertyName, BindingRecord>()
 
   private readonly edges = new Map<FQPropertyName, FQPropertyName>()
 
-  public static get diName(): string {
-    return "Binder"
+  private readonly endpointsByTarget = new Map<FQPropertyName, ReadonlySet<FQPropertyName>>()
+
+  private readonly endpointCounts = new Map<FQComponentName, Map<string, number>>()
+
+  private readonly endpointActivatedEmitter = new KeyedEventEmitter<FQComponentName, BindingEndpointHandler>()
+
+  private readonly endpointDeactivatedEmitter = new KeyedEventEmitter<FQComponentName, BindingEndpointHandler>()
+
+  public constructor(
+    private readonly state: StateManager,
+    private readonly evaluator: BindingEvaluator,
+  ) {}
+
+  public get endpointActivated(): IKeyedEventEmitter<FQComponentName, BindingEndpointHandler> {
+    return this.endpointActivatedEmitter
   }
 
-  public async bind(targetFQ: FQPropertyName, binding: IBindingExpression, scopeFQ: FQComponentName): Promise<void> {
-    this.unbind(targetFQ)
+  public get endpointDeactivated(): IKeyedEventEmitter<FQComponentName, BindingEndpointHandler> {
+    return this.endpointDeactivatedEmitter
+  }
+
+  public clear(): void {
+    this.records.clear()
+    this.edges.clear()
+    this.endpointsByTarget.clear()
+    this.endpointCounts.clear()
+    this.endpointActivatedEmitter.clear()
+    this.endpointDeactivatedEmitter.clear()
+  }
+
+  public bind(targetFQ: FQPropertyName, binding: IBindingExpression, scopeFQ: FQComponentName): MaybePromise<void> {
+    // The previous binding's machinery goes now, but its endpoints stay
+    // registered until the new set replaces them in one diff, so a path both
+    // bindings reach - the event a dimension switch keeps - never deactivates
+    // in between, not even across the async resolve of the new parameters.
+    this.teardown(targetFQ)
 
     if (!binding.converters?.length) {
-      switch (binding.type) {
-        case "state":
-          this.bindStateEdge(targetFQ, joinFQPropertyName(scopeFQ, binding.value))
+      if (binding.type === "state") {
+        return this.bindStateEdge(targetFQ, joinFQPropertyName(scopeFQ, binding.value))
+      }
 
-          return
-        case "literal":
-          this.stateManager.setValue(targetFQ, JSON.parse(binding.value))
+      if (binding.type === "literal") {
+        this.setEndpoints(targetFQ, EMPTY_ENDPOINTS)
 
-          return
-        case "config":
-          await this.bindConfig(targetFQ, binding)
-
-          return
-        case "dictionary":
-          await this.bindReactive(
-            targetFQ,
-            binding,
-            scopeFQ,
-            collectStateParameters(await this.requireEntry(binding)),
-            true,
-          )
-
-          return
+        return this.state.setValue(targetFQ, JSON.parse(binding.value))
       }
     }
 
-    await this.bindReactive(targetFQ, binding, scopeFQ, this.evaluator.getDependencies(binding), false)
+    return this.bindReactive(targetFQ, binding, scopeFQ)
   }
 
   public unbind(targetFQ: FQPropertyName): void {
+    this.teardown(targetFQ)
+    this.setEndpoints(targetFQ, EMPTY_ENDPOINTS)
+  }
+
+  public rebind(targetFQ: FQPropertyName, binding: IBindingExpression, scopeFQ: FQComponentName): void {
+    if (this.evaluator.isDimensionSensitive(binding)) {
+      void this.bind(targetFQ, binding, scopeFQ)
+    }
+  }
+
+  public getActiveEndpoints(componentFQ: FQComponentName): readonly string[] {
+    const paths = this.endpointCounts.get(componentFQ)
+
+    return paths ? [...paths.keys()] : EMPTY_ENDPOINTS
+  }
+
+  private teardown(targetFQ: FQPropertyName): void {
     const record = this.records.get(targetFQ)
 
     if (record) {
       for (const paramFQ of record.formatParams) {
-        this.stateManager.changed.off(paramFQ, record.formatHandler)
+        this.state.changed.off(paramFQ, record.formatHandler)
       }
 
-      if (record.sourceFQ !== undefined) {
-        this.stateManager.changed.off(record.targetFQ, record.parseHandler)
+      if (record.parseHandler) {
+        this.state.changed.off(record.targetFQ, record.parseHandler)
       }
 
       this.records.delete(targetFQ)
@@ -106,110 +127,177 @@ export class Binder extends FrameworkElement<StateManager | BindingEvaluator> {
     const edgeSource = this.edges.get(targetFQ)
 
     if (edgeSource !== undefined) {
-      this.stateManager.unbind(targetFQ, edgeSource)
+      this.state.unbind(targetFQ, edgeSource)
       this.edges.delete(targetFQ)
     }
   }
 
-  /**
-   * Re-resolves a binding that survived a reconcile unchanged, but only when its
-   * value derives from a dimension-selected dictionary or config - those are the
-   * bindings whose value can change without their expression text changing. A
-   * full rebind (not just re-format) because a dictionary template's parameters
-   * can differ across dimensions. State/literal bindings are left untouched.
-   */
-  public refresh(targetFQ: FQPropertyName, binding: IBindingExpression, scopeFQ: FQComponentName): void {
-    if (this.evaluator.isDimensionSensitive(binding)) {
-      void this.bind(targetFQ, binding, scopeFQ)
-    }
-  }
-
   private bindStateEdge(targetFQ: FQPropertyName, sourceFQ: FQPropertyName): void {
-    this.stateManager.bind(targetFQ, sourceFQ)
+    this.state.bind(targetFQ, sourceFQ)
     this.edges.set(targetFQ, sourceFQ)
+
+    this.setEndpoints(targetFQ, [targetFQ, sourceFQ])
   }
 
-  private async bindConfig(targetFQ: FQPropertyName, binding: IBindingExpression): Promise<void> {
-    // Config carries no state dependencies, so the evaluator needs no getter.
-    const value = await this.evaluator.resolve(binding, () => undefined)
+  private setEndpoints(targetFQ: FQPropertyName, endpoints: readonly FQPropertyName[]): void {
+    const previous = this.endpointsByTarget.get(targetFQ)
+    const next = endpoints.length > 0 ? new Set(endpoints) : undefined
 
-    if (value === undefined) {
-      throw new HeleonixError(Errors.configEntryRetrieval, binding.value)
+    if (next) {
+      this.endpointsByTarget.set(targetFQ, next)
+
+      for (const endpoint of next) {
+        if (!previous?.has(endpoint)) {
+          this.acquireEndpoint(endpoint)
+        }
+      }
+    } else {
+      this.endpointsByTarget.delete(targetFQ)
     }
 
-    this.stateManager.setValue(targetFQ, value)
+    for (const endpoint of previous ?? []) {
+      if (!next?.has(endpoint)) {
+        this.releaseEndpoint(endpoint)
+      }
+    }
   }
 
-  private async requireEntry(binding: IBindingExpression): Promise<string> {
-    const template = await this.evaluator.getDictionaryEntry(binding.value)
+  private acquireEndpoint(endpoint: FQPropertyName): void {
+    const localPath = getPropertyName(endpoint)
 
-    if (template === undefined) {
-      throw new HeleonixError(Errors.dictionaryEntryRetrieval, binding.value)
+    if (!localPath) {
+      return
     }
 
-    return template
+    const componentFQ = getComponentName(endpoint)
+
+    let paths = this.endpointCounts.get(componentFQ)
+
+    if (!paths) {
+      paths = new Map<string, number>()
+
+      this.endpointCounts.set(componentFQ, paths)
+    }
+
+    const count = paths.get(localPath) ?? 0
+
+    paths.set(localPath, count + 1)
+
+    if (count === 0) {
+      this.endpointActivatedEmitter.emit(componentFQ, localPath)
+    }
   }
 
-  private async bindReactive(
+  private releaseEndpoint(endpoint: FQPropertyName): void {
+    const localPath = getPropertyName(endpoint)
+    const componentFQ = getComponentName(endpoint)
+    const paths = this.endpointCounts.get(componentFQ)
+    const count = paths?.get(localPath)
+
+    if (!paths || !count) {
+      return
+    }
+
+    if (count > 1) {
+      paths.set(localPath, count - 1)
+
+      return
+    }
+
+    paths.delete(localPath)
+
+    if (paths.size === 0) {
+      this.endpointCounts.delete(componentFQ)
+    }
+
+    this.endpointDeactivatedEmitter.emit(componentFQ, localPath)
+  }
+
+  private bindReactive(
     targetFQ: FQPropertyName,
     binding: IBindingExpression,
     scopeFQ: FQComponentName,
-    params: string[],
-    skipUndefined: boolean,
-  ): Promise<void> {
-    const sourceFQ = binding.type === "state" && binding.value ? joinFQPropertyName(scopeFQ, binding.value) : undefined
-
-    await this.startRecord(this.createRecord(targetFQ, binding, scopeFQ, params, sourceFQ, skipUndefined))
+  ): MaybePromise<void> {
+    return thenMaybe(this.evaluator.collectParameters(binding, scopeFQ), (params) =>
+      this.startRecord(this.createRecord(targetFQ, binding, scopeFQ, params)),
+    )
   }
 
   private createRecord(
     targetFQ: FQPropertyName,
     binding: IBindingExpression,
     scopeFQ: FQComponentName,
-    params: string[],
-    sourceFQ: FQPropertyName | undefined,
-    skipUndefined: boolean,
+    params: FQPropertyName[],
   ): BindingRecord {
+    const sourceFQ = binding.type === "state" && binding.value ? joinFQPropertyName(scopeFQ, binding.value) : undefined
+
     const record: BindingRecord = {
       binding,
       scopeFQ,
       targetFQ,
-      formatParams: params.map((param) => joinFQPropertyName(scopeFQ, param)),
+      formatParams: params,
       sourceFQ,
-      skipUndefined,
+      skipUndefined: binding.type !== "state" && binding.type !== "literal",
       writing: false,
-      formatHandler: () => void this.format(record),
-      parseHandler: () => void this.parse(record),
+      formatHandler: () => this.runFormat(record),
+      parseHandler: sourceFQ !== undefined ? () => this.runParse(record) : undefined,
     }
 
     return record
   }
 
-  private async startRecord(record: BindingRecord): Promise<void> {
+  private startRecord(record: BindingRecord): MaybePromise<void> {
     for (const paramFQ of record.formatParams) {
-      this.stateManager.changed.on(paramFQ, record.formatHandler)
+      this.state.changed.on(paramFQ, record.formatHandler)
     }
 
-    if (record.sourceFQ !== undefined) {
-      this.stateManager.changed.on(record.targetFQ, record.parseHandler)
+    if (record.parseHandler) {
+      this.state.changed.on(record.targetFQ, record.parseHandler)
     }
 
     this.records.set(record.targetFQ, record)
 
-    await this.format(record)
+    // A state source is collected as a parameter, so `sourceFQ` is already here.
+    this.setEndpoints(record.targetFQ, [record.targetFQ, ...record.formatParams])
+
+    return this.format(record)
   }
 
-  private getter(record: BindingRecord): (path: string) => unknown {
-    return (param) => this.stateManager.getValue(joinFQPropertyName(record.scopeFQ, param))
+  private runFormat(record: BindingRecord): void {
+    try {
+      void this.format(record)
+    } catch (error) {
+      void Promise.resolve().then(() => {
+        throw error
+      })
+    }
   }
 
-  private async format(record: BindingRecord): Promise<void> {
+  private runParse(record: BindingRecord): void {
+    try {
+      void this.parse(record)
+    } catch (error) {
+      void Promise.resolve().then(() => {
+        throw error
+      })
+    }
+  }
+
+  private format(record: BindingRecord): MaybePromise<void> {
     if (record.writing) {
       return
     }
 
-    const value = await this.evaluator.resolve(record.binding, this.getter(record))
+    const value = this.evaluator.resolve(record.binding, record.scopeFQ)
 
+    if (isThenable(value)) {
+      return value.then((resolved) => this.writeFormatted(record, resolved))
+    }
+
+    this.writeFormatted(record, value)
+  }
+
+  private writeFormatted(record: BindingRecord, value: unknown): void {
     if (record.skipUndefined && value === undefined) {
       return
     }
@@ -217,20 +305,25 @@ export class Binder extends FrameworkElement<StateManager | BindingEvaluator> {
     this.write(record, record.targetFQ, value)
   }
 
-  private async parse(record: BindingRecord): Promise<void> {
-    if (record.writing || record.sourceFQ === undefined) {
+  private parse(record: BindingRecord): MaybePromise<void> {
+    const sourceFQ = record.sourceFQ
+
+    if (record.writing || sourceFQ === undefined) {
       return
     }
 
-    const targetValue = this.stateManager.getValue(record.targetFQ)
-    const value = await this.evaluator.resolveBack(targetValue, record.binding, this.getter(record))
+    const value = this.evaluator.resolveBack(this.state.getValue(record.targetFQ), record.binding, record.scopeFQ)
 
-    this.write(record, record.sourceFQ, value)
+    if (isThenable(value)) {
+      return value.then((resolved) => this.write(record, sourceFQ, resolved))
+    }
+
+    this.write(record, sourceFQ, value)
   }
 
   private write(record: BindingRecord, fq: FQPropertyName, value: unknown): void {
     record.writing = true
-    this.stateManager.setValue(fq, value)
+    this.state.setValue(fq, value)
     record.writing = false
   }
 }

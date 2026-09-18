@@ -27,19 +27,23 @@ describe("TypeResolver.discover (style qualifiers)", () => {
          value: PropertyRef
          is?: 'primary' | 'danger'
        }
-       export class IfQualifier extends StyleQualifier<IfArgs> {}`,
+       export class IfQualifier extends StyleQualifier<IfArgs> {
+         static readonly hxName = "If"
+       }`,
     )
     fs.writeFileSync(
       path.join(root, "OnRaisingQualifier.ts"),
       `import { StyleQualifier } from "./bases"
        import type { EventRef, ThemeTokenRef } from "./refs"
        interface OnRaisingArgs { event: EventRef; token?: ThemeTokenRef }
-       export class OnRaisingQualifier extends StyleQualifier<OnRaisingArgs> {}`,
+       export class OnRaisingQualifier extends StyleQualifier<OnRaisingArgs> {
+         static readonly hxName = "OnRaising"
+       }`,
     )
     fs.writeFileSync(
       path.join(root, "Weird.ts"),
       `import { StyleQualifier } from "./bases"
-       // Missing the required 'Qualifier' suffix.
+       // Declares no static hxName.
        export class Weird extends StyleQualifier<{ n: number }> {}`,
     )
   })
@@ -49,7 +53,7 @@ describe("TypeResolver.discover (style qualifiers)", () => {
   })
 
   describe("when the project is scanned", () => {
-    it("then derives names, resolves TArgs members and branded ref kinds", () => {
+    it("then reads declared names, resolves TArgs members and branded ref kinds", () => {
       const resolver = new TypeResolver(createNodeTypeProgramHost(root))
       resolver.discover()
 
@@ -57,7 +61,7 @@ describe("TypeResolver.discover (style qualifiers)", () => {
 
       const iff = found.get("IfQualifier")!
       expect(iff.name).toBe("If")
-      expect(iff.suffixOk).toBeTrue()
+      expect(iff.hasHxName).toBeTrue()
 
       const ifArgs = new Map(iff.args.map((a) => [a.name, a]))
       expect(ifArgs.get("value")).toEqual(
@@ -75,13 +79,13 @@ describe("TypeResolver.discover (style qualifiers)", () => {
       expect(onArgs.get("token")!.refKind).toBe("theme")
     })
 
-    it("then flags a qualifier missing its 'Qualifier' suffix and skips the abstract base", () => {
+    it("then flags a qualifier declaring no static hxName and skips the abstract base", () => {
       const resolver = new TypeResolver(createNodeTypeProgramHost(root))
       resolver.discover()
 
       const found = new Map(resolver.qualifiers().map((q) => [q.className, q]))
 
-      expect(found.get("Weird")!.suffixOk).toBeFalse()
+      expect(found.get("Weird")!.hasHxName).toBeFalse()
       expect(found.has("StyleQualifier")).toBeFalse()
     })
   })

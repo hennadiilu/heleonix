@@ -9,11 +9,6 @@ import { CONFIG_MESSAGES } from "../config/configMessages"
 const VALID_USAGE = new Set<string>(USAGE_VALUES)
 const USAGE_ENTRY = new RegExp(`${USAGE_KEY}[ \\t]*:[ \\t]*(\\S+)`)
 
-/**
- * Produces the diagnostics shared by all data formats - malformed frontmatter,
- * an unknown `usage` value, and JSONC syntax errors - and returns the parsed
- * body so kind-specific checks (e.g. dictionary flatness) can run.
- */
 export function diagnoseDataEnvelope(doc: TextDocument): IDataEnvelope {
   const text = doc.getText()
   const diagnostics: Diagnostic[] = []

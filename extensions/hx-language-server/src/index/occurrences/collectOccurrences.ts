@@ -14,6 +14,7 @@ import {
   getOverrideTarget,
   isBindingExpression,
   parseBindingExpression,
+  soleExpression,
 } from "@heleonix/hx-language"
 import { definitionName } from "../../languages/jsonc/definitionName"
 import { headSegment } from "../../references/headSegment"
@@ -30,14 +31,6 @@ import { lineStartsOf } from "./lineStartsOf"
 // Mirrors the pattern used while indexing in WorkspaceDefinitionSource.
 const COMPONENT_COMMENT = new RegExp(`<!--\\s*(${IDENTIFIER_PATTERN}(?:\\.${IDENTIFIER_PATTERN})*)`, "g")
 
-/**
- * Turns one file's already-parsed artifacts ({@link parseFile}) into located,
- * not-yet-resolved symbol {@link IRawOccurrence}s, plus the line-start table for
- * offset->position mapping. It shares the single parse with the flat index
- * builder rather than re-scanning, so the ranges it produces line up with what
- * the editor highlights. Symbol identity is finalized later by
- * {@link OccurrenceIndex}.
- */
 export function collectOccurrences(filePath: string, source: string, parsed: IParsedFile): IFileOccurrences {
   const raw: IRawOccurrence[] = []
   const name = definitionName(filePath)
@@ -106,7 +99,7 @@ function collectComponent(fileName: string, source: string, scan: IXmlScan, raw:
       // dictionary/config entry - not a property of, or state read by, the tag.
       if (attr.name && getOverrideTarget(attr.name) !== undefined) {
         if (attr.value && attr.valueStart !== undefined && !attr.unterminated) {
-          collectOverrideValue(attr.value, attr.valueStart, raw)
+          collectOverrideValue(attr.kind === "expression", attr.value, attr.valueStart, raw)
         }
 
         continue
@@ -114,7 +107,8 @@ function collectComponent(fileName: string, source: string, scan: IXmlScan, raw:
 
       // An attribute name sets a property on the component being used. Only real
       // component tags carry framework properties (HTML tags carry their own).
-      if (attr.name && attr.name !== NAME_ATTRIBUTE && isComponentTag(tag.name)) {
+      // The short form's name is part of its expression, collected with it.
+      if (attr.name && !attr.shorthand && attr.name !== NAME_ATTRIBUTE && isComponentTag(tag.name)) {
         pushProperty(
           raw,
           "reference",
@@ -125,29 +119,34 @@ function collectComponent(fileName: string, source: string, scan: IXmlScan, raw:
         )
       }
 
+      // Only a braced value holds an expression; quoted text is a static
+      // string and a flag has no value, so neither references anything.
       if (
         attr.name === NAME_ATTRIBUTE ||
-        attr.value === undefined ||
+        attr.kind !== "expression" ||
         attr.valueStart === undefined ||
         attr.unterminated
       ) {
         continue
       }
 
-      if (attr.value !== "") {
+      if (attr.value) {
         collectBinding(attr.value, attr.valueStart, ownersAt(attr.valueStart), raw)
       }
     }
   }
 
   for (const node of scan.texts) {
-    if (!node.cdata) {
-      collectBinding(node.value, node.start, ownersAt(node.start), raw)
+    const expression = node.cdata ? undefined : soleExpression(node.value)
+
+    if (expression) {
+      const start = node.start + expression.start
+
+      collectBinding(expression.text, start, ownersAt(start), raw)
     }
   }
 }
 
-/** A tag that references a component: not the root/content/override tag and not an HTML/builtin tag. */
 function isComponentTag(name: string): boolean {
   return (
     Boolean(name) &&
@@ -158,15 +157,21 @@ function isComponentTag(name: string): boolean {
   )
 }
 
-/**
- * An override value (`target:Component="..."`): a `@Dic.entry` / `#Cfg.entry`
- * reference is an entry occurrence; a bare component name is a component
- * reference (so Go To Definition / rename reach the providing `.hxm`).
- */
-function collectOverrideValue(rawValue: string, base: number, raw: IRawOccurrence[]): void {
+function collectOverrideValue(isExpression: boolean, rawValue: string, base: number, raw: IRawOccurrence[]): void {
   const span = sourceSpan(rawValue, base)
 
-  if (!span.text || !isBindingExpression(rawValue)) {
+  if (!span.text) {
+    return
+  }
+
+  // Quoted text names the replacement component directly.
+  if (!isExpression) {
+    raw.push({ kind: "component", role: "reference", name: span.text, start: span.start, end: span.end })
+
+    return
+  }
+
+  if (!isBindingExpression(rawValue)) {
     return
   }
 
@@ -195,12 +200,6 @@ function collectOverrideValue(rawValue: string, base: number, raw: IRawOccurrenc
   raw.push({ kind: "component", role: "reference", name: expression.value, start: span.start, end: span.end })
 }
 
-/**
- * Classifies one binding occurrence (attribute value or text run): `@Dic.entry`
- * / `#Cfg.entry` is a dictionary/config entry reference; a bare state path is a
- * property of the file's component(s) - its own property when unqualified (the
- * declaration site), or a read through a named control when `ctrl:`-qualified.
- */
 function collectBinding(
   rawValue: string,
   base: number,
@@ -275,13 +274,6 @@ function collectDictionary(
   }
 }
 
-/**
- * Records the references inside one dictionary value's `{...}` interpolations:
- * `{@Name.entry}` / `{@entry}` are dictionary entry references (the latter to
- * this dictionary's own key); a bare `{param}` is a state property of whichever
- * components reference the enclosing entry. `{#..}` is ignored - dictionaries
- * reference other dictionaries, never configs.
- */
 function collectInterpolations(
   dictName: string,
   entryKey: string,
@@ -360,7 +352,6 @@ function collectConfig(
 
 // --- Shared helpers ----------------------------------------------------------
 
-/** Appends a property occurrence, splitting `name` into its named-control prefix and property head. */
 function pushProperty(
   raw: IRawOccurrence[],
   role: OccurrenceRole,
@@ -377,7 +368,6 @@ function pushProperty(
   }
 }
 
-/** The trimmed source span of a binding (before any `| converter`), as absolute offsets. */
 function sourceSpan(rawValue: string, base: number): { text: string; start: number; end: number } {
   const pipe = rawValue.indexOf(CONVERTER_PIPE)
   const src = pipe >= 0 ? rawValue.slice(0, pipe) : rawValue

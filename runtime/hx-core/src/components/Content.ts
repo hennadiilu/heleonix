@@ -1,25 +1,15 @@
 import { Component } from "./Component"
 import type { IComponentDefinition, IComponentProperty, IComponentUsage } from "@heleonix/hx-language"
-import { ComponentManager } from "./ComponentManager"
-import { StateManager } from "../state/StateManager"
 import { StateChangedHandler } from "../state/StateChangedHandler"
-import { Binder } from "../bindings/Binder"
+import type { MaybePromise } from "../common/MaybePromise"
 import type { PlatformComponent } from "./PlatformComponent"
 
 const VALUE_PROPERTY = "value"
 
 export class Content extends Component {
-  protected readonly stateManager = this.inject(StateManager)
-
-  protected readonly binder = this.inject(Binder)
-
-  protected readonly componentManager = this.inject(ComponentManager)
+  public static readonly hxName = "Content"
 
   private currentBinding: IComponentProperty | undefined
-
-  public static get diName(): string {
-    return "Content"
-  }
 
   public override async build(
     fqName: string,
@@ -59,8 +49,8 @@ export class Content extends Component {
 
       await this.applyBinding(newProp)
     } else if (oldProp && newProp) {
-      this.binder.refresh(
-        this.componentManager.getTargetFQPropertyName(this, newProp.name),
+      this.context.binder.rebind(
+        this.context.components.getTargetFQPropertyName(this, newProp.name),
         newProp.binding,
         this.scopedParent?.fqName ?? "",
       )
@@ -101,22 +91,22 @@ export class Content extends Component {
     )
   }
 
-  private async applyBinding(property: IComponentProperty): Promise<void> {
-    const targetFQPropertyName = this.componentManager.getTargetFQPropertyName(this, property.name)
+  private applyBinding(property: IComponentProperty): MaybePromise<void> {
+    const targetFQPropertyName = this.context.components.getTargetFQPropertyName(this, property.name)
 
     // Subscribe before binding so the binder's initial write renders the first
     // value as content through this handler.
-    this.stateManager.changed.on(targetFQPropertyName, this.handleStateChanged)
+    this.context.state.changed.on(targetFQPropertyName, this.handleStateChanged)
 
-    await this.binder.bind(targetFQPropertyName, property.binding, this.scopedParent?.fqName ?? "")
+    return this.context.binder.bind(targetFQPropertyName, property.binding, this.scopedParent?.fqName ?? "")
   }
 
   private removeBinding(property: IComponentProperty): void {
-    const targetFQPropertyName = this.componentManager.getTargetFQPropertyName(this, property.name)
+    const targetFQPropertyName = this.context.components.getTargetFQPropertyName(this, property.name)
 
-    this.stateManager.changed.off(targetFQPropertyName, this.handleStateChanged)
+    this.context.state.changed.off(targetFQPropertyName, this.handleStateChanged)
 
-    this.binder.unbind(targetFQPropertyName)
+    this.context.binder.unbind(targetFQPropertyName)
   }
 
   private readonly handleStateChanged: StateChangedHandler = (_fqPropertyName, newValue) => {

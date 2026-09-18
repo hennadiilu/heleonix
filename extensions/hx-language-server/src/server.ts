@@ -12,7 +12,7 @@ import {
 import { DiagnosticSeverity, FileSystemWatcher } from "vscode-languageserver"
 import { EXT_CONFIG, EXT_DICTIONARY, EXT_STYLE, EXT_TEMPLATE, EXT_THEME } from "@heleonix/hx-language"
 import { TextDocument } from "vscode-languageserver-textdocument"
-import { loaderFor } from "./loaders/loaderFor"
+import { transportFor } from "./transports/transportFor"
 import { CompiledDefinitionSource } from "./sources/CompiledDefinitionSource"
 import { DefinitionRegistry } from "./sources/DefinitionRegistry"
 import { WorkspaceDefinitionSource } from "./sources/WorkspaceDefinitionSource"
@@ -90,21 +90,21 @@ connection.onInitialize((params) => {
   registry.register(new WorkspaceDefinitionSource(roots, exclude))
 
   const root = roots[0] ?? process.cwd()
-  // Custom loader modules run workspace code; only honor them in a trusted
+  // Custom transport modules run workspace code; only honor them in a trusted
   // workspace. Missing flag (older client) is treated as untrusted.
   const trusted = options.workspaceTrusted === true
 
   for (const uri of settings.definitionSources) {
-    const loader = loaderFor(uri, root, trusted)
+    const transport = transportFor(uri, root, trusted)
 
-    if (!loader) {
+    if (!transport) {
       connection.console.warn(
-        `[hx] skipped definition source '${uri}' (custom loader modules require a trusted workspace)`,
+        `[hx] skipped definition source '${uri}' (custom transport modules require a trusted workspace)`,
       )
       continue
     }
 
-    registry.register(new CompiledDefinitionSource(loader))
+    registry.register(new CompiledDefinitionSource(transport))
   }
 
   externalWatchers = buildExternalWatchers(settings.definitionSources, root)
@@ -147,7 +147,7 @@ async function initialize(): Promise<void> {
   analyzerHost.seed(analyzerRoots, analyzerExclude)
 
   // Feed the analyzer the type-level meta of every configured source (packages,
-  // endpoints, custom loaders), so their definitions validate like workspace
+  // endpoints, custom transports), so their definitions validate like workspace
   // ones - not only the installed-dependency metas that `seed` auto-discovers.
   for (const meta of registry.metas()) {
     analyzerHost.addMeta(meta)
@@ -361,13 +361,7 @@ function context(): ILanguageContext {
     // in-service check stays off so findings are never doubled.
     unknownReferenceSeverity: undefined,
     unusedEntrySeverity: settings.unusedEntrySeverity,
-    converters: analyzerHost.converters(),
-    actions: analyzerHost.actions(),
-    components: analyzerHost.components(),
-    themeTokens: analyzerHost.themeTokens(),
-    qualifiers: analyzerHost.qualifiers(),
-    controlNames: analyzerHost.controlNames(),
-    themeTokenLocations: analyzerHost.themeTokenLocations(),
+    ...analyzerHost.snapshot(),
   }
 }
 
@@ -396,13 +390,6 @@ function uriToPath(uri: string): string | undefined {
   }
 }
 
-/**
- * Watchers whose changes trigger an external-source reload: every package
- * manager's lockfile (dependency installs affect the definitions packages ship),
- * plus each local file/dir/module definition source. Bare package specifiers and
- * `http(s)` sources need no watcher here - the former are covered by lockfiles,
- * the latter can't be watched.
- */
 function buildExternalWatchers(sources: readonly string[], root: string): FileSystemWatcher[] {
   const kind = WatchKind.Create | WatchKind.Change | WatchKind.Delete
   const watchers: FileSystemWatcher[] = LOCKFILES.map((name) => ({ globPattern: `**/${name}`, kind }))

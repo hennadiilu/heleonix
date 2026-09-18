@@ -3,13 +3,6 @@ import type { IComponentInfo } from "@heleonix/hx-analyzer"
 import type { IXmlScan } from "@heleonix/hx-compiler-core"
 import type { Location } from "vscode-languageserver"
 
-/**
- * Go-to-implementation for a component tag: when the cursor sits on the tag name
- * of a **programmatic** component (a class extending `Component<TProps, TEvents>`,
- * which carries a source location), returns its class location. `*.hxm`, native
- * and meta-sourced components have no location and yield null (the caller falls
- * back to the occurrence index for `*.hxm` go-to-definition).
- */
 export function definitionComponent(
   offset: number,
   scan: IXmlScan,

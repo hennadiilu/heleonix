@@ -1,21 +1,16 @@
-import { FrameworkElement } from "../FrameworkElement"
 import {
-  FQComponentName,
   FQPropertyName,
   PROPERTY_NAME_SEGMENT_SEPARATOR,
   getComponentName,
   getPropertyName,
   getPropertySegments,
   joinFQPropertyName,
-  joinPropertySegments,
 } from "@heleonix/hx-language"
+import type { IState } from "./IState"
 import { IKeyedEventEmitter } from "../common/IKeyedEventEmitter"
 import { KeyedEventEmitter } from "../common/KeyedEventEmitter"
-import { EventEmitter } from "../common/EventEmitter"
-import type { IEventEmitter } from "../common/IEventEmitter"
-import { IDIContainer } from "../injection/IDIContainer"
+import type { IClearable } from "../common/IClearable"
 import { StateChangedHandler } from "./StateChangedHandler"
-import { StateBindingHandler } from "./StateBindingHandler"
 
 interface InterestNode {
   parent: InterestNode | null
@@ -109,16 +104,12 @@ function deleteAtPath(root: Record<string, unknown>, segments: readonly string[]
   delete current[segments[segments.length - 1]]
 }
 
-export class StateManager extends FrameworkElement {
+export class StateManager implements IState, IClearable {
   private readonly data = new Map<string, Record<string, unknown>>()
 
   private readonly interestRoots = new Map<string, InterestNode>()
 
   private readonly changedEmitter: KeyedEventEmitter<FQPropertyName, StateChangedHandler>
-
-  private readonly boundEmitter = new EventEmitter<StateBindingHandler>()
-
-  private readonly unboundEmitter = new EventEmitter<StateBindingHandler>()
 
   private propagating: Set<FQPropertyName> | null = null
 
@@ -126,26 +117,22 @@ export class StateManager extends FrameworkElement {
 
   private pendingTransients: Set<FQPropertyName> | null = null
 
-  public constructor(diContainer: IDIContainer) {
-    super(diContainer)
-
+  public constructor() {
     this.changedEmitter = new KeyedEventEmitter(this.changedOnInterceptor, this.changedOffInterceptor)
-  }
-
-  public static get diName(): string {
-    return "StateManager"
-  }
-
-  public get bound(): IEventEmitter<StateBindingHandler> {
-    return this.boundEmitter
-  }
-
-  public get unbound(): IEventEmitter<StateBindingHandler> {
-    return this.unboundEmitter
   }
 
   public get changed(): IKeyedEventEmitter<FQPropertyName, StateChangedHandler> {
     return this.changedEmitter
+  }
+
+  public clear(): void {
+    this.data.clear()
+    this.interestRoots.clear()
+    this.changedEmitter.clear()
+
+    this.propagating = null
+    this.pendingReleases = null
+    this.pendingTransients = null
   }
 
   public bind(target: FQPropertyName, source: FQPropertyName): void {
@@ -161,8 +148,6 @@ export class StateManager extends FrameworkElement {
     if (seed !== undefined) {
       this.applyEntry(target, seed)
     }
-
-    this.boundEmitter.emit(target, source)
   }
 
   public unbind(target: FQPropertyName, source: FQPropertyName): void {
@@ -171,8 +156,6 @@ export class StateManager extends FrameworkElement {
 
     this.scheduleRelease(target)
     this.scheduleRelease(source)
-
-    this.unboundEmitter.emit(target, source)
   }
 
   public getValue(fqPropertyName: FQPropertyName): unknown {
@@ -198,35 +181,6 @@ export class StateManager extends FrameworkElement {
     this.pendingTransients.add(eventRootFQ)
 
     this.applyEntry(eventRootFQ, payload)
-  }
-
-  public getBindings(componentFQ: FQComponentName): ReadonlyMap<string, ReadonlySet<FQPropertyName>> {
-    const result = new Map<string, Set<FQPropertyName>>()
-    const root = this.interestRoots.get(componentFQ)
-
-    if (!root) {
-      return result
-    }
-
-    const stack: Array<{ node: InterestNode; path: string }> = []
-
-    for (const [segment, child] of root.children) {
-      stack.push({ node: child, path: segment })
-    }
-
-    while (stack.length) {
-      const { node, path } = stack.pop()!
-
-      if (node.bindings.size > 0) {
-        result.set(path, node.bindings)
-      }
-
-      for (const [segment, child] of node.children) {
-        stack.push({ node: child, path: joinPropertySegments(path, segment) })
-      }
-    }
-
-    return result
   }
 
   private applyEntry(fqPropertyName: FQPropertyName, value: unknown): void {
@@ -282,8 +236,10 @@ export class StateManager extends FrameworkElement {
       this.data.set(component, root)
     }
 
-    const ancestors: Array<{ fq: FQPropertyName; node: InterestNode; path: readonly string[] }> = []
-    const subtree: Array<{ fq: FQPropertyName; node: InterestNode; path: readonly string[] }> = []
+    // Interest nodes carry their own `fq` and `segments`, so collect the nodes
+    // directly rather than allocating a wrapper per interested node per write.
+    const ancestors: InterestNode[] = []
+    const subtree: InterestNode[] = []
 
     const interestRoot = this.interestRoots.get(component)
 
@@ -292,7 +248,7 @@ export class StateManager extends FrameworkElement {
 
       for (let i = 0; cursor && i < segments.length; i++) {
         if (cursor.subscribers > 0 || cursor.bindings.size > 0) {
-          ancestors.push({ fq: cursor.fq, node: cursor, path: cursor.segments })
+          ancestors.push(cursor)
         }
 
         cursor = cursor.children.get(segments[i]) ?? null
@@ -305,7 +261,7 @@ export class StateManager extends FrameworkElement {
           const node = stack.pop()!
 
           if (node.subscribers > 0 || node.bindings.size > 0) {
-            subtree.push({ fq: node.fq, node, path: node.segments })
+            subtree.push(node)
           }
 
           for (const child of node.children.values()) {
@@ -315,27 +271,31 @@ export class StateManager extends FrameworkElement {
       }
     }
 
-    const subtreeOldValues = subtree.map((entry) => readAtPath(root, entry.path))
+    const subtreeOldValues: unknown[] = new Array(subtree.length)
+
+    for (let i = 0; i < subtree.length; i++) {
+      subtreeOldValues[i] = readAtPath(root, subtree[i].segments)
+    }
 
     writeAtPath(root, segments, value)
 
     for (let i = 0; i < subtree.length; i++) {
-      const entry = subtree[i]
-      const newValue = readAtPath(root, entry.path)
+      const node = subtree[i]
+      const newValue = readAtPath(root, node.segments)
 
       if (Object.is(subtreeOldValues[i], newValue)) {
         continue
       }
 
-      this.emitAt(entry.fq, entry.node, newValue, subtreeOldValues[i])
+      this.emitAt(node.fq, node, newValue, subtreeOldValues[i])
     }
 
     // Ancestor references mutate in place; pass current as both old and new.
     // Subscribers receive a notification that "something changed below me".
-    for (const entry of ancestors) {
-      const currentValue = readAtPath(root, entry.path)
+    for (const node of ancestors) {
+      const currentValue = readAtPath(root, node.segments)
 
-      this.emitAt(entry.fq, entry.node, currentValue, currentValue)
+      this.emitAt(node.fq, node, currentValue, currentValue)
     }
   }
 

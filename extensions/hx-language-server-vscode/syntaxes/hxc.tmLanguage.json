@@ -2,10 +2,7 @@
   "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
   "name": "Heleonix Framework Config",
   "scopeName": "source.hxc",
-  "patterns": [
-    { "include": "#frontmatter" },
-    { "include": "source.json.comments" }
-  ],
+  "patterns": [{ "include": "#frontmatter" }, { "include": "source.json.comments" }],
   "repository": {
     "frontmatter": {
       "name": "meta.frontmatter.hxc",

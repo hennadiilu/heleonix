@@ -1,10 +1,6 @@
 import { IXmlScan, scanXml } from "@heleonix/hx-compiler-core"
 import { TextDocument } from "vscode-languageserver-textdocument"
 
-/**
- * Caches one {@link IXmlScan} per open document version so diagnostics and the
- * semantic-token provider don't both scan the same `*.hxm` text on every edit.
- */
 export class XmlScanCache {
   private readonly entries = new Map<string, { version: number; scan: IXmlScan }>()
 

@@ -1,5 +1,5 @@
 import type { IMetaDocument } from "@heleonix/hx-language"
-import { normalizeCompiledDefinitions, mergeCompiledDefinitions } from "../src/loaders/normalizeCompiledDefinitions.ts"
+import { normalizeCompiledDefinitions, mergeCompiledDefinitions } from "../src/transports/normalizeCompiledDefinitions"
 
 describe("normalizeCompiledDefinitions (metas)", () => {
   it("then keeps well-formed meta manifests and drops the rest", () => {

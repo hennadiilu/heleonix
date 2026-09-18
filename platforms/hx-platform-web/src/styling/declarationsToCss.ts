@@ -1,11 +1,6 @@
 import { interpolateValue } from "./interpolateValue"
 import { vendorPrefixes } from "./vendorPrefixes"
 
-/**
- * Serializes a declaration group to CSS, interpolating each value to var()/calc()
- * chains and emitting any {@link vendorPrefixes} alias ahead of the standard
- * property (so `-webkit-` fallbacks precede the spec name).
- */
 export function declarationsToCss(declarations: Readonly<Record<string, string>>): string {
   const parts: string[] = []
 

@@ -1,3 +1,4 @@
+import { IXmlAttributeValue } from "./IXmlAttributeValue"
 import { IXmlNode } from "./IXmlNode"
 
 export interface IXmlElement {
@@ -5,7 +6,7 @@ export interface IXmlElement {
 
   tag: string
 
-  attributes: Record<string, string>
+  attributes: Record<string, IXmlAttributeValue>
 
   children: IXmlNode[]
 

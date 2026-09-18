@@ -173,7 +173,7 @@ usage: extend
     })
   })
 
-  describe("given @hx-apply and @hx-unless", () => {
+  describe("given @hx-apply", () => {
     it("then records applied token paths per signature", async () => {
       const definition = await compiler.compile(
         "@hx-apply(token: Type.Body);\n:hover { @hx-apply(token: Type.Label); }",
@@ -182,12 +182,6 @@ usage: extend
       )
 
       expect(definition.applies).toEqual({ "": ["Type.Body"], Hover: ["Type.Label"] })
-    })
-
-    it("then compiles @hx-unless to an Unless signature", async () => {
-      expect(await rules("@hx-unless(value: {loading}) { opacity: 1; }")).toEqual({
-        "Unless(value:{loading})": { opacity: "1" },
-      })
     })
   })
 

@@ -1,24 +1,22 @@
 import { Application } from "@heleonix/hx-core"
-import {
-  WebComponentDefinitionSource,
-  WebPlatformAdapter,
-  WebPlatformComponent,
-  WebPlatformRuntime,
-} from "@heleonix/hx-platform-web"
+import { WebApplicationRuntime } from "@heleonix/hx-platform-web"
 import { CompiledComponentDefinitionSource } from "hx-compiled-components"
 import { CompiledDictionaryDefinitionSource } from "hx-compiled-dictionaries"
 import { CompiledConfigDefinitionSource } from "hx-compiled-configs"
 import { CompiledStyleDefinitionSource } from "hx-compiled-styles"
 import { CompiledThemeDefinitionSource } from "hx-compiled-themes"
 import { TruncateConverter } from "./TruncateConverter"
+import { SignInAction } from "./SignInAction"
+import { SessionService } from "./SessionService"
 import dimensions from "../hx.dimensions.json"
 
 export class SandboxApplication extends Application {
   public constructor() {
     super("SandboxApplication", {
       dimensions,
+      runtime: WebApplicationRuntime,
       componentDefinition: {
-        sources: [CompiledComponentDefinitionSource, WebComponentDefinitionSource],
+        sources: [CompiledComponentDefinitionSource],
       },
       dictionaryDefinition: {
         sources: [CompiledDictionaryDefinitionSource],
@@ -32,18 +30,15 @@ export class SandboxApplication extends Application {
       themeDefinition: {
         sources: [CompiledThemeDefinitionSource],
       },
-      platform: {
-        adapter: WebPlatformAdapter,
-        runtime: WebPlatformRuntime,
-      },
-      components: [WebPlatformComponent],
       converters: [TruncateConverter],
+      actions: [SignInAction],
+      services: [SessionService],
     })
   }
 
-  public override async run(): Promise<void> {
-    this.dimensionManager.updateDimension({ env: "dev", customer: "customer1", culture: "en-US" })
+  public override async start(): Promise<void> {
+    this.dimensions.update({ env: "dev", customer: "customer1", culture: "en-US" })
 
-    await super.run()
+    await super.start()
   }
 }

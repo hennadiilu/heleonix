@@ -2,16 +2,6 @@ import path from "node:path"
 import { IJsoncComment, IJsoncEntry, IXmlScan, parseJsonc, scanXml, splitFrontmatter } from "@heleonix/hx-compiler-core"
 import { EXT_CONFIG, EXT_DICTIONARY, EXT_TEMPLATE } from "@heleonix/hx-language"
 
-/**
- * The result of parsing one Heleonix file exactly once, shared by the two
- * consumers built from it: the flat {@link IIndexContribution} (completion /
- * diagnostics) and the located {@link IFileOccurrences} (Go To Definition /
- * Find All References). Both need the same `scanXml` / `parseJsonc` output, so
- * parsing it here avoids scanning each file twice. Parsing is tolerant: failures
- * degrade to empty data rather than throwing (the offending document reports its
- * own diagnostics). JSONC comments (body-relative offsets, like `entries`) feed
- * doc-comment extraction.
- */
 export type IParsedFile =
   | { kind: "component"; scan: IXmlScan }
   | {
@@ -48,7 +38,6 @@ export function parseFile(filePath: string, source: string): IParsedFile {
   return { kind: "other" }
 }
 
-/** Splits frontmatter and parses the JSONC body, recovering the top-level entries and comments with their offsets. */
 function parseData(source: string): {
   body: string
   bodyStart: number

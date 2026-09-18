@@ -8,7 +8,25 @@ import type { IBindingExpression } from "./IBindingExpression"
 import { isLiteralSource } from "./isLiteralSource"
 import { isStringLiteralSource } from "./isStringLiteralSource"
 
+// Binding source strings are immutable and re-parsed on every dictionary-entry
+// interpolation, so the parse is memoized; the result must be treated read-only.
+const cache = new Map<string, IBindingExpression>()
+
 export function parseBindingExpression(raw: string): IBindingExpression {
+  const cached = cache.get(raw)
+
+  if (cached !== undefined) {
+    return cached
+  }
+
+  const expression = parseSource(raw)
+
+  cache.set(raw, expression)
+
+  return expression
+}
+
+function parseSource(raw: string): IBindingExpression {
   const segments = splitOnTopLevel(raw, CONVERTER_PIPE)
   const source = segments[0].trim()
   const converters = segments

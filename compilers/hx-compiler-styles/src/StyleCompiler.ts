@@ -16,7 +16,6 @@ const HX_PREFIX = "@hx-"
 const MEDIA_PRELUDE = "@media"
 const KEYFRAMES_PRELUDE = "@keyframes"
 
-/** A parsed `*.hxs` block prelude, ready for signature composition. */
 type Segment =
   | { readonly type: "qualifier"; readonly usage: IQualifierUsage }
   | { readonly type: "element"; readonly usage: IQualifierUsage }
@@ -30,11 +29,6 @@ interface StyleOutput {
   applies: Record<string, string[]>
 }
 
-/**
- * Compiles `*.hxs` source (the shared CSS-subset block grammar) into a
- * platform-neutral {@link IStyleDefinition}: declarations keyed by canonical
- * qualifier signatures, with `{...}` binding sources kept verbatim.
- */
 export class StyleCompiler extends BlockCompiler<IStyleDefinition> {
   protected get kind(): Kind {
     return "style"
@@ -105,13 +99,6 @@ function applyStatement(text: string, chain: Segment[], output: StyleOutput): vo
   ;(output.applies[composeSignature(chain)] ??= []).push(token)
 }
 
-/**
- * Composes a nesting chain into one canonical rule key. `Style(for:)` segments
- * fold into a single scope (paths joined with `.`), `@media` segments fold into
- * a single query (joined with `and`), and the lone pseudo-element serializes
- * last - everything else keeps nesting order, then the whole key is sorted-arg
- * canonicalized by {@link stringifyRuleKey}.
- */
 function composeSignature(chain: Segment[]): string {
   const usages: IQualifierUsage[] = []
   const mediaQueries: string[] = []
@@ -156,7 +143,6 @@ function composeSignature(chain: Segment[]): string {
   return stringifyRuleKey(usages)
 }
 
-/** Parses a single block prelude into a signature segment. */
 function parsePrelude(prelude: string): Segment {
   if (prelude.charAt(0) === ":") {
     const isElement = prelude.charAt(1) === ":"
@@ -217,12 +203,6 @@ function collectFrames(nodes: IBlockNode[]): Record<string, IStyleDeclarations> 
   return frames
 }
 
-/**
- * Canonicalizes a media query so the same query always yields the same rule key:
- * whitespace normalized, spaces around `:`/`,` removed, and top-level `and`
- * operands (per comma-separated part) sorted alphabetically. Range spelling
- * (`400px <= width <= 700px`) and interpolations are preserved.
- */
 function canonicalizeMediaQuery(query: string): string {
   const normalized = query
     .replace(/\s+/g, " ")
@@ -240,7 +220,6 @@ function canonicalizeMediaQuery(query: string): string {
     .join(",")
 }
 
-/** Splits `@name(args)` argument text into named args, values kept verbatim. */
 function parseArgs(inner: string): Record<string, string> {
   const args: Record<string, string> = {}
 
@@ -261,7 +240,6 @@ function parseArgs(inner: string): Record<string, string> {
   return args
 }
 
-/** Extracts the parenthesized argument text of `@word(...)`. */
 function argsOf(text: string): string {
   const open = text.indexOf("(")
 
@@ -312,7 +290,6 @@ function splitTopLevel(input: string, separator: string): string[] {
   return result
 }
 
-/** Splits on a top-level whole word (` word `), used to sort `and` operands. */
 function splitTopLevelWord(input: string, word: string): string[] {
   const result: string[] = []
   let depth = 0
