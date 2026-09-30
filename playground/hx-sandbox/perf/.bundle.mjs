@@ -425,12 +425,12 @@ var StateManager = class {
     }
     this.applyEntry(fqPropertyName, value);
   }
-  emitEvent(eventRootFQ, payload) {
+  emitEvent(fqEventName, payload) {
     if (!this.pendingTransients) {
       this.pendingTransients = /* @__PURE__ */ new Set();
     }
-    this.pendingTransients.add(eventRootFQ);
-    this.applyEntry(eventRootFQ, payload);
+    this.pendingTransients.add(fqEventName);
+    this.applyEntry(fqEventName, payload);
   }
   applyEntry(fqPropertyName, value) {
     const outermost = this.propagating === null;

@@ -1,8 +1,6 @@
 import { HeleonixError } from "../errors/HeleonixError"
 import { Errors } from "../errors/Errors"
 
-// Names collide within one registration list and win across lists: a later list
-// replaces what an earlier one claims.
 export function hxNameMap<TConstructor extends { readonly hxName: string }>(
   ...registrations: readonly (readonly TConstructor[])[]
 ): Map<string, TConstructor> {

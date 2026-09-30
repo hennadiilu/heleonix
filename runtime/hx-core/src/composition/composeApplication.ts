@@ -1,8 +1,8 @@
 import type { IApplicationBootstrap } from "../IApplicationBootstrap"
 import type { IApplicationGraph } from "./IApplicationGraph"
 import { StateManager } from "../state/StateManager"
-import { DimensionManager } from "../dimension/DimensionManager"
-import { Clearables } from "./Clearables"
+import { DimensionManager } from "../dimensions/DimensionManager"
+import { ClearableCollection } from "./ClearableCollection"
 import { composeBindings } from "./composeBindings"
 import { composeServices } from "./composeServices"
 import { composeActions } from "./composeActions"
@@ -11,7 +11,7 @@ import { composeStyling } from "./composeStyling"
 import { composeComponents } from "./composeComponents"
 
 export function composeApplication(bootstrap: IApplicationBootstrap): IApplicationGraph {
-  const clearables = new Clearables()
+  const clearables = new ClearableCollection()
 
   const state = clearables.add(new StateManager())
 
@@ -19,21 +19,27 @@ export function composeApplication(bootstrap: IApplicationBootstrap): IApplicati
 
   const runtime = new bootstrap.runtime()
 
-  const { binder, configs, dictionaries } = composeBindings(bootstrap, { dimensions, state }, clearables)
+  const { binder, configs, dictionaries } = composeBindings(bootstrap, { dimensions, state, clearables })
 
-  const services = composeServices(bootstrap, clearables)
+  const services = composeServices(bootstrap, { clearables })
 
-  const actions = composeActions(bootstrap, { configs, services, dimensions }, clearables)
+  const actions = composeActions(bootstrap, { configs, services, dimensions, clearables })
 
-  const themes = composeTheming(bootstrap, { dimensions, runtime }, clearables)
+  const themes = composeTheming(bootstrap, { dimensions, runtime, clearables })
 
-  const styles = composeStyling(bootstrap, { dimensions, state, runtime, themes }, clearables)
+  const styles = composeStyling(bootstrap, { dimensions, state, runtime, themes, clearables })
 
-  const { components, componentContext, isHeadless } = composeComponents(
-    bootstrap,
-    { runtime, dimensions, state, binder, configs, dictionaries, actions, styles },
+  const { components, componentContext, isHeadless } = composeComponents(bootstrap, {
+    runtime,
+    dimensions,
+    state,
+    binder,
+    configs,
+    dictionaries,
+    actions,
+    styles,
     clearables,
-  )
+  })
 
   return {
     runtime,
@@ -49,6 +55,6 @@ export function composeApplication(bootstrap: IApplicationBootstrap): IApplicati
     themes,
     styles,
     isHeadless,
-    clearables: clearables.teardownOrder,
+    clearables: clearables.getOrdered(),
   }
 }

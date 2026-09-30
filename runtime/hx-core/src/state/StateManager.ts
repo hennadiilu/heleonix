@@ -173,14 +173,14 @@ export class StateManager implements IState, IClearable {
     this.applyEntry(fqPropertyName, value)
   }
 
-  public emitEvent(eventRootFQ: FQPropertyName, payload: object): void {
+  public emitEvent(fqEventName: FQPropertyName, payload: object): void {
     if (!this.pendingTransients) {
       this.pendingTransients = new Set()
     }
 
-    this.pendingTransients.add(eventRootFQ)
+    this.pendingTransients.add(fqEventName)
 
-    this.applyEntry(eventRootFQ, payload)
+    this.applyEntry(fqEventName, payload)
   }
 
   private applyEntry(fqPropertyName: FQPropertyName, value: unknown): void {

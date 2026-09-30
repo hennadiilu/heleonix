@@ -29,6 +29,7 @@ export class ActionProvider implements IActionProvider, IClearable {
       }
 
       instance = new ctor(this.context)
+
       this.instances.set(name, instance)
     }
 

@@ -1,13 +1,12 @@
 import type { IApplicationBootstrap } from "../IApplicationBootstrap"
 import type { IConverterContext } from "../converters/IConverterContext"
-import type { Clearables } from "./Clearables"
+import type { ClearableCollection } from "./ClearableCollection"
 import { ConverterProvider } from "../converters/ConverterProvider"
 import { hxNameMap } from "./hxNameMap"
 
 export function composeConverters(
   bootstrap: IApplicationBootstrap,
-  context: () => IConverterContext,
-  clearables: Clearables,
+  deps: { context: () => IConverterContext; clearables: ClearableCollection },
 ): ConverterProvider {
-  return clearables.add(new ConverterProvider(hxNameMap(bootstrap.converters ?? []), context))
+  return deps.clearables.add(new ConverterProvider(hxNameMap(bootstrap.converters ?? []), deps.context))
 }

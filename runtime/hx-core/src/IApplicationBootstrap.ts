@@ -7,7 +7,7 @@ import type {
   IThemeDefinition,
 } from "@heleonix/hx-language"
 import { ComponentConstructor } from "./components/ComponentConstructor"
-import { ApplicationRuntime } from "./platform/ApplicationRuntime"
+import type { ApplicationRuntimeConstructor } from "./platform/ApplicationRuntimeConstructor"
 import { ComponentDefinitionLoader } from "./components/ComponentDefinitionLoader"
 import { DictionaryDefinitionLoader } from "./dictionaries/DictionaryDefinitionLoader"
 import { ConfigDefinitionLoader } from "./configs/ConfigDefinitionLoader"
@@ -22,7 +22,7 @@ import { ServiceConstructor } from "./services/ServiceConstructor"
 import { StyleQualifierConstructor } from "./styling/qualifiers/StyleQualifierConstructor"
 
 export interface IApplicationBootstrap {
-  runtime: new () => ApplicationRuntime
+  runtime: ApplicationRuntimeConstructor
 
   componentDefinition?: IDefinitionSection<DefinitionSource<IComponentDefinition>, ComponentDefinitionLoader>
 

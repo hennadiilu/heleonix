@@ -8,7 +8,7 @@ import {
   StateValueSource,
   isThenable,
 } from "@heleonix/hx-core"
-import type { IConverterContext } from "@heleonix/hx-core"
+import type { ConverterConstructor, IConverterContext } from "@heleonix/hx-core"
 import { Binder } from "../../../runtime/hx-core/src/bindings/Binder"
 import { ConverterProvider } from "../../../runtime/hx-core/src/converters/ConverterProvider"
 import { StateManager } from "../../../runtime/hx-core/src/state/StateManager"
@@ -75,7 +75,7 @@ function makeGraph(): Graph {
   const state = new StateManager()
   // Converters here ignore their context, so a bare shell satisfies the seam.
   const converterProvider = new ConverterProvider(
-    new Map<string, new (context: IConverterContext) => Converter>([
+    new Map<string, ConverterConstructor>([
       ["Sync", SyncConverter],
       ["Async", AsyncConverter],
       ["Bare", BareConverter],

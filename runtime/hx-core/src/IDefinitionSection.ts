@@ -1,14 +1,11 @@
-import type { IDimensionProvider } from "./dimension/IDimensionProvider"
 import type { DefinitionSelectionStrategy } from "./definitions/DefinitionSelectionStrategy"
+import type { DefinitionLoaderConstructor } from "./definitions/DefinitionLoaderConstructor"
+import type { DefinitionSourceConstructor } from "./definitions/DefinitionSourceConstructor"
 
 export interface IDefinitionSection<TSource, TLoader> {
-  loader?: new (
-    dimensions: IDimensionProvider,
-    sources: readonly TSource[],
-    selectionStrategy?: DefinitionSelectionStrategy,
-  ) => TLoader
+  loader?: DefinitionLoaderConstructor<TSource, TLoader>
 
-  sources: (new () => TSource)[]
+  sources: DefinitionSourceConstructor<TSource>[]
 
   selectionStrategy?: DefinitionSelectionStrategy
 }

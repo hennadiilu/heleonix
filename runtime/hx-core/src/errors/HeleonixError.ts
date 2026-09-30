@@ -12,8 +12,6 @@ export class HeleonixError extends Error {
 
     Object.setPrototypeOf(this, HeleonixError.prototype)
 
-    // Declared, never derived from the class identifier: a minified build
-    // would otherwise report a mangled name.
     this.name = (new.target as { hxName?: string }).hxName ?? HeleonixError.hxName
 
     this.code = error.code

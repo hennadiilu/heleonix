@@ -1,6 +1,6 @@
 import type { Component } from "./components/Component"
 import type { IScheduler } from "./platform/IScheduler"
-import type { IDimensionManager } from "./dimension/IDimensionManager"
+import type { IDimensionManager } from "./dimensions/IDimensionManager"
 import type { IComponentContext } from "./components/IComponentContext"
 import type { IComponentManager } from "./components/IComponentManager"
 import type { IState } from "./state/IState"

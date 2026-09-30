@@ -8,7 +8,7 @@ import {
 } from "@heleonix/hx-core"
 import { ConverterProvider } from "../../src/converters/ConverterProvider"
 import { StateManager } from "../../src/state/StateManager"
-import type { IConverterContext } from "@heleonix/hx-core"
+import type { ConverterConstructor, IConverterContext } from "@heleonix/hx-core"
 import { joinFQPropertyName } from "@heleonix/hx-language"
 import type { IBindingExpression } from "@heleonix/hx-language"
 
@@ -25,6 +25,8 @@ class FakeDictionaryDefinitionLoader {
 }
 
 class UpperConverter extends Converter<string, string> {
+  public static readonly hxName = "Upper"
+
   public format(value: string): Promise<string> {
     return Promise.resolve(String(value).toUpperCase())
   }
@@ -37,6 +39,8 @@ class UpperConverter extends Converter<string, string> {
 // A reversible, parameterized converter to exercise argument resolution and the
 // parse chain (format appends the arg, parse strips it back off).
 class SuffixConverter extends Converter<string, string, { text: string }> {
+  public static readonly hxName = "Suffix"
+
   public format(value: string, params: { text: string }): Promise<string> {
     return Promise.resolve(`${String(value)}${params.text}`)
   }
@@ -48,7 +52,7 @@ class SuffixConverter extends Converter<string, string, { text: string }> {
 
 function evaluatorWith(state: StateManager = new StateManager()): BindingEvaluator {
   const converterProvider = new ConverterProvider(
-    new Map<string, new (context: IConverterContext) => Converter>([
+    new Map<string, ConverterConstructor>([
       ["Upper", UpperConverter],
       ["Suffix", SuffixConverter],
     ]),

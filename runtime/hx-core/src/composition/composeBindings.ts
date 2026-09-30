@@ -1,8 +1,8 @@
 import type { IApplicationBootstrap } from "../IApplicationBootstrap"
 import type { StateManager } from "../state/StateManager"
-import type { IDimensionProvider } from "../dimension/IDimensionProvider"
+import type { IDimensionProvider } from "../dimensions/IDimensionProvider"
 import type { IConverterContext } from "../converters/IConverterContext"
-import type { Clearables } from "./Clearables"
+import type { ClearableCollection } from "./ClearableCollection"
 import { BindingEvaluator } from "../bindings/BindingEvaluator"
 import { ConfigProvider } from "../configs/ConfigProvider"
 import { DictionaryProvider } from "../dictionaries/DictionaryProvider"
@@ -12,12 +12,11 @@ import { composeValueSources } from "./composeValueSources"
 
 export function composeBindings(
   bootstrap: IApplicationBootstrap,
-  deps: { dimensions: IDimensionProvider; state: StateManager },
-  clearables: Clearables,
+  deps: { dimensions: IDimensionProvider; state: StateManager; clearables: ClearableCollection },
 ): { binder: Binder; configs: ConfigProvider; dictionaries: DictionaryProvider } {
-  const valueSources = composeValueSources(bootstrap, deps, clearables)
+  const valueSources = composeValueSources(bootstrap, deps)
 
-  const converters = composeConverters(bootstrap, () => converterContext, clearables)
+  const converters = composeConverters(bootstrap, { context: () => converterContext, clearables: deps.clearables })
 
   const evaluator = new BindingEvaluator(converters, valueSources)
 
@@ -27,7 +26,7 @@ export function composeBindings(
 
   const converterContext: IConverterContext = { dictionaries, configs }
 
-  const binder = clearables.add(new Binder(deps.state, evaluator))
+  const binder = deps.clearables.add(new Binder(deps.state, evaluator))
 
   return { binder, configs, dictionaries }
 }

@@ -1,7 +1,7 @@
 import type { IClearable } from "../common/IClearable"
 import type { ApplicationRuntime } from "../platform/ApplicationRuntime"
 import type { IScheduler } from "../platform/IScheduler"
-import type { IDimensionManager } from "../dimension/IDimensionManager"
+import type { IDimensionManager } from "../dimensions/IDimensionManager"
 import type { IState } from "../state/IState"
 import type { IConfigProvider } from "../configs/IConfigProvider"
 import type { IDictionaryProvider } from "../dictionaries/IDictionaryProvider"

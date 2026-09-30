@@ -1,6 +1,6 @@
 import type { IComponentDefinition, IComponentUsage } from "@heleonix/hx-language"
 import type { PlatformComponent } from "./PlatformComponent"
-import type { DataParams } from "../common/DataParams"
+import type { DataObject } from "../common/DataObject"
 import type { IComponentContext } from "./IComponentContext"
 
 const EMPTY_COMPONENTS: readonly Component[] = Object.freeze([])
@@ -20,8 +20,8 @@ function nextChildKey(usage: IComponentUsage, counters: Map<string, number>): st
 }
 
 export abstract class Component<
-  TProps extends DataParams<TProps> = object,
-  TEvents extends DataParams<TEvents> = object,
+  TProps extends DataObject<TProps> = object,
+  TEvents extends DataObject<TEvents> = object,
 > {
   private _fqName = ""
 

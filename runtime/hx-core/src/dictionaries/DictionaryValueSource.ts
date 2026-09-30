@@ -10,9 +10,9 @@ export class DictionaryValueSource implements IValueSource {
 
   public constructor(private readonly loader: DictionaryDefinitionLoader) {}
 
-  public async get(path: FQDictionaryEntryName): Promise<string | undefined> {
-    const splitIndex = path.lastIndexOf(DICTIONARY_ENTRY_SEPARATOR)
-    const name = path.slice(0, splitIndex)
+  public async get(fqEntryName: FQDictionaryEntryName): Promise<string | undefined> {
+    const splitIndex = fqEntryName.lastIndexOf(DICTIONARY_ENTRY_SEPARATOR)
+    const name = fqEntryName.slice(0, splitIndex)
 
     const definition = await this.loader.loadDefinition(name)
 
@@ -20,6 +20,6 @@ export class DictionaryValueSource implements IValueSource {
       throw new HeleonixError(Errors.dictionaryDefinitionProviding, name)
     }
 
-    return definition.entries[path.slice(splitIndex + 1)]
+    return definition.entries[fqEntryName.slice(splitIndex + 1)]
   }
 }

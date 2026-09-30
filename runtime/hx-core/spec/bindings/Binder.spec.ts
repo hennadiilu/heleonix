@@ -8,7 +8,7 @@ import {
 } from "@heleonix/hx-core"
 import { Binder } from "../../src/bindings/Binder"
 import { ConverterProvider } from "../../src/converters/ConverterProvider"
-import type { IConverterContext } from "@heleonix/hx-core"
+import type { ConverterConstructor, IConverterContext } from "@heleonix/hx-core"
 import { joinFQPropertyName } from "@heleonix/hx-language"
 import type { IBindingExpression } from "@heleonix/hx-language"
 
@@ -61,6 +61,8 @@ class FakeConfigDefinitionLoader {
 }
 
 class UpperConverter extends Converter<string, string> {
+  public static readonly hxName = "Upper"
+
   public format(value: string): Promise<string> {
     return Promise.resolve(String(value).toUpperCase())
   }
@@ -72,6 +74,8 @@ class UpperConverter extends Converter<string, string> {
 
 // A reversible converter (format doubles, parse halves) for two-way / chaining.
 class DoubleConverter extends Converter<number, number> {
+  public static readonly hxName = "Double"
+
   public format(value: number): Promise<number> {
     return Promise.resolve(value * 2)
   }
@@ -83,6 +87,8 @@ class DoubleConverter extends Converter<number, number> {
 
 // A synchronous reversible converter: returns values directly, no promise.
 class SyncDoubleConverter extends Converter<number, number> {
+  public static readonly hxName = "SyncDouble"
+
   public format(value: number): number {
     return value * 2
   }
@@ -95,7 +101,7 @@ class SyncDoubleConverter extends Converter<number, number> {
 function binderWith(): { binder: Binder; state: FakeStateManager } {
   const state = new FakeStateManager()
   const converterProvider = new ConverterProvider(
-    new Map<string, new (context: IConverterContext) => Converter>([
+    new Map<string, ConverterConstructor>([
       ["Upper", UpperConverter],
       ["Double", DoubleConverter],
       ["SyncDouble", SyncDoubleConverter],

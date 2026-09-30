@@ -2,7 +2,7 @@ import type { IThemeDefinition } from "@heleonix/hx-language"
 import { mergeDimensions } from "@heleonix/hx-language"
 import { Merger } from "@heleonix/hx-utils"
 import { AggregateDefinitionSource } from "../definitions/AggregateDefinitionSource"
-import type { IDimensionProvider } from "../dimension/IDimensionProvider"
+import type { IDimensionProvider } from "../dimensions/IDimensionProvider"
 import type { IClearable } from "../common/IClearable"
 
 export class ThemeDefinitionLoader implements IClearable {

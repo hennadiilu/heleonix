@@ -1,5 +1,5 @@
 import type { IDimension } from "@heleonix/hx-language"
-import type { IDimensionProvider } from "../dimension/IDimensionProvider"
+import type { IDimensionProvider } from "../dimensions/IDimensionProvider"
 import type { DefinitionSource } from "./DefinitionSource"
 import { DefinitionSelectionStrategy } from "./DefinitionSelectionStrategy"
 import type { IClearable } from "../common/IClearable"

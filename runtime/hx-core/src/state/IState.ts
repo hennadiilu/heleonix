@@ -9,5 +9,5 @@ export interface IState {
 
   setValue(fqPropertyName: FQPropertyName, value: unknown): void
 
-  emitEvent(eventRootFQ: FQPropertyName, payload: object): void
+  emitEvent(fqEventName: FQPropertyName, payload: object): void
 }

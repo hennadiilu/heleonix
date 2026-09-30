@@ -31,8 +31,6 @@ export class DimensionManager implements IDimensionManager {
   }
 
   public update(diff: IDimension): void {
-    // An undeclared name or value would leave `current` and `currentKey` disagreeing,
-    // so a definition cached under one dimension would be served for another.
     this.validate(diff)
 
     if (!this.hasChanges(diff)) {

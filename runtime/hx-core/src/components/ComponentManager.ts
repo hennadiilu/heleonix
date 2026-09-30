@@ -15,7 +15,7 @@ import {
 import type { ComponentConstructor } from "./ComponentConstructor"
 import type { StyleManager } from "../styling/StyleManager"
 import type { IComponentContext } from "./IComponentContext"
-import type { IDimensionProvider } from "../dimension/IDimensionProvider"
+import type { IDimensionProvider } from "../dimensions/IDimensionProvider"
 import type { IDictionaryProvider } from "../dictionaries/IDictionaryProvider"
 import type { IConfigProvider } from "../configs/IConfigProvider"
 import type { IComponentManager } from "./IComponentManager"

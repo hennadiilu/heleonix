@@ -1,9 +1,10 @@
-import type { IDimensionProvider } from "../dimension/IDimensionProvider"
+import type { IDimensionProvider } from "../dimensions/IDimensionProvider"
 import type { IDefinitionSection } from "../IDefinitionSection"
+import type { DefinitionLoaderConstructor } from "../definitions/DefinitionLoaderConstructor"
 
 export function createDefinitionLoader<TSource, TLoader>(
   section: IDefinitionSection<TSource, TLoader> | undefined,
-  Default: NonNullable<IDefinitionSection<TSource, TLoader>["loader"]>,
+  Default: DefinitionLoaderConstructor<TSource, TLoader>,
   dimensions: IDimensionProvider,
   builtinSources: readonly TSource[] = [],
 ): TLoader | undefined {

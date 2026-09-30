@@ -8,6 +8,6 @@ type DataValue<V> = V extends (...args: never[]) => unknown
         ? { [K in keyof V]: DataValue<V[K]> }
         : V
 
-export type DataParams<T> = {
+export type DataObject<T> = {
   [K in keyof T]: DataValue<T[K]>
 }

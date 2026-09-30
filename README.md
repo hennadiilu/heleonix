@@ -1354,7 +1354,7 @@ straight from `TParams` (`Parameters<Class["format"]>[1]`).
 
 - **Binding name** = the class name minus the required `Converter` suffix — `TruncateConverter` → `Truncate` (the name
   it is provided under in the bootstrap). A class missing the suffix is a diagnostic.
-- **`TParams` must be data.** It is constrained by `DataParams<TParams>`, which rejects function-typed members at any
+- **`TParams` must be data.** It is constrained by `DataObject<TParams>`, which rejects function-typed members at any
   depth (callbacks are events, not data). Nested data objects and arrays are allowed; methodful objects (`Date`,
   `Map`, class instances) are not, since converter arguments are bound from the DSL's data sources.
 
@@ -1437,7 +1437,7 @@ kind-check exactly like component props.
 An action is a plain **TypeScript class** `extends Action<TParams>` with a single `async Execute(params): Promise<void>`;
 it may inject services and the `ConfigProvider`. Like converters, it is discovered by its base type (no header), the
 **registry name** is the class name minus the required `Action` suffix (`SubmitAction` → `Submit`) under which it is
-provided through `IApplicationBootstrap.actions`, and `TParams` is `DataParams`-constrained (no functions at any depth).
+provided through `IApplicationBootstrap.actions`, and `TParams` is `DataObject`-constrained (no functions at any depth).
 
 An action is run by the builtin `<Execute>` component. Its `action` attribute is a registry reference naming the
 action class; the **sibling attributes are the action's named parameters** (not `param1`/`param2`), validated
