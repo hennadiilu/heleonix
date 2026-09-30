@@ -1,3 +1,3 @@
 import type { FQComponentName } from "@heleonix/hx-language"
 
-export type BindingEndpointHandler = (componentFQ: FQComponentName, localPath: string) => void
+export type BindingEndpointHandler = (fqComponentName: FQComponentName, localPath: string) => void

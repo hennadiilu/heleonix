@@ -101,8 +101,8 @@ export class Binder implements IBinder, IClearable {
     }
   }
 
-  public getActiveEndpoints(componentFQ: FQComponentName): readonly string[] {
-    const paths = this.endpointCounts.get(componentFQ)
+  public getActiveEndpoints(fqComponentName: FQComponentName): readonly string[] {
+    const paths = this.endpointCounts.get(fqComponentName)
 
     return paths ? [...paths.keys()] : EMPTY_ENDPOINTS
   }
@@ -169,14 +169,14 @@ export class Binder implements IBinder, IClearable {
       return
     }
 
-    const componentFQ = getComponentName(endpoint)
+    const fqComponentName = getComponentName(endpoint)
 
-    let paths = this.endpointCounts.get(componentFQ)
+    let paths = this.endpointCounts.get(fqComponentName)
 
     if (!paths) {
       paths = new Map<string, number>()
 
-      this.endpointCounts.set(componentFQ, paths)
+      this.endpointCounts.set(fqComponentName, paths)
     }
 
     const count = paths.get(localPath) ?? 0
@@ -184,14 +184,14 @@ export class Binder implements IBinder, IClearable {
     paths.set(localPath, count + 1)
 
     if (count === 0) {
-      this.endpointActivatedEmitter.emit(componentFQ, localPath)
+      this.endpointActivatedEmitter.emit(fqComponentName, localPath)
     }
   }
 
   private releaseEndpoint(endpoint: FQPropertyName): void {
     const localPath = getPropertyName(endpoint)
-    const componentFQ = getComponentName(endpoint)
-    const paths = this.endpointCounts.get(componentFQ)
+    const fqComponentName = getComponentName(endpoint)
+    const paths = this.endpointCounts.get(fqComponentName)
     const count = paths?.get(localPath)
 
     if (!paths || !count) {
@@ -207,10 +207,10 @@ export class Binder implements IBinder, IClearable {
     paths.delete(localPath)
 
     if (paths.size === 0) {
-      this.endpointCounts.delete(componentFQ)
+      this.endpointCounts.delete(fqComponentName)
     }
 
-    this.endpointDeactivatedEmitter.emit(componentFQ, localPath)
+    this.endpointDeactivatedEmitter.emit(fqComponentName, localPath)
   }
 
   private bindReactive(

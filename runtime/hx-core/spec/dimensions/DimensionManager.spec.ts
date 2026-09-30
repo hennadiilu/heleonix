@@ -1,4 +1,4 @@
-import { DimensionManager } from "../../src/dimension/DimensionManager"
+import { DimensionManager } from "../../src/dimensions/DimensionManager"
 import { HeleonixError } from "../../src/errors/HeleonixError"
 import { Errors } from "../../src/errors/Errors"
 import type { IDimension, IDimensionDefinition } from "@heleonix/hx-language"
@@ -24,7 +24,7 @@ describe("DimensionManager.update", () => {
     manager.update({ culture: "en-US" })
 
     expect(manager.current).toEqual({ culture: "en-US" })
-    expect(manager.currentKey).toBe("en-US")
+    expect(manager.currentKey).toBe('["en-US",null]')
     expect(changes).toEqual([{ culture: "en-US" }])
   })
 
@@ -77,5 +77,26 @@ describe("DimensionManager.update", () => {
 
     expect(manager.current).toEqual({ culture: "en-US", env: "prod" })
     expect(changes.length).toBe(2)
+  })
+})
+
+describe("DimensionManager.currentKey", () => {
+  it("then matches the encoding of the empty dimension before any update", () => {
+    expect(new DimensionManager(definitions).currentKey).toBe("[null,null]")
+  })
+
+  it("then keys apart dimensions that set the same value on different names", () => {
+    const shared: readonly IDimensionDefinition[] = [
+      { name: "brand", values: ["x"] },
+      { name: "region", values: ["x"] },
+    ]
+
+    const byBrand = new DimensionManager(shared)
+    const byRegion = new DimensionManager(shared)
+
+    byBrand.update({ brand: "x" })
+    byRegion.update({ region: "x" })
+
+    expect(byBrand.currentKey).not.toBe(byRegion.currentKey)
   })
 })

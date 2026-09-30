@@ -110,11 +110,11 @@ export abstract class PlatformComponent extends Component {
     }
   }
 
-  private readonly handleEndpointActivated: BindingEndpointHandler = (_componentFQ, localPath) => {
+  private readonly handleEndpointActivated: BindingEndpointHandler = (_fqComponentName, localPath) => {
     this.activateBinding(localPath)
   }
 
-  private readonly handleEndpointDeactivated: BindingEndpointHandler = (_componentFQ, localPath) => {
+  private readonly handleEndpointDeactivated: BindingEndpointHandler = (_fqComponentName, localPath) => {
     this.deactivateBinding(localPath)
   }
 

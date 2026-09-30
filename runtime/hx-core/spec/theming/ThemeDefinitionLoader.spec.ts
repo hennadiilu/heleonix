@@ -1,5 +1,5 @@
 import { AggregateDefinitionSource, ThemeDefinitionLoader } from "@heleonix/hx-core"
-import { DimensionManager } from "../../src/dimension/DimensionManager"
+import { DimensionManager } from "../../src/dimensions/DimensionManager"
 import type { IDimension, IThemeDefinition } from "@heleonix/hx-language"
 
 class ThemeSourceA extends AggregateDefinitionSource<IThemeDefinition> {

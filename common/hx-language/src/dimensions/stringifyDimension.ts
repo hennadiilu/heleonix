@@ -5,13 +5,5 @@ export function stringifyDimension(
   dimension: IDimension,
   dimensionDefinitions: readonly IDimensionDefinition[],
 ): string {
-  let result = ""
-
-  for (const definition of dimensionDefinitions) {
-    if (dimension[definition.name]) {
-      result += `${dimension[definition.name]}.`
-    }
-  }
-
-  return result.slice(0, -1)
+  return JSON.stringify(dimensionDefinitions.map((definition) => dimension[definition.name] ?? null))
 }

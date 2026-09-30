@@ -12,10 +12,12 @@ export class DimensionManager implements IDimensionManager {
 
   private _current: IDimension = {}
 
-  private _currentKey: string = ""
+  private _currentKey: string
 
   public constructor(definitions: readonly IDimensionDefinition[]) {
     this.definitions = definitions
+
+    this._currentKey = stringifyDimension(this._current, definitions)
   }
 
   public get current(): IDimension {

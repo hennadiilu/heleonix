@@ -711,8 +711,8 @@ var Binder = class {
       void this.bind(targetFQ, binding2, scopeFQ);
     }
   }
-  getActiveEndpoints(componentFQ) {
-    const paths = this.endpointCounts.get(componentFQ);
+  getActiveEndpoints(fqComponentName) {
+    const paths = this.endpointCounts.get(fqComponentName);
     return paths ? [...paths.keys()] : EMPTY_ENDPOINTS;
   }
   bindStateEdge(targetFQ, sourceFQ) {
@@ -727,16 +727,16 @@ var Binder = class {
       if (!localPath) {
         continue;
       }
-      const componentFQ = getComponentName(endpoint);
-      let paths = this.endpointCounts.get(componentFQ);
+      const fqComponentName = getComponentName(endpoint);
+      let paths = this.endpointCounts.get(fqComponentName);
       if (!paths) {
         paths = /* @__PURE__ */ new Map();
-        this.endpointCounts.set(componentFQ, paths);
+        this.endpointCounts.set(fqComponentName, paths);
       }
       const count = paths.get(localPath) ?? 0;
       paths.set(localPath, count + 1);
       if (count === 0) {
-        this.endpointActivatedEmitter.emit(componentFQ, localPath);
+        this.endpointActivatedEmitter.emit(fqComponentName, localPath);
       }
     }
   }
@@ -748,8 +748,8 @@ var Binder = class {
     this.endpointsByTarget.delete(targetFQ);
     for (const endpoint of endpoints) {
       const localPath = getPropertyName(endpoint);
-      const componentFQ = getComponentName(endpoint);
-      const paths = this.endpointCounts.get(componentFQ);
+      const fqComponentName = getComponentName(endpoint);
+      const paths = this.endpointCounts.get(fqComponentName);
       const count = paths?.get(localPath);
       if (!paths || !count) {
         continue;
@@ -760,9 +760,9 @@ var Binder = class {
       }
       paths.delete(localPath);
       if (paths.size === 0) {
-        this.endpointCounts.delete(componentFQ);
+        this.endpointCounts.delete(fqComponentName);
       }
-      this.endpointDeactivatedEmitter.emit(componentFQ, localPath);
+      this.endpointDeactivatedEmitter.emit(fqComponentName, localPath);
     }
   }
   bindReactive(targetFQ, binding2, scopeFQ) {

@@ -1,5 +1,5 @@
 import { DefinitionSource, StyleDefinitionLoader } from "@heleonix/hx-core"
-import { DimensionManager } from "../../src/dimension/DimensionManager"
+import { DimensionManager } from "../../src/dimensions/DimensionManager"
 import type { IDimension, IStyleDefinition } from "@heleonix/hx-language"
 
 class SourceA extends DefinitionSource<IStyleDefinition> {

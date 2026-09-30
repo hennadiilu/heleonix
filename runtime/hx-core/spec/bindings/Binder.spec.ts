@@ -280,7 +280,7 @@ describe("Binder", () => {
       const { binder } = binderWith()
       const activated: string[] = []
 
-      binder.endpointActivated.on("Card", (_componentFQ, localPath) => activated.push(localPath))
+      binder.endpointActivated.on("Card", (_fqComponentName, localPath) => activated.push(localPath))
       void binder.bind("Card:title", { type: "state", value: "name" }, "app")
 
       expect(activated).toEqual(["title"])
@@ -291,7 +291,7 @@ describe("Binder", () => {
       const { binder } = binderWith()
       const activated: string[] = []
 
-      binder.endpointActivated.on("Input", (_componentFQ, localPath) => activated.push(localPath))
+      binder.endpointActivated.on("Input", (_fqComponentName, localPath) => activated.push(localPath))
       await binder.bind("Input:click", upperOf("name", ["Upper"]), "app")
 
       expect(activated).toEqual(["click"])
@@ -309,7 +309,7 @@ describe("Binder", () => {
       const { binder } = binderWith()
       const deactivated: string[] = []
 
-      binder.endpointDeactivated.on("app", (_componentFQ, localPath) => deactivated.push(localPath))
+      binder.endpointDeactivated.on("app", (_fqComponentName, localPath) => deactivated.push(localPath))
 
       await binder.bind("Card:title", upperOf("name", ["Upper"]), "app")
       await binder.bind("Card:label", upperOf("name", ["Upper"]), "app")
@@ -335,8 +335,8 @@ describe("Binder", () => {
       const { binder } = binderWith()
       const events: string[] = []
 
-      binder.endpointActivated.on("Input", (_componentFQ, localPath) => events.push(`+${localPath}`))
-      binder.endpointDeactivated.on("Input", (_componentFQ, localPath) => events.push(`-${localPath}`))
+      binder.endpointActivated.on("Input", (_fqComponentName, localPath) => events.push(`+${localPath}`))
+      binder.endpointDeactivated.on("Input", (_fqComponentName, localPath) => events.push(`-${localPath}`))
 
       // A dictionary source is dimension-sensitive, so a dimension switch
       // re-establishes this binding - the event must not lapse in between.
@@ -358,10 +358,10 @@ describe("Binder", () => {
       const scope: string[] = []
       const target: string[] = []
 
-      binder.endpointActivated.on("app", (_componentFQ, localPath) => scope.push(`+${localPath}`))
-      binder.endpointDeactivated.on("app", (_componentFQ, localPath) => scope.push(`-${localPath}`))
-      binder.endpointActivated.on("Card", (_componentFQ, localPath) => target.push(`+${localPath}`))
-      binder.endpointDeactivated.on("Card", (_componentFQ, localPath) => target.push(`-${localPath}`))
+      binder.endpointActivated.on("app", (_fqComponentName, localPath) => scope.push(`+${localPath}`))
+      binder.endpointDeactivated.on("app", (_fqComponentName, localPath) => scope.push(`-${localPath}`))
+      binder.endpointActivated.on("Card", (_fqComponentName, localPath) => target.push(`+${localPath}`))
+      binder.endpointDeactivated.on("Card", (_fqComponentName, localPath) => target.push(`-${localPath}`))
 
       await binder.bind("Card:title", upperOf("a", ["Upper"]), "app")
       await binder.bind("Card:title", upperOf("b", ["Upper"]), "app")

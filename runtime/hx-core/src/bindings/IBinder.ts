@@ -14,5 +14,5 @@ export interface IBinder {
 
   rebind(targetFQ: FQPropertyName, binding: IBindingExpression, scopeFQ: FQComponentName): void
 
-  getActiveEndpoints(componentFQ: FQComponentName): readonly string[]
+  getActiveEndpoints(fqComponentName: FQComponentName): readonly string[]
 }
