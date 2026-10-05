@@ -32,7 +32,7 @@ const DEBOUNCE_MS = 300
 const RELOAD_COMMAND = "heleonix.reloadDefinitions"
 // Extensions maintained incrementally by the workspace source; any other watched
 // change (a lockfile, a local manifest) triggers an external-source reload.
-const HX_EXTS = new Set([EXT_TEMPLATE, EXT_DICTIONARY, EXT_CONFIG])
+const HX_EXTS = new Set([EXT_TEMPLATE, EXT_DICTIONARY, EXT_CONFIG, EXT_STYLE])
 // Package-manager lockfiles: a change means dependencies (and thus the compiled
 // definitions packages ship) may have changed.
 const LOCKFILES = ["pnpm-lock.yaml", "package-lock.json", "yarn.lock", "bun.lock", "bun.lockb"]

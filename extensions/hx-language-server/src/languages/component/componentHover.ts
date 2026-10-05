@@ -1,8 +1,6 @@
 import {
   COMPONENT_NAME_SEGMENT_SEPARATOR,
   NAME_ATTRIBUTE,
-  REFERENCE_PREFIXES,
-  REFERENCE_SEPARATORS,
   getOverrideTarget,
   isBindingExpression,
   parseBindingExpression,
@@ -18,6 +16,7 @@ import { renderDocs } from "../../lsp/renderDocs"
 import { byName, componentDocs, memberOf, memberSummary, memberType } from "./componentInfoLookup"
 import { headSegment } from "../../references/headSegment"
 import { splitComponentPrefix } from "../../references/splitComponentPrefix"
+import { referenceHover } from "../../references/referenceHover"
 
 export function hoverComponent(
   doc: TextDocument,
@@ -152,40 +151,4 @@ function componentHover(
   const docs = index.componentDocs(name)
 
   return docs ? markdownHover(doc, start, end, renderDocs(`<${name}>`, docs)) : null
-}
-
-function referenceHover(
-  doc: TextDocument,
-  raw: string,
-  start: number,
-  end: number,
-  index: DefinitionIndex,
-): Hover | null {
-  if (!raw || !isBindingExpression(raw)) {
-    return null
-  }
-
-  const expression = parseBindingExpression(raw)
-
-  if (expression.type !== "dictionary" && expression.type !== "config") {
-    return null
-  }
-
-  const split = expression.value.lastIndexOf(REFERENCE_SEPARATORS[expression.type])
-
-  if (split <= 0) {
-    return null
-  }
-
-  const name = expression.value.slice(0, split)
-  const entry = expression.value.slice(split + 1)
-  const docs = index.entryDocs(expression.type, name, entry)
-
-  if (!docs) {
-    return null
-  }
-
-  const title = `${REFERENCE_PREFIXES[expression.type]}${expression.value}`
-
-  return markdownHover(doc, start, end, renderDocs(title, docs))
 }

@@ -22,7 +22,9 @@
   "activationEvents": [
     "onLanguage:heleonix-hx-component",
     "onLanguage:heleonix-hx-dictionary",
-    "onLanguage:heleonix-hx-config"
+    "onLanguage:heleonix-hx-config",
+    "onLanguage:heleonix-hx-style",
+    "onLanguage:heleonix-hx-theme"
   ],
   "scripts": {
     "clean": "rimraf dist",
@@ -92,6 +94,7 @@
         "extensions": [
           ".hxs"
         ],
+        "configuration": "./language-configuration/hxs.json",
         "icon": {
           "light": "./icons/hxs-light.svg",
           "dark": "./icons/hxs-dark.svg"
@@ -106,6 +109,7 @@
         "extensions": [
           ".hxt"
         ],
+        "configuration": "./language-configuration/hxt.json",
         "icon": {
           "light": "./icons/hxt-light.svg",
           "dark": "./icons/hxt-dark.svg"
@@ -127,6 +131,16 @@
         "language": "heleonix-hx-config",
         "scopeName": "source.hxc",
         "path": "./syntaxes/hxc.tmLanguage.json"
+      },
+      {
+        "language": "heleonix-hx-style",
+        "scopeName": "source.hxs",
+        "path": "./syntaxes/hxs.tmLanguage.json"
+      },
+      {
+        "language": "heleonix-hx-theme",
+        "scopeName": "source.hxt",
+        "path": "./syntaxes/hxt.tmLanguage.json"
       },
       {
         "scopeName": "source.hxd.interpolation",
@@ -164,7 +178,7 @@
             "off"
           ],
           "default": "information",
-          "description": "How to report dictionary/config entry keys that are never referenced (@Name.key / #Name.key). 'off' disables the check."
+          "description": "How to report dictionary/config entry keys that are never referenced (@Name.key / #Name.key) from any component, dictionary or style. 'off' disables the check."
         },
         "heleonix.hx.exclude": {
           "type": "array",

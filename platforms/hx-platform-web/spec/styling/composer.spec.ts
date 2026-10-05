@@ -62,12 +62,31 @@ describe("composeRule", () => {
     )
   })
 
-  it("then wraps the rule in @media for an environment fragment, interpolating the query", () => {
-    const fragments: StyleFragment[] = [{ environment: "(max-width:{$Breakpoints.mobile})" }]
+  it("then wraps the rule in @media for an environment fragment, keeping the resolved query", () => {
+    const fragments: StyleFragment[] = [{ environment: "(max-width:600px) and (400px <= height <= 700px)" }]
 
     expect(composeRule("hx-abc", fragments, { width: "4px" })).toBe(
-      "@media (max-width:var(--hx-breakpoints-mobile)) { .hx-abc { width: 4px; } }",
+      "@media (max-width:600px) and (400px <= height <= 700px) { .hx-abc { width: 4px; } }",
     )
+  })
+
+  it("then never applies a query whose source stayed unresolved, rather than emitting var()", () => {
+    const fragments: StyleFragment[] = [{ environment: "(max-width:{$Breakpoints.missing})" }]
+
+    expect(composeRule("hx-abc", fragments, { width: "4px" })).toBe("@media not all { .hx-abc { width: 4px; } }")
+  })
+
+  it("then never lets a resolved value escape the condition into the stylesheet", () => {
+    for (const environment of [
+      "(max-width:1px) { } body { color: red",
+      "(max-width:1px); @import x",
+      "(max-width:1px) /* swallow the rest",
+      "(max-width:1px) </style><script>",
+    ]) {
+      expect(composeRule("hx-abc", [{ environment }], { width: "4px" }))
+        .withContext(environment)
+        .toBe("@media not all { .hx-abc { width: 4px; } }")
+    }
   })
 })
 

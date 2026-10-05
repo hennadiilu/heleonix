@@ -10,7 +10,7 @@ import type { IStyleDeclarations } from "@heleonix/hx-language"
 import {
   composeKeyframes,
   composeRule,
-  hashClassName,
+  composeClassName,
   rewriteAnimationRefs,
   scopedKeyframeName,
 } from "@heleonix/hx-platform-web"
@@ -33,7 +33,7 @@ export class SsrStyleDriver implements IStyleDriver {
     const scoped = keyframeScope
       ? rewriteAnimationRefs(declarations, keyframeScope.names, keyframeScope.scope)
       : declarations
-    const className = hashClassName(`${signature} ${JSON.stringify(scoped)}`)
+    const className = composeClassName(signature, fragments, scoped)
 
     this.sheet.insert(className, composeRule(className, fragments, scoped))
 

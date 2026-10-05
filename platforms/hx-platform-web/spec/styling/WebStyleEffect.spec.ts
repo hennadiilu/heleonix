@@ -47,11 +47,11 @@ describe("WebStyleEffect", () => {
     const b = new FakeElement()
     const effect = new WebStyleEffect([a, b] as unknown as HTMLElement[], immediate)
 
-    effect.setVariable("someProp", "5px")
+    effect.setVariable({ source: "someProp", text: false }, "5px")
     expect(a.style.props.get("--hx-some-prop")).toBe("5px")
     expect(b.style.props.get("--hx-some-prop")).toBe("5px")
 
-    effect.removeVariable("someProp")
+    effect.removeVariable({ source: "someProp", text: false })
     expect(a.style.props.has("--hx-some-prop")).toBeFalse()
   })
 

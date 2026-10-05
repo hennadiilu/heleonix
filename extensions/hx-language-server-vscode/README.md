@@ -9,6 +9,16 @@ Language support for Heleonix source files:
 - **`*.hxd`** dictionaries — frontmatter header + JSONC, with highlighting of
   `{…}` interpolations and validation of their references.
 - **`*.hxc`** configs — frontmatter header + JSONC.
+- **`*.hxs`** styles — CSS-like syntax with highlighting of declarations, pseudos,
+  `@media` / `@keyframes`, `@hx-*` qualifiers and every `{…}` binding source
+  (`{$theme}`, `{@dictionary}`, `{#config}`, `{state}`); autocompletion of theme
+  tokens, dictionary/config names and entries, the styled component's properties
+  in declaration values, qualifiers and their arguments;
+  hover docs; go-to-definition and find-references for dictionary/config entries
+  (a style's usages also count toward the unused-entry check); diagnostics for
+  unknown references.
+- **`*.hxt`** themes — token groups with highlighting, `{$…}` alias completion,
+  hover and go-to-definition.
 
 Highlighting follows the **active color theme** via TextMate scopes plus standard
 LSP semantic token types — nothing is hard-coded.

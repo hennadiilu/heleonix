@@ -1,4 +1,5 @@
 import { StyleManager } from "../../../../runtime/hx-core/src/styling/StyleManager"
+import { BindingEvaluator, LiteralValueSource, StateValueSource } from "@heleonix/hx-core"
 import type { Component, IQualifierProvider, IScheduler, IState } from "@heleonix/hx-core"
 import type { IStyleDefinition } from "@heleonix/hx-language"
 import { WebStyleDriver, RefcountedStyleSheet, DomStyleSheet } from "@heleonix/hx-platform-web"
@@ -52,13 +53,15 @@ function stateWith(values: Record<string, unknown>): IState {
 }
 
 function managerWith(driver: WebStyleDriver, qualifiers: IQualifierProvider, values: Record<string, unknown>) {
+  const state = stateWith(values)
+
   return new StyleManager(
     () => driver,
     { loadDefinition: () => Promise.resolve(undefined) } as never,
     { getTheme: () => Promise.resolve(undefined) } as never,
-    stateWith(values),
+    state,
+    new BindingEvaluator({ get: () => ({}) as never }, [new StateValueSource(state), new LiteralValueSource()]),
     qualifiers,
-    { resolve: () => [] },
   )
 }
 
@@ -67,7 +70,7 @@ function def(rules: IStyleDefinition["rules"]): IStyleDefinition {
 }
 
 describe("web styling runtime (StyleManager + WebStyleDriver)", () => {
-  it("then applies a compiled style end to end: sheet rules, classes and {prop} variables", () => {
+  it("then applies a compiled style end to end: sheet rules, classes and {prop} variables", async () => {
     const element = { textContent: null as string | null }
     const sheet = new RefcountedStyleSheet(new DomStyleSheet(element))
     const root = new FakeElement()
@@ -78,7 +81,7 @@ describe("web styling runtime (StyleManager + WebStyleDriver)", () => {
     const driver = new WebStyleDriver(sheet, (c) => (c === cmp("A") ? [root as unknown as HTMLElement] : []), immediate)
     const manager = managerWith(driver, qualifiers, { "A:someProp": "5" })
 
-    manager.applyDefinition(
+    await manager.applyDefinition(
       cmp("A"),
       def({ "": { color: "{$Colors.Roles.Primary.bg}" }, Hover: { padding: "{someProp}px" } }),
     )
@@ -94,14 +97,14 @@ describe("web styling runtime (StyleManager + WebStyleDriver)", () => {
     expect(root.style.props.get("--hx-some-prop")).toBe("5")
   })
 
-  it("then removes classes, variables and the sheet rules on teardown", () => {
+  it("then removes classes, variables and the sheet rules on teardown", async () => {
     const element = { textContent: null as string | null }
     const sheet = new RefcountedStyleSheet(new DomStyleSheet(element))
     const root = new FakeElement()
     const driver = new WebStyleDriver(sheet, () => [root as unknown as HTMLElement], immediate)
     const manager = managerWith(driver, { get: () => undefined }, { "B:p": 1 })
 
-    manager.applyDefinition(cmp("B"), def({ "": { width: "{p}px" } }))
+    await manager.applyDefinition(cmp("B"), def({ "": { width: "{p}px" } }))
     manager.remove(cmp("B"))
 
     expect(root.classes.size).toBe(0)

@@ -1,6 +1,8 @@
 import path from "node:path"
 import { IJsoncComment, IJsoncEntry, IXmlScan, parseJsonc, scanXml, splitFrontmatter } from "@heleonix/hx-compiler-core"
-import { EXT_CONFIG, EXT_DICTIONARY, EXT_TEMPLATE } from "@heleonix/hx-language"
+import { EXT_CONFIG, EXT_DICTIONARY, EXT_STYLE, EXT_TEMPLATE } from "@heleonix/hx-language"
+import type { IInterpolationRef } from "../references/IInterpolationRef"
+import { scanStyleReferences } from "../references/scanStyleReferences"
 
 export type IParsedFile =
   | { kind: "component"; scan: IXmlScan }
@@ -18,6 +20,7 @@ export type IParsedFile =
       entries: readonly IJsoncEntry[]
       comments: readonly IJsoncComment[]
     }
+  | { kind: "style"; references: readonly IInterpolationRef[] }
   | { kind: "other" }
 
 export function parseFile(filePath: string, source: string): IParsedFile {
@@ -33,6 +36,10 @@ export function parseFile(filePath: string, source: string): IParsedFile {
 
   if (ext === EXT_CONFIG) {
     return { kind: "config", ...parseData(source) }
+  }
+
+  if (ext === EXT_STYLE) {
+    return { kind: "style", references: scanStyleReferences(source) }
   }
 
   return { kind: "other" }

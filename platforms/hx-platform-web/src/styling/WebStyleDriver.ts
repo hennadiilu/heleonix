@@ -10,7 +10,7 @@ import type {
 import type { IStyleDeclarations } from "@heleonix/hx-language"
 import { composeKeyframes } from "./composeKeyframes"
 import { composeRule } from "./composeRule"
-import { hashClassName } from "./hashClassName"
+import { composeClassName } from "./composeClassName"
 import { rewriteAnimationRefs } from "./rewriteAnimationRefs"
 import { scopedKeyframeName } from "./scopedKeyframeName"
 import { WebStyleEffect } from "./WebStyleEffect"
@@ -43,7 +43,7 @@ export class WebStyleDriver implements IStyleDriver {
     const scoped = keyframeScope
       ? rewriteAnimationRefs(declarations, keyframeScope.names, keyframeScope.scope)
       : declarations
-    const className = hashClassName(`${signature} ${JSON.stringify(scoped)}`)
+    const className = composeClassName(signature, fragments, scoped)
 
     this.sheet.insert(className, composeRule(className, fragments, scoped))
 

@@ -13,7 +13,7 @@ import { composeValueSources } from "./composeValueSources"
 export function composeBindings(
   bootstrap: IApplicationBootstrap,
   deps: { dimensions: IDimensionProvider; state: StateManager; clearables: ClearableCollection },
-): { binder: Binder; configs: ConfigProvider; dictionaries: DictionaryProvider } {
+): { binder: Binder; configs: ConfigProvider; dictionaries: DictionaryProvider; evaluator: BindingEvaluator } {
   const valueSources = composeValueSources(bootstrap, deps)
 
   const converters = composeConverters(bootstrap, { context: () => converterContext, clearables: deps.clearables })
@@ -28,5 +28,5 @@ export function composeBindings(
 
   const binder = deps.clearables.add(new Binder(deps.state, evaluator))
 
-  return { binder, configs, dictionaries }
+  return { binder, configs, dictionaries, evaluator }
 }

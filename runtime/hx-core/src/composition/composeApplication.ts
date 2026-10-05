@@ -19,7 +19,7 @@ export function composeApplication(bootstrap: IApplicationBootstrap): IApplicati
 
   const runtime = new bootstrap.runtime()
 
-  const { binder, configs, dictionaries } = composeBindings(bootstrap, { dimensions, state, clearables })
+  const { binder, configs, dictionaries, evaluator } = composeBindings(bootstrap, { dimensions, state, clearables })
 
   const services = composeServices(bootstrap, { clearables })
 
@@ -27,7 +27,7 @@ export function composeApplication(bootstrap: IApplicationBootstrap): IApplicati
 
   const themes = composeTheming(bootstrap, { dimensions, runtime, clearables })
 
-  const styles = composeStyling(bootstrap, { dimensions, state, runtime, themes, clearables })
+  const styles = composeStyling(bootstrap, { dimensions, state, evaluator, runtime, themes, clearables })
 
   const { components, componentContext, isHeadless } = composeComponents(bootstrap, {
     runtime,

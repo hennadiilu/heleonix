@@ -12,7 +12,13 @@ let client: LanguageClient | undefined
 
 const RELOAD_COMMAND = "heleonix.reloadDefinitions"
 
-const LANGUAGES = ["heleonix-hx-component", "heleonix-hx-dictionary", "heleonix-hx-config"]
+const LANGUAGES = [
+  "heleonix-hx-component",
+  "heleonix-hx-dictionary",
+  "heleonix-hx-config",
+  "heleonix-hx-style",
+  "heleonix-hx-theme",
+]
 
 export async function activate(context: ExtensionContext): Promise<void> {
   client = createClient(context)

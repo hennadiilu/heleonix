@@ -17,7 +17,6 @@ import type {
   IServiceContext,
   IServiceProvider,
   IStyleDriver,
-  IStyleQualifierContext,
   StyleFragment,
 } from "@heleonix/hx-core"
 import type { QualifierProvider } from "../src/styling/qualifiers/QualifierProvider"
@@ -197,23 +196,5 @@ describe("bootstrapped style qualifiers", () => {
     const app = new TestApplication({ ...styleBootstrap, qualifiers: [OnRaisingQualifier] })
 
     expect(app.qualifiers?.get("If")).toBeInstanceOf(IfQualifier)
-  })
-
-  it("then hands the qualifier its context, so it reaches state", () => {
-    let captured: IStyleQualifierContext | undefined
-
-    class CapturingQualifier extends StyleQualifier {
-      public static readonly hxName = "Capturing"
-
-      public constructor(context: IStyleQualifierContext) {
-        super(context)
-
-        captured = context
-      }
-    }
-
-    new TestApplication({ ...styleBootstrap, qualifiers: [CapturingQualifier] })
-
-    expect(captured?.state).toBeDefined()
   })
 })

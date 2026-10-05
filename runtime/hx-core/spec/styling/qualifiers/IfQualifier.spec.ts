@@ -1,33 +1,50 @@
 import { IfQualifier } from "@heleonix/hx-core"
-import type { IComponentState, IStyleEffect, IStyleQualifierContext } from "@heleonix/hx-core"
-import type { IQualifierUsage } from "@heleonix/hx-language"
+import type { IBindingScope, IStyleEffect } from "@heleonix/hx-core"
+import type { IBindingExpression, IQualifierUsage } from "@heleonix/hx-language"
 
-class FakeComponentState implements IComponentState {
-  public values: Record<string, unknown>
+class FakeScope implements IBindingScope {
+  public readonly subscribed: IBindingExpression[] = []
   private readonly handlers = new Map<string, (() => void)[]>()
 
-  public constructor(values: Record<string, unknown>) {
-    this.values = values
+  public constructor(
+    public readonly state: Record<string, unknown> = {},
+    public readonly sources: Record<string, unknown> = {},
+  ) {}
+
+  public resolve(binding: IBindingExpression): unknown {
+    if (binding.type === "state") {
+      return this.state[binding.value]
+    }
+
+    if (binding.type === "literal") {
+      return JSON.parse(binding.value)
+    }
+
+    const source = this.sources[`${binding.type}:${binding.value}`]
+
+    return typeof source === "function" ? (source as () => unknown)() : source
   }
 
-  public subscribe(prop: string, handler: () => void): () => void {
-    const list = this.handlers.get(prop) ?? []
+  public subscribe(binding: IBindingExpression, handler: () => void): () => void {
+    this.subscribed.push(binding)
+
+    if (binding.type !== "state") {
+      return () => {}
+    }
+
+    const list = this.handlers.get(binding.value) ?? []
     list.push(handler)
-    this.handlers.set(prop, list)
+    this.handlers.set(binding.value, list)
 
     return () =>
       this.handlers.set(
-        prop,
-        (this.handlers.get(prop) ?? []).filter((h) => h !== handler),
+        binding.value,
+        (this.handlers.get(binding.value) ?? []).filter((h) => h !== handler),
       )
   }
 
-  public getValue(prop: string): unknown {
-    return this.values[prop]
-  }
-
   public change(prop: string, value: unknown): void {
-    this.values[prop] = value
+    this.state[prop] = value
 
     for (const handler of [...(this.handlers.get(prop) ?? [])]) {
       handler()
@@ -55,137 +72,240 @@ class FakeEffect implements IStyleEffect {
   public removeProperty(): void {}
 }
 
-function qualifier(): IfQualifier {
-  return new IfQualifier({} as IStyleQualifierContext)
+function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((r) => (resolve = r))
+
+  return { promise, resolve }
 }
+
+function flush(): Promise<void> {
+  return new Promise((r) => setTimeout(r, 0))
+}
+
+const qualifier = new IfQualifier()
 
 function usage(args: Record<string, string>): IQualifierUsage {
   return { name: "If", args }
 }
 
 function gateAttr(u: IQualifierUsage): string {
-  return `data-hx-${(qualifier().build(u) as { gate: string }).gate}`
+  return `data-hx-${(qualifier.build(u) as { gate: string }).gate}`
+}
+
+async function gated(args: Record<string, string>, scope: FakeScope): Promise<boolean> {
+  const u = usage(args)
+  const effect = new FakeEffect()
+
+  await qualifier.attach(u, scope, effect)
+
+  return effect.attrs.has(gateAttr(u))
 }
 
 describe("IfQualifier", () => {
-  it("then build gates the rule behind the same data-attribute attach toggles", () => {
-    const u = usage({ value: "{isSaving}" })
-    const state = new FakeComponentState({ isSaving: true })
-    const effect = new FakeEffect()
+  describe("a property subject", () => {
+    it("then build gates the rule behind the same data-attribute attach toggles", async () => {
+      expect(await gated({ value: "{isSaving}" }, new FakeScope({ isSaving: true }))).toBeTrue()
+    })
 
-    qualifier().attach(u, state, effect)
+    it("then toggles the gate as a truthy subject changes", async () => {
+      const u = usage({ value: "{isSaving}" })
+      const scope = new FakeScope({ isSaving: false })
+      const effect = new FakeEffect()
 
-    expect(effect.attrs.has(gateAttr(u))).toBeTrue()
+      await qualifier.attach(u, scope, effect)
+      expect(effect.attrs.has(gateAttr(u))).toBeFalse()
+
+      scope.change("isSaving", true)
+      expect(effect.attrs.has(gateAttr(u))).toBeTrue()
+    })
+
+    it("then gives differently-argued usages different gates", () => {
+      expect(gateAttr(usage({ value: "{a}" }))).not.toBe(gateAttr(usage({ value: "{b}" })))
+    })
+
+    it("then dispose unsubscribes so later changes are ignored", async () => {
+      const scope = new FakeScope({ isSaving: false })
+
+      const disposable = await qualifier.attach(usage({ value: "{isSaving}" }), scope, new FakeEffect())
+      expect(scope.subscriberCount("isSaving")).toBe(1)
+
+      disposable.dispose()
+      expect(scope.subscriberCount("isSaving")).toBe(0)
+    })
   })
 
-  it("then toggles the gate as a truthy subject changes", () => {
-    const u = usage({ value: "{isSaving}" })
-    const state = new FakeComponentState({ isSaving: false })
-    const effect = new FakeEffect()
+  describe("property and literal operands", () => {
+    it("then compares the subject against an `is` operand, re-evaluating as either side changes", async () => {
+      const u = usage({ value: "{variant}", is: "{selected}" })
+      const scope = new FakeScope({ variant: "primary", selected: "primary" })
+      const effect = new FakeEffect()
 
-    qualifier().attach(u, state, effect)
-    expect(effect.attrs.has(gateAttr(u))).toBeFalse()
+      await qualifier.attach(u, scope, effect)
+      expect(effect.attrs.has(gateAttr(u))).toBeTrue()
 
-    state.change("isSaving", true)
-    expect(effect.attrs.has(gateAttr(u))).toBeTrue()
+      scope.change("selected", "danger")
+      expect(effect.attrs.has(gateAttr(u))).toBeFalse()
+
+      scope.change("variant", "danger")
+      expect(effect.attrs.has(gateAttr(u))).toBeTrue()
+    })
+
+    it("then compares against a string literal member", async () => {
+      expect(await gated({ value: "{variant}", is: "{'primary'}" }, new FakeScope({ variant: "primary" }))).toBeTrue()
+    })
+
+    it("then negates with an `isNot` operand", async () => {
+      expect(await gated({ value: "{variant}", isNot: "{'danger'}" }, new FakeScope({ variant: "primary" }))).toBeTrue()
+      expect(await gated({ value: "{variant}", isNot: "{'danger'}" }, new FakeScope({ variant: "danger" }))).toBeFalse()
+    })
+
+    it("then reads bare argument text as raw text, compared lexically and never unit-aware", async () => {
+      expect(await gated({ value: "{size}", is: "12px" }, new FakeScope({ size: "12px" }))).toBeTrue()
+      expect(await gated({ value: "{size}", is: "12px" }, new FakeScope({ size: "1em" }))).toBeFalse()
+    })
+
+    it("then never reads bare text as a property reference", async () => {
+      expect(await gated({ value: "{variant}", is: "primary" }, new FakeScope({ variant: "primary" }))).toBeTrue()
+      expect(
+        await gated({ value: "{variant}", is: "primary" }, new FakeScope({ variant: "x", primary: "x" })),
+      ).toBeFalse()
+    })
+
+    it("then reads a bare number as a number", async () => {
+      expect(await gated({ value: "{rows}", is: "3" }, new FakeScope({ rows: 3 }))).toBeTrue()
+      expect(await gated({ value: "{rows}", is: "3" }, new FakeScope({ rows: "3" }))).toBeFalse()
+    })
   })
 
-  it("then compares the subject against an `is` operand", () => {
-    const u = usage({ value: "{variant}", is: "{'primary'}" })
-    const state = new FakeComponentState({ variant: "primary" })
-    const effect = new FakeEffect()
+  describe("boolean operands", () => {
+    it("then treats `is: {true}` as the bare truthy condition, whatever the subject's type", async () => {
+      expect(await gated({ value: "{label}", is: "{true}" }, new FakeScope({ label: "text" }))).toBeTrue()
+      expect(await gated({ value: "{label}", is: "{true}" }, new FakeScope({ label: "" }))).toBeFalse()
+    })
 
-    qualifier().attach(u, state, effect)
-    expect(effect.attrs.has(gateAttr(u))).toBeTrue()
+    it("then `is: {false}` holds while the subject is falsy or unset, which is the negated condition", async () => {
+      expect(await gated({ value: "{items}", is: "{false}" }, new FakeScope({}))).toBeTrue()
+      expect(await gated({ value: "{items}", is: "{false}" }, new FakeScope({ items: 3 }))).toBeFalse()
+    })
 
-    state.change("variant", "danger")
-    expect(effect.attrs.has(gateAttr(u))).toBeFalse()
+    it("then `isNot: {true}` is the same negation as `is: {false}`", async () => {
+      expect(await gated({ value: "{loading}", isNot: "{true}" }, new FakeScope({ loading: 0 }))).toBeTrue()
+      expect(await gated({ value: "{loading}", isNot: "{true}" }, new FakeScope({ loading: 1 }))).toBeFalse()
+    })
+
+    it("then a boolean operand reached through a binding casts the same way", async () => {
+      const u = usage({ value: "{label}", is: "{expected}" })
+      const scope = new FakeScope({ label: "text", expected: true })
+      const effect = new FakeEffect()
+
+      await qualifier.attach(u, scope, effect)
+      expect(effect.attrs.has(gateAttr(u))).toBeTrue()
+
+      scope.change("expected", false)
+      expect(effect.attrs.has(gateAttr(u))).toBeFalse()
+    })
+
+    it("then a non-boolean operand still compares strictly, so 0 is not false", async () => {
+      expect(await gated({ value: "{count}", is: "{0}" }, new FakeScope({ count: false }))).toBeFalse()
+      expect(await gated({ value: "{count}", is: "{0}" }, new FakeScope({ count: 0 }))).toBeTrue()
+    })
   })
 
-  it("then negates with an `isNot` operand", () => {
-    const u = usage({ value: "{variant}", isNot: "{'danger'}" })
-    const state = new FakeComponentState({ variant: "primary" })
-    const effect = new FakeEffect()
+  describe("dictionary, config and theme operands", () => {
+    it("then compares against a dictionary entry", async () => {
+      const scope = new FakeScope({ label: "Save" }, { "dictionary:Buttons.save": Promise.resolve("Save") })
 
-    qualifier().attach(u, state, effect)
-    expect(effect.attrs.has(gateAttr(u))).toBeTrue()
+      expect(await gated({ value: "{label}", is: "{@Buttons.save}" }, scope)).toBeTrue()
+    })
 
-    state.change("variant", "danger")
-    expect(effect.attrs.has(gateAttr(u))).toBeFalse()
-  })
+    it("then compares against a config entry", async () => {
+      const scope = new FakeScope({ variant: "compact" }, { "config:Layout.density": Promise.resolve("compact") })
 
-  it("then treats `is: {true}` as the bare truthy condition, whatever the subject's type", () => {
-    const u = usage({ value: "{label}", is: "{true}" })
-    const state = new FakeComponentState({ label: "text" })
-    const effect = new FakeEffect()
+      expect(await gated({ value: "{variant}", is: "{#Layout.density}" }, scope)).toBeTrue()
+    })
 
-    qualifier().attach(u, state, effect)
-    expect(effect.attrs.has(gateAttr(u))).toBeTrue()
+    it("then compares against a theme token", async () => {
+      const scope = new FakeScope({ size: "md" }, { "theme:Sizes.default": Promise.resolve("md") })
 
-    state.change("label", "")
-    expect(effect.attrs.has(gateAttr(u))).toBeFalse()
-  })
+      expect(await gated({ value: "{size}", is: "{$Sizes.default}" }, scope)).toBeTrue()
+      expect(await gated({ value: "{size}", isNot: "{$Sizes.default}" }, scope)).toBeFalse()
+    })
 
-  it("then `is: {false}` holds while the subject is falsy or unset, which is the negated condition", () => {
-    const u = usage({ value: "{items}", is: "{false}" })
-    const state = new FakeComponentState({})
-    const effect = new FakeEffect()
+    it("then subscribes to both the subject and the operand source", async () => {
+      const scope = new FakeScope({}, { "dictionary:Labels.x": "x" })
 
-    qualifier().attach(u, state, effect)
-    expect(effect.attrs.has(gateAttr(u))).toBeTrue()
+      await qualifier.attach(usage({ value: "{label}", is: "{@Labels.x}" }), scope, new FakeEffect())
 
-    state.change("items", 3)
-    expect(effect.attrs.has(gateAttr(u))).toBeFalse()
-  })
+      expect(scope.subscribed).toEqual([
+        { type: "state", value: "label" },
+        { type: "dictionary", value: "Labels.x" },
+      ])
+    })
 
-  it("then `isNot: {true}` is the same negation as `is: {false}`", () => {
-    const u = usage({ value: "{loading}", isNot: "{true}" })
-    const state = new FakeComponentState({ loading: 0 })
-    const effect = new FakeEffect()
+    it("then lets the newest evaluation win when an older async resolve settles later", async () => {
+      const u = usage({ value: "{label}", is: "{@Labels.current}" })
+      const pending: { promise: Promise<string>; resolve: (value: string) => void }[] = []
+      const scope = new FakeScope(
+        { label: "a" },
+        {
+          "dictionary:Labels.current": () => {
+            const next = deferred<string>()
+            pending.push(next)
 
-    qualifier().attach(u, state, effect)
-    expect(effect.attrs.has(gateAttr(u))).toBeTrue()
+            return next.promise
+          },
+        },
+      )
+      const effect = new FakeEffect()
 
-    state.change("loading", 1)
-    expect(effect.attrs.has(gateAttr(u))).toBeFalse()
-  })
+      const attaching = qualifier.attach(u, scope, effect)
+      await flush()
+      pending[0].resolve("a")
+      await attaching
+      expect(effect.attrs.has(gateAttr(u))).toBeTrue()
 
-  it("then a boolean operand reached through a binding casts the same way", () => {
-    const u = usage({ value: "{label}", is: "{expected}" })
-    const state = new FakeComponentState({ label: "text", expected: true })
-    const effect = new FakeEffect()
+      scope.change("label", "b")
+      scope.change("label", "c")
+      await flush()
 
-    qualifier().attach(u, state, effect)
-    expect(effect.attrs.has(gateAttr(u))).toBeTrue()
+      pending[2].resolve("c")
+      await flush()
+      pending[1].resolve("x")
+      await flush()
 
-    state.change("expected", false)
-    expect(effect.attrs.has(gateAttr(u))).toBeFalse()
-  })
+      expect(effect.attrs.has(gateAttr(u))).toBeTrue()
+    })
 
-  it("then a non-boolean operand still compares strictly, so 0 is not false", () => {
-    const u = usage({ value: "{count}", is: "{0}" })
-    const state = new FakeComponentState({ count: false })
-    const effect = new FakeEffect()
+    it("then writes nothing for an evaluation that settles after dispose", async () => {
+      const u = usage({ value: "{label}", is: "{@Labels.current}" })
+      const pending: { promise: Promise<string>; resolve: (value: string) => void }[] = []
+      const scope = new FakeScope(
+        { label: "a" },
+        {
+          "dictionary:Labels.current": () => {
+            const next = deferred<string>()
+            pending.push(next)
 
-    qualifier().attach(u, state, effect)
-    expect(effect.attrs.has(gateAttr(u))).toBeFalse()
+            return next.promise
+          },
+        },
+      )
+      const effect = new FakeEffect()
 
-    state.change("count", 0)
-    expect(effect.attrs.has(gateAttr(u))).toBeTrue()
-  })
+      const attaching = qualifier.attach(u, scope, effect)
+      await flush()
+      pending[0].resolve("x")
+      const disposable = await attaching
+      expect(effect.attrs.has(gateAttr(u))).toBeFalse()
 
-  it("then gives differently-argued usages different gates", () => {
-    expect(gateAttr(usage({ value: "{a}" }))).not.toBe(gateAttr(usage({ value: "{b}" })))
-  })
+      scope.change("label", "b")
+      await flush()
+      disposable.dispose()
+      pending[1].resolve("b")
+      await flush()
 
-  it("then dispose unsubscribes so later changes are ignored", () => {
-    const u = usage({ value: "{isSaving}" })
-    const state = new FakeComponentState({ isSaving: false })
-
-    const disposable = qualifier().attach(u, state, new FakeEffect())
-    expect(state.subscriberCount("isSaving")).toBe(1)
-
-    disposable.dispose()
-    expect(state.subscriberCount("isSaving")).toBe(0)
+      expect(effect.attrs.has(gateAttr(u))).toBeFalse()
+    })
   })
 })

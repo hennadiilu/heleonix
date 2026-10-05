@@ -1,5 +1,5 @@
-import type { IStyleEffect, StyleHandle } from "@heleonix/hx-core"
-import { mangleVariable } from "@heleonix/hx-platform-web"
+import type { IStyleEffect, IStyleVariable, StyleHandle } from "@heleonix/hx-core"
+import { cssVariableValue, styleVariableName } from "@heleonix/hx-platform-web"
 import type { SsrElementState } from "./SsrElementState"
 import type { SsrStyleHandle } from "./SsrStyleHandle"
 
@@ -18,12 +18,19 @@ export class SsrStyleEffect implements IStyleEffect {
     this.state.attributes.delete(name)
   }
 
-  public setVariable(name: string, value: string): void {
-    this.state.styles.set(mangleVariable(name), value)
+  public setVariable(variable: IStyleVariable, value: string): void {
+    const property = styleVariableName(variable)
+    const css = cssVariableValue(variable, value)
+
+    if (css === undefined) {
+      this.state.styles.delete(property)
+    } else {
+      this.state.styles.set(property, css)
+    }
   }
 
-  public removeVariable(name: string): void {
-    this.state.styles.delete(mangleVariable(name))
+  public removeVariable(variable: IStyleVariable): void {
+    this.state.styles.delete(styleVariableName(variable))
   }
 
   public setClass(handle: StyleHandle): void {

@@ -1,34 +1,64 @@
-import { parseBindingExpression, stringifyQualifierUsage } from "@heleonix/hx-language"
-import type { IQualifierUsage } from "@heleonix/hx-language"
+import { isLiteralSource, parseBindingExpression, stringifyQualifierUsage } from "@heleonix/hx-language"
+import type { IBindingExpression, IQualifierUsage } from "@heleonix/hx-language"
 import { StyleQualifier } from "./StyleQualifier"
-import type { IComponentState } from "./IComponentState"
+import type { IBindingScope } from "./IBindingScope"
+import type { IIfQualifierArgs } from "./IIfQualifierArgs"
 import type { IDisposable } from "../../common/IDisposable"
+import type { MaybePromise } from "../../common/MaybePromise"
+import { thenMaybe } from "../../common/thenMaybe"
 import type { IStyleEffect } from "../../platform/IStyleEffect"
 import type { StyleFragment } from "../StyleFragment"
 
-export class IfQualifier extends StyleQualifier {
+const TRUTHY: IBindingExpression = { type: "literal", value: "true" }
+
+export class IfQualifier extends StyleQualifier<IIfQualifierArgs> {
   public static readonly hxName = "If"
 
   public build(usage: IQualifierUsage): StyleFragment {
     return { gate: this.gateOf(usage) }
   }
 
-  public attach(usage: IQualifierUsage, state: IComponentState, effect: IStyleEffect): IDisposable {
+  public async attach(usage: IQualifierUsage, scope: IBindingScope, effect: IStyleEffect): Promise<IDisposable> {
     const attribute = `data-hx-${this.gateOf(usage)}`
+    const subject = this.sourceOf(usage.args["value"] ?? "")
+    const negated = usage.args["is"] === undefined && usage.args["isNot"] !== undefined
+    const comparand = usage.args["is"] ?? usage.args["isNot"]
+    const operand = comparand === undefined ? TRUTHY : this.sourceOf(comparand)
 
-    const evaluate = (): void => {
-      if (this.matches(usage, state)) {
-        effect.setAttribute(attribute, "")
-      } else {
-        effect.removeAttribute(attribute)
-      }
+    let disposed = false
+    let latest = 0
+
+    // Each run is numbered so a slow resolve that settles after a newer one
+    // cannot overwrite the newer outcome, and nothing writes once disposed.
+    const evaluate = (): MaybePromise<void> => {
+      const run = ++latest
+
+      return thenMaybe(this.holds(scope, subject, operand, negated), (holds) => {
+        if (disposed || run !== latest) {
+          return
+        }
+
+        if (holds) {
+          effect.setAttribute(attribute, "")
+        } else {
+          effect.removeAttribute(attribute)
+        }
+      })
     }
 
-    const unsubscribes = this.stateProps(usage).map((prop) => state.subscribe(prop, evaluate))
+    const unsubscribes = await Promise.all(
+      [subject, operand].map((source) => Promise.resolve(scope.subscribe(source, () => void evaluate()))),
+    )
 
-    evaluate()
+    await evaluate()
 
-    return { dispose: () => unsubscribes.forEach((unsubscribe) => unsubscribe()) }
+    return {
+      dispose: () => {
+        disposed = true
+
+        unsubscribes.forEach((unsubscribe) => unsubscribe())
+      },
+    }
   }
 
   private gateOf(usage: IQualifierUsage): string {
@@ -43,18 +73,26 @@ export class IfQualifier extends StyleQualifier {
     return (hash >>> 0).toString(36)
   }
 
-  private matches(usage: IQualifierUsage, state: IComponentState): boolean {
-    const subject = state.getValue(this.subjectProp(usage))
-
-    if (usage.args["is"] !== undefined) {
-      return this.equals(subject, this.operand(usage.args["is"], state))
+  // Braces mark a binding source - a property, `{'member'}`, `{@Dict.key}`,
+  // `{#Config.path}` or `{$Theme.token}`. Bare argument text is a literal: a
+  // number or boolean as typed, anything else the raw text itself (`12px`).
+  private sourceOf(raw: string): IBindingExpression {
+    if (raw.length >= 2 && raw.charAt(0) === "{" && raw.charAt(raw.length - 1) === "}") {
+      return parseBindingExpression(raw.slice(1, -1))
     }
 
-    if (usage.args["isNot"] !== undefined) {
-      return !this.equals(subject, this.operand(usage.args["isNot"], state))
-    }
+    return { type: "literal", value: isLiteralSource(raw) ? raw : JSON.stringify(raw) }
+  }
 
-    return this.equals(subject, true)
+  private holds(
+    scope: IBindingScope,
+    subject: IBindingExpression,
+    operand: IBindingExpression,
+    negated: boolean,
+  ): MaybePromise<boolean> {
+    return thenMaybe(scope.resolve(subject), (actual) =>
+      thenMaybe(scope.resolve(operand), (expected) => this.equals(actual, expected) !== negated),
+    )
   }
 
   // A boolean operand compares the subject's truthiness rather than its identity,
@@ -63,51 +101,5 @@ export class IfQualifier extends StyleQualifier {
   // boolean would be dead for every non-boolean subject, so nothing is lost.
   private equals(subject: unknown, operand: unknown): boolean {
     return typeof operand === "boolean" ? Boolean(subject) === operand : subject === operand
-  }
-
-  private subjectProp(usage: IQualifierUsage): string {
-    const binding = parseBindingExpression(this.stripBraces(usage.args["value"] ?? ""))
-
-    return binding.type === "state" ? binding.value : ""
-  }
-
-  private operand(raw: string, state: IComponentState): unknown {
-    const binding = parseBindingExpression(this.stripBraces(raw))
-
-    if (binding.type === "literal") {
-      return this.safeParse(binding.value)
-    }
-
-    return binding.type === "state" ? state.getValue(binding.value) : undefined
-  }
-
-  private stateProps(usage: IQualifierUsage): string[] {
-    const props = [this.subjectProp(usage)]
-
-    for (const argument of ["is", "isNot"] as const) {
-      const raw = usage.args[argument]
-
-      if (raw) {
-        const binding = parseBindingExpression(this.stripBraces(raw))
-
-        if (binding.type === "state") {
-          props.push(binding.value)
-        }
-      }
-    }
-
-    return props.filter(Boolean)
-  }
-
-  private stripBraces(raw: string): string {
-    return raw.length >= 2 && raw.charAt(0) === "{" && raw.charAt(raw.length - 1) === "}" ? raw.slice(1, -1) : raw
-  }
-
-  private safeParse(raw: string): unknown {
-    try {
-      return JSON.parse(raw)
-    } catch {
-      return raw
-    }
   }
 }

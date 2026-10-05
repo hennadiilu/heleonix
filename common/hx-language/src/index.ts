@@ -111,6 +111,9 @@ export * from "./qualifiers/stringifyRuleKey"
 
 export * from "./styles/IStyleDeclarations"
 export * from "./styles/IStyleDefinition"
+export * from "./styles/StyleStringPart"
+export * from "./styles/StyleValueToken"
+export * from "./styles/parseStyleValue"
 
 export * from "./themes/IThemeGroup"
 export * from "./themes/IThemeNode"

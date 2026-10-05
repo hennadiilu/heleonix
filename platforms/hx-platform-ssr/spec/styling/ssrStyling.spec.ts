@@ -1,6 +1,7 @@
 import { StyleManager } from "../../../../runtime/hx-core/src/styling/StyleManager"
-import type { Component, IQualifierProvider, IState, StyleHandle } from "@heleonix/hx-core"
-import { composeRule, hashClassName } from "@heleonix/hx-platform-web"
+import { BindingEvaluator, LiteralValueSource, MediaQualifier, StateValueSource } from "@heleonix/hx-core"
+import type { Component, IQualifierProvider, IState, IValueSource, StyleHandle } from "@heleonix/hx-core"
+import { composeClassName, composeRule, styleVariableName } from "@heleonix/hx-platform-web"
 import {
   SsrElementState,
   SsrStyleDriver,
@@ -39,14 +40,24 @@ function stateWith(values: Record<string, unknown>): IState {
   } as unknown as IState
 }
 
-function managerWith(driver: SsrStyleDriver, values: Record<string, unknown> = {}): StyleManager {
+function managerWith(
+  driver: SsrStyleDriver,
+  values: Record<string, unknown> = {},
+  sources: IValueSource[] = [],
+): StyleManager {
+  const state = stateWith(values)
+
   return new StyleManager(
     () => driver,
     { loadDefinition: () => Promise.resolve(undefined) } as never,
     { getTheme: () => Promise.resolve(undefined) } as never,
-    stateWith(values),
+    state,
+    new BindingEvaluator({ get: () => ({}) as never }, [
+      new StateValueSource(state),
+      new LiteralValueSource(),
+      ...sources,
+    ]),
     NO_QUALIFIERS,
-    { resolve: () => [] },
   )
 }
 
@@ -56,7 +67,7 @@ describe("SsrStyleEffect + renderElementAttributes", () => {
     const effect = new SsrStyleEffect(state)
 
     effect.setClass(handle("hx-a"))
-    effect.setVariable("someProp", "5")
+    effect.setVariable({ source: "someProp", text: false }, "5")
     effect.setProperty("color", "red")
     effect.setAttribute("data-hx-1a2b", "")
 
@@ -69,8 +80,8 @@ describe("SsrStyleEffect + renderElementAttributes", () => {
 
     effect.setClass(handle("hx-a"))
     effect.removeClass(handle("hx-a"))
-    effect.setVariable("p", "1")
-    effect.removeVariable("p")
+    effect.setVariable({ source: "p", text: false }, "1")
+    effect.removeVariable({ source: "p", text: false })
 
     expect(renderElementAttributes(state)).toBe("")
   })
@@ -88,17 +99,17 @@ describe("SsrStyleDriver", () => {
     const declarations = { color: "red" }
     const composed = driver.compose("Hover", [], declarations)
 
-    const expected = hashClassName(`Hover ${JSON.stringify(declarations)}`)
+    const expected = composeClassName("Hover", [], declarations)
 
     expect((composed as unknown as { className: string }).className).toBe(expected)
     expect(driver.css()).toBe(composeRule(expected, [], declarations))
   })
 })
 
-function render(): { css: string; attrs: string } {
+async function render(): Promise<{ css: string; attrs: string }> {
   const driver = new SsrStyleDriver()
 
-  managerWith(driver, { "A:size": 5 }).applyDefinition(cmp("A"), {
+  await managerWith(driver, { "A:size": 5 }).applyDefinition(cmp("A"), {
     name: "Box",
     dimension: {},
     rules: { "": { color: "red", width: "{size}px" } },
@@ -108,22 +119,22 @@ function render(): { css: string; attrs: string } {
 }
 
 describe("SSR styling through the core StyleManager", () => {
-  it("then is deterministic across independent renders (hydration idempotence)", () => {
-    expect(render()).toEqual(render())
+  it("then is deterministic across independent renders (hydration idempotence)", async () => {
+    expect(await render()).toEqual(await render())
   })
 
-  it("then emits a content-hashed class and the {prop} value as an inline variable", () => {
-    const { css, attrs } = render()
+  it("then emits a content-hashed class and the {prop} value as an inline variable", async () => {
+    const { css, attrs } = await render()
 
     expect(css).toContain("color: red")
     expect(css).toContain("width: calc(var(--hx-size) * 1px)")
     expect(attrs).toMatch(/^class="hx-[0-9a-z]+" style="--hx-size: 5"$/)
   })
 
-  it("then emits scoped keyframes and rewrites animation references like the web", () => {
+  it("then emits scoped keyframes and rewrites animation references like the web", async () => {
     const driver = new SsrStyleDriver()
 
-    managerWith(driver).applyDefinition(cmp("B"), {
+    await managerWith(driver).applyDefinition(cmp("B"), {
       name: "Button",
       dimension: {},
       rules: { "": { "animation-name": "pulse" } },
@@ -134,5 +145,105 @@ describe("SSR styling through the core StyleManager", () => {
 
     expect(css).toContain("@keyframes hx-Button-pulse")
     expect(css).toContain("animation-name: hx-Button-pulse")
+  })
+})
+
+describe("SSR dictionary and config values in declarations", () => {
+  const labels: IValueSource = {
+    type: "dictionary",
+    get: (path: string) => Promise.resolve(path === "Labels.title" ? 'Say "hi" <b>' : undefined),
+  }
+  const layout: IValueSource = {
+    type: "config",
+    get: (path: string) => Promise.resolve(path === "Layout.gap" ? "8" : undefined),
+  }
+
+  it("then renders a quoted dictionary entry as an escaped text variable and a config entry as a raw one", async () => {
+    const driver = new SsrStyleDriver()
+
+    await managerWith(driver, {}, [labels, layout]).applyDefinition(cmp("C"), {
+      name: "Card",
+      dimension: {},
+      rules: { "": { content: "'{@Labels.title}'", gap: "{#Layout.gap}px" } },
+    })
+
+    const text = styleVariableName({ source: "@Labels.title", text: true })
+    const raw = styleVariableName({ source: "#Layout.gap", text: false })
+
+    expect(driver.css()).toContain(`content: var(${text})`)
+    expect(driver.css()).toContain(`gap: calc(var(${raw}) * 1px)`)
+    expect(renderElementAttributes(driver.stateFor(cmp("C")))).toContain(
+      `${text}: &quot;Say \\&quot;hi\\&quot; &lt;b&gt;&quot;; ${raw}: 8`,
+    )
+  })
+})
+
+describe("renderElementAttributes escaping", () => {
+  it("then escapes attribute values so state cannot break out of the markup", () => {
+    const state = new SsrElementState()
+
+    state.attributes.set("data-x", '"><script>')
+
+    expect(renderElementAttributes(state)).toBe('data-x="&quot;&gt;&lt;script&gt;"')
+  })
+})
+
+describe("SSR theme tokens in media queries", () => {
+  it("then emits the query with the theme value resolved, never a CSS variable", async () => {
+    const driver = new SsrStyleDriver()
+    const state = stateWith({})
+    const manager = new StyleManager(
+      () => driver,
+      { loadDefinition: () => Promise.resolve(undefined) } as never,
+      {
+        getTheme: () => Promise.resolve({ name: "", dimension: {}, groups: { Breakpoints: { mobile: "600px" } } }),
+      } as never,
+      state,
+      new BindingEvaluator({ get: () => ({}) as never }, [new StateValueSource(state), new LiteralValueSource()]),
+      { get: (name: string) => (name === "Media" ? new MediaQualifier() : undefined) },
+    )
+
+    await manager.applyDefinition(cmp("M"), {
+      name: "Card",
+      dimension: {},
+      rules: { "Media(query:(max-width:{$Breakpoints.mobile}))": { color: "red" } },
+    })
+
+    expect(driver.css()).toContain("@media (max-width:600px) {")
+    expect(driver.css()).not.toContain("var(")
+  })
+})
+
+describe("SSR component properties in media queries", () => {
+  async function renderWith(maxWidth: unknown): Promise<string> {
+    const driver = new SsrStyleDriver()
+    const state = stateWith({ "M:maxWidth": maxWidth })
+    const manager = new StyleManager(
+      () => driver,
+      { loadDefinition: () => Promise.resolve(undefined) } as never,
+      { getTheme: () => Promise.resolve(undefined) } as never,
+      state,
+      new BindingEvaluator({ get: () => ({}) as never }, [new StateValueSource(state), new LiteralValueSource()]),
+      { get: (name: string) => (name === "Media" ? new MediaQualifier() : undefined) },
+    )
+
+    await manager.applyDefinition(cmp("M"), {
+      name: "Card",
+      dimension: {},
+      rules: { "Media(query:(max-width:{maxWidth}px))": { color: "red" } },
+    })
+
+    return driver.css()
+  }
+
+  it("then renders the instance's property value into the query", async () => {
+    expect(await renderWith(600)).toContain("@media (max-width:600px) {")
+  })
+
+  it("then disables the rule rather than let a property value escape into the stylesheet", async () => {
+    const css = await renderWith("1px) { } body { background: red")
+
+    expect(css).toContain("@media not all {")
+    expect(css).not.toContain("body {")
   })
 })

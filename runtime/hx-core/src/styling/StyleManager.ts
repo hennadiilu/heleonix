@@ -1,34 +1,49 @@
 import {
+  EXPRESSION_PATTERN,
   extractParameters,
-  joinFQPropertyName,
   parseBindingExpression,
   parseRuleKey,
+  parseStyleValue,
   resolveThemeNode,
 } from "@heleonix/hx-language"
-import type { FQPropertyName, IQualifierUsage, IStyleDefinition, IThemeGroup } from "@heleonix/hx-language"
+import type { FQPropertyName, IBindingExpression, IStyleDefinition, IThemeGroup } from "@heleonix/hx-language"
 import { Component } from "../components/Component"
-import { componentScopeResolver } from "./ComponentScopeResolver"
+import type { BindingEvaluator } from "../bindings/BindingEvaluator"
 import type { IState } from "../state/IState"
 import type { StateChangedHandler } from "../state/StateChangedHandler"
-import type { IComponentState } from "./qualifiers/IComponentState"
+import type { IBindingScope } from "./qualifiers/IBindingScope"
 import type { IKeyframeScope } from "../platform/IKeyframeScope"
 import type { IStyleDriver } from "../platform/IStyleDriver"
 import type { IStyleEffect } from "../platform/IStyleEffect"
-import type { IStyleScopeResolver } from "./IStyleScopeResolver"
+import type { IStyleVariable } from "../platform/IStyleVariable"
 import type { IQualifierProvider } from "./qualifiers/IQualifierProvider"
 import { StyleDefinitionLoader } from "./StyleDefinitionLoader"
-import type { StyleFragment } from "./StyleFragment"
 import type { StyleHandle } from "../platform/StyleHandle"
+import type { StyleFragment } from "./StyleFragment"
 import { ThemeManager } from "../theming/ThemeManager"
 import type { IClearable } from "../common/IClearable"
+import type { IDisposable } from "../common/IDisposable"
+import type { MaybePromise } from "../common/MaybePromise"
+import { isThenable } from "../common/isThenable"
+import { thenMaybe } from "../common/thenMaybe"
 
 const SCOPE_QUALIFIER = "Style"
 
+const SCOPE_PATH_SEPARATOR = "."
+
+interface AppliedRule {
+  key: string
+  handle: StyleHandle | undefined
+  effects: readonly IStyleEffect[]
+}
+
 interface Applied {
+  // Whether the style has a `@hx-style(for: ...)` rule, so a newly built
+  // descendant can trigger the component to re-resolve its scope and pick it up.
+  scoped: boolean
   keyframeKeys: string[]
-  ruleKeys: string[]
-  classes: { effect: IStyleEffect; handle: StyleHandle }[]
-  variables: { effect: IStyleEffect; prop: string }[]
+  rules: AppliedRule[]
+  variables: { effect: IStyleEffect; variable: IStyleVariable }[]
   disposers: (() => void)[]
 }
 
@@ -37,11 +52,9 @@ export class StyleManager implements IClearable {
 
   private readonly applied = new Map<Component, Applied>()
 
-  private readonly styled = new Set<Component>()
-
-  // Styled components whose style has a `@hx-style(for: ...)` rule, so a newly
-  // built descendant can trigger them to re-resolve their scope and pick it up.
-  private readonly scopedStyled = new Set<Component>()
+  // Every component handed to `apply` and not yet removed, styled or not: a
+  // dimension switch can give a component a style it lacked, or take one away.
+  private readonly components = new Set<Component>()
 
   public constructor(
     // A thunk, not the driver itself: a runtime rebuilds its style driver on
@@ -51,22 +64,28 @@ export class StyleManager implements IClearable {
     private readonly loader: StyleDefinitionLoader,
     private readonly themes: ThemeManager,
     private readonly state: IState,
+    private readonly evaluator: BindingEvaluator,
     private readonly qualifiers: IQualifierProvider,
-    private readonly scopeResolver: IStyleScopeResolver = componentScopeResolver,
   ) {}
 
   public async apply(component: Component): Promise<void> {
+    this.components.add(component)
+
     await this.applyOwn(component)
 
     for (let ancestor = component.parent; ancestor; ancestor = ancestor.parent) {
-      if (this.scopedStyled.has(ancestor)) {
+      if (this.applied.get(ancestor)?.scoped) {
         await this.applyOwn(ancestor)
       }
     }
   }
 
-  public applyDefinition(component: Component, definition: IStyleDefinition): void {
+  public async applyDefinition(component: Component, definition: IStyleDefinition): Promise<void> {
     this.removeApplied(component)
+
+    const record: Applied = { scoped: false, keyframeKeys: [], rules: [], variables: [], disposers: [] }
+
+    this.applied.set(component, record)
 
     const ownEffect = this.driver().effectFor(component)
     const effects = new Map<Component, IStyleEffect>([[component, ownEffect]])
@@ -81,12 +100,13 @@ export class StyleManager implements IClearable {
       return effect
     }
 
-    const componentState: IComponentState = {
-      subscribe: (prop, handler) => this.subscribeToProp(component, prop, handler),
-      getValue: (prop) => this.getPropValue(component, prop),
+    const bindings = this.bindingScopeOf(component)
+    const pending: Promise<void>[] = []
+    const settle = (work: MaybePromise<void>): void => {
+      if (isThenable(work)) {
+        pending.push(work)
+      }
     }
-
-    const record: Applied = { keyframeKeys: [], ruleKeys: [], classes: [], variables: [], disposers: [] }
 
     const keyframeScope: IKeyframeScope | undefined = definition.keyframes
       ? { scope: definition.name, names: Object.keys(definition.keyframes) }
@@ -103,54 +123,51 @@ export class StyleManager implements IClearable {
 
     for (const [signature, declarations] of Object.entries(definition.rules)) {
       const usages = parseRuleKey(signature)
-      const targets = this.resolveTargets(component, usages)
+      const scopeUsage = usages.find((usage) => usage.name === SCOPE_QUALIFIER)
+      const qualified = scopeUsage ? usages.filter((usage) => usage !== scopeUsage) : usages
+      const targets = scopeUsage ? this.resolveScope(component, scopeUsage.args["for"]) : [component]
 
-      if (!targets) {
+      record.scoped ||= scopeUsage !== undefined
+
+      if (targets.length === 0) {
         continue
       }
 
-      const fragments = this.buildFragments(usages)
+      const fragments = qualified.flatMap((usage) => this.qualifiers.get(usage.name)?.build?.(usage) ?? [])
+      const variables = this.declarationVariables(declarations)
+      const targetEffects = targets.map(effectFor)
 
-      // The share key is the compose input, not the signature alone: only
-      // byte-identical rules share one composed artifact. A style with local
-      // keyframes also scope-qualifies the key, since its rules resolve
-      // animation references against its own keyframes.
-      const key = `${keyframeScope ? definition.name : ""} ${signature} ${JSON.stringify(declarations)}`
-      const handle = this.acquire(key, () => this.driver().compose(signature, fragments, declarations, keyframeScope))
+      settle(
+        this.applyRule(
+          component,
+          record,
+          bindings,
+          { signature, declarations, fragments },
+          targetEffects,
+          keyframeScope,
+        ),
+      )
 
-      record.ruleKeys.push(key)
+      for (const effect of targetEffects) {
+        for (const usage of qualified) {
+          const attached = this.qualifiers.get(usage.name)?.attach?.(usage, bindings, effect)
 
-      const props = this.declarationStateProps(declarations)
-
-      for (const target of targets) {
-        const effect = effectFor(target)
-
-        effect.setClass(handle)
-        record.classes.push({ effect, handle })
-
-        for (const usage of usages) {
-          if (usage.name === SCOPE_QUALIFIER) {
-            continue
-          }
-
-          const disposable = this.qualifiers.get(usage.name)?.attach?.(usage, componentState, effect)
-
-          if (disposable) {
-            record.disposers.push(() => disposable.dispose())
+          if (attached) {
+            settle(thenMaybe(attached, (disposable) => this.keep(component, record, disposable)))
           }
         }
 
-        for (const prop of props) {
-          this.bindVariable(component, effect, prop, record)
+        for (const variable of variables) {
+          settle(this.bindVariable(component, effect, variable, record, bindings))
         }
       }
     }
 
-    for (const prop of this.keyframeProps(definition)) {
-      this.bindVariable(component, ownEffect, prop, record)
+    for (const variable of this.keyframeVariables(definition)) {
+      settle(this.bindVariable(component, ownEffect, variable, record, bindings))
     }
 
-    this.applied.set(component, record)
+    await Promise.all(pending)
   }
 
   public clear(): void {
@@ -158,20 +175,18 @@ export class StyleManager implements IClearable {
       this.removeApplied(component)
     }
 
-    this.styled.clear()
-    this.scopedStyled.clear()
+    this.components.clear()
     this.cache.clear()
   }
 
   public remove(component: Component): void {
-    this.styled.delete(component)
-    this.scopedStyled.delete(component)
+    this.components.delete(component)
 
     this.removeApplied(component)
   }
 
   public async reapply(): Promise<void> {
-    for (const component of [...this.styled]) {
+    for (const component of [...this.components]) {
       await this.applyOwn(component)
     }
   }
@@ -179,15 +194,14 @@ export class StyleManager implements IClearable {
   private async applyOwn(component: Component): Promise<void> {
     const definition = await this.resolveDefinition(component.definition.tag)
 
-    if (definition) {
-      this.applyDefinition(component, definition)
-      this.styled.add(component)
+    if (!this.components.has(component)) {
+      return
+    }
 
-      if (hasScopeRule(definition)) {
-        this.scopedStyled.add(component)
-      } else {
-        this.scopedStyled.delete(component)
-      }
+    if (definition) {
+      await this.applyDefinition(component, definition)
+    } else {
+      this.removeApplied(component)
     }
   }
 
@@ -214,80 +228,285 @@ export class StyleManager implements IClearable {
       dispose()
     }
 
-    for (const { effect, handle } of record.classes) {
-      effect.removeClass(handle)
-    }
+    for (const rule of record.rules) {
+      if (rule.handle) {
+        for (const effect of rule.effects) {
+          effect.removeClass(rule.handle)
+        }
 
-    for (const key of record.ruleKeys) {
-      this.release(key)
+        this.release(rule.key)
+      }
     }
 
     for (const key of record.keyframeKeys) {
       this.release(key)
     }
 
-    for (const { effect, prop } of record.variables) {
-      effect.removeVariable(prop)
+    for (const { effect, variable } of record.variables) {
+      effect.removeVariable(variable)
     }
 
     this.applied.delete(component)
   }
 
-  private resolveTargets(component: Component, usages: readonly IQualifierUsage[]): Component[] | undefined {
-    const scopeUsage = usages.find((usage) => usage.name === SCOPE_QUALIFIER)
-
-    if (!scopeUsage) {
-      return [component]
-    }
-
-    const path = scopeUsage.args["for"]
-
+  private resolveScope(component: Component, path: string | undefined): Component[] {
     if (!path) {
-      return undefined
+      return []
     }
 
-    const resolved = this.scopeResolver.resolve(component, path)
+    let current = [component]
 
-    return resolved.length > 0 ? [...resolved] : undefined
-  }
+    for (const segment of path.split(SCOPE_PATH_SEPARATOR)) {
+      const matches: Component[] = []
 
-  private buildFragments(usages: readonly IQualifierUsage[]): StyleFragment[] {
-    const fragments: StyleFragment[] = []
-
-    for (const usage of usages) {
-      if (usage.name === SCOPE_QUALIFIER) {
-        continue
+      for (const node of current) {
+        this.collectNamed(node, segment, matches)
       }
 
-      const fragment = this.qualifiers.get(usage.name)?.build?.(usage)
-
-      if (fragment) {
-        fragments.push(fragment)
+      if (matches.length === 0) {
+        return []
       }
+
+      current = matches
     }
 
-    return fragments
+    return current
   }
 
-  private bindVariable(component: Component, effect: IStyleEffect, prop: string, record: Applied): void {
-    const push = (): void => effect.setVariable(prop, String(this.getPropValue(component, prop)))
+  private collectNamed(node: Component, name: string, matches: Component[]): void {
+    for (const child of node.children) {
+      if (child.usage.name === name) {
+        matches.push(child)
+      }
 
-    record.disposers.push(this.subscribeToProp(component, prop, push))
-    push()
-    record.variables.push({ effect, prop })
+      this.collectNamed(child, name, matches)
+    }
   }
 
-  private subscribeToProp(component: Component, prop: string, handler: () => void): () => void {
-    const name = fqPropertyOf(component, prop)
+  // Binding sources resolve relative to the component, through the same
+  // evaluator component bindings use; theme tokens are a styling-only source,
+  // read from the current theme.
+  private bindingScopeOf(component: Component): IBindingScope {
+    return {
+      resolve: (binding) =>
+        binding.type === "theme"
+          ? this.resolveThemeToken(binding.value)
+          : this.evaluator.resolve(binding, component.fqName),
+      subscribe: (binding, handler) =>
+        thenMaybe(this.evaluator.collectParameters(binding, component.fqName), (names) =>
+          this.subscribe(names, handler),
+        ),
+    }
+  }
+
+  // A media condition cannot read a CSS variable, so the sources in a rule's
+  // environment are resolved into it, and the rule recomposes - under the class
+  // of its resolved input - whenever a property it reads changes; a dimension
+  // switch re-applies the whole style. A rule without sources composes at once.
+  private applyRule(
+    component: Component,
+    record: Applied,
+    bindings: IBindingScope,
+    rule: { signature: string; declarations: Readonly<Record<string, string>>; fragments: readonly StyleFragment[] },
+    effects: readonly IStyleEffect[],
+    keyframeScope: IKeyframeScope | undefined,
+  ): MaybePromise<void> {
+    const entry: AppliedRule = { key: "", handle: undefined, effects }
+    let latest = 0
+
+    record.rules.push(entry)
+
+    const recompose = (): MaybePromise<void> => {
+      const run = ++latest
+
+      return thenMaybe(this.resolveFragments(rule.fragments, bindings), (fragments) => {
+        if (run !== latest || this.applied.get(component) !== record) {
+          return
+        }
+
+        // The share key is the compose input, not the signature alone: only
+        // byte-identical rules share one composed artifact, and a resolved
+        // environment is part of it. A style with local keyframes also
+        // scope-qualifies the key, since its rules resolve animation references
+        // against its own keyframes.
+        const key = `${keyframeScope?.scope ?? ""} ${rule.signature} ${JSON.stringify(fragments)} ${JSON.stringify(rule.declarations)}`
+
+        if (key === entry.key) {
+          return
+        }
+
+        const handle = this.acquire(key, () =>
+          this.driver().compose(rule.signature, fragments, rule.declarations, keyframeScope),
+        )
+
+        for (const effect of effects) {
+          effect.setClass(handle)
+
+          if (entry.handle) {
+            effect.removeClass(entry.handle)
+          }
+        }
+
+        if (entry.handle) {
+          this.release(entry.key)
+        }
+
+        entry.key = key
+        entry.handle = handle
+      })
+    }
+
+    const subscribing = this.environmentSources(rule.fragments)
+      .filter((source) => source.type !== "theme")
+      .map((source) =>
+        thenMaybe(
+          bindings.subscribe(source, () => void recompose()),
+          (unsubscribe) => this.keep(component, record, { dispose: unsubscribe }),
+        ),
+      )
+      .filter(isThenable)
+
+    return subscribing.length > 0
+      ? Promise.all(subscribing.map((work) => Promise.resolve(work))).then(recompose)
+      : recompose()
+  }
+
+  private environmentSources(fragments: readonly StyleFragment[]): IBindingExpression[] {
+    return fragments.flatMap((fragment) =>
+      "environment" in fragment ? extractParameters(fragment.environment).map(parseBindingExpression) : [],
+    )
+  }
+
+  private resolveFragments(
+    fragments: readonly StyleFragment[],
+    bindings: IBindingScope,
+  ): MaybePromise<readonly StyleFragment[]> {
+    if (this.environmentSources(fragments).length === 0) {
+      return fragments
+    }
+
+    const resolved = fragments.map((fragment) =>
+      "environment" in fragment
+        ? thenMaybe(this.resolveEnvironment(fragment.environment, bindings), (environment) => ({ environment }))
+        : fragment,
+    )
+
+    return resolved.some(isThenable)
+      ? Promise.all(resolved.map((fragment) => Promise.resolve(fragment)))
+      : (resolved as StyleFragment[])
+  }
+
+  // An unresolved source stays as written, which leaves the condition invalid,
+  // so the rule never applies.
+  private resolveEnvironment(text: string, bindings: IBindingScope): MaybePromise<string> {
+    const parts: MaybePromise<string>[] = []
+    let last = 0
+
+    for (const match of text.matchAll(new RegExp(EXPRESSION_PATTERN, "g"))) {
+      const whole = match[0]
+      const binding = parseBindingExpression(match[1])
+
+      parts.push(text.slice(last, match.index))
+      parts.push(
+        binding.type === "theme"
+          ? thenMaybe(this.themes.getTheme(), (theme) => (theme ? this.resolveThemeText(whole, theme.groups) : whole))
+          : thenMaybe(bindings.resolve(binding), (value) =>
+              value === undefined || value === null ? whole : this.formatValue(value),
+            ),
+      )
+      last = match.index + whole.length
+    }
+
+    parts.push(text.slice(last))
+
+    return parts.some(isThenable)
+      ? Promise.all(parts.map((part) => Promise.resolve(part))).then((resolved) => resolved.join(""))
+      : (parts as string[]).join("")
+  }
+
+  private formatValue(value: unknown): string {
+    return typeof value === "string" ? value : JSON.stringify(value)
+  }
+
+  // Aliases resolve through to their terminal value; an unknown token, or one
+  // on an alias cycle, is left as written.
+  private resolveThemeText(text: string, groups: IThemeGroup, seen: ReadonlySet<string> = new Set()): string {
+    return text.replace(new RegExp(EXPRESSION_PATTERN, "g"), (whole: string, inner: string) => {
+      const binding = parseBindingExpression(inner)
+
+      if (binding.type !== "theme" || seen.has(binding.value)) {
+        return whole
+      }
+
+      const node = resolveThemeNode(groups, binding.value)
+
+      return typeof node === "string" ? this.resolveThemeText(node, groups, new Set([...seen, binding.value])) : whole
+    })
+  }
+
+  private async resolveThemeToken(path: string): Promise<string | undefined> {
+    const theme = await this.themes.getTheme()
+    const node = theme ? resolveThemeNode(theme.groups, path) : undefined
+
+    return typeof node === "string" ? node : undefined
+  }
+
+  // A qualifier's attach or a variable's subscription may settle after the
+  // component was re-styled or removed; it then belongs to no record and is
+  // dropped at once.
+  private keep(component: Component, record: Applied, disposable: IDisposable): void {
+    if (this.applied.get(component) === record) {
+      record.disposers.push(() => disposable.dispose())
+    } else {
+      disposable.dispose()
+    }
+  }
+
+  // Each push is numbered so a slow resolve (a dictionary loading) cannot
+  // overwrite a newer value, and nothing writes once the record is gone.
+  private bindVariable(
+    component: Component,
+    effect: IStyleEffect,
+    variable: IStyleVariable,
+    record: Applied,
+    bindings: IBindingScope,
+  ): MaybePromise<void> {
+    const binding = parseBindingExpression(variable.source)
+    let latest = 0
+
+    const push = (): MaybePromise<void> => {
+      const run = ++latest
+
+      return thenMaybe(bindings.resolve(binding), (value) => {
+        if (run === latest && this.applied.get(component) === record) {
+          effect.setVariable(variable, value === undefined || value === null ? "" : this.formatValue(value))
+        }
+      })
+    }
+
+    record.variables.push({ effect, variable })
+
+    return thenMaybe(
+      thenMaybe(
+        bindings.subscribe(binding, () => void push()),
+        (unsubscribe) => this.keep(component, record, { dispose: unsubscribe }),
+      ),
+      push,
+    )
+  }
+
+  private subscribe(names: readonly FQPropertyName[], handler: () => void): () => void {
     const wrapped: StateChangedHandler = () => handler()
 
-    this.state.changed.on(name, wrapped)
+    for (const name of names) {
+      this.state.changed.on(name, wrapped)
+    }
 
-    return () => this.state.changed.off(name, wrapped)
-  }
-
-  private getPropValue(component: Component, prop: string): unknown {
-    return this.state.getValue(fqPropertyOf(component, prop))
+    return () => {
+      for (const name of names) {
+        this.state.changed.off(name, wrapped)
+      }
+    }
   }
 
   private acquire(key: string, build: () => StyleHandle): StyleHandle {
@@ -304,6 +523,21 @@ export class StyleManager implements IClearable {
     this.cache.set(key, { handle, refs: 1 })
 
     return handle
+  }
+
+  private release(key: string): void {
+    const existing = this.cache.get(key)
+
+    if (!existing) {
+      return
+    }
+
+    existing.refs--
+
+    if (existing.refs === 0) {
+      this.driver().release(existing.handle)
+      this.cache.delete(key)
+    }
   }
 
   private expandApplies(definition: IStyleDefinition, groups: IThemeGroup): IStyleDefinition {
@@ -340,58 +574,45 @@ export class StyleManager implements IClearable {
     return result
   }
 
-  private declarationStateProps(declarations: Readonly<Record<string, string>>): string[] {
-    const props = new Set<string>()
+  // Every binding source in a value is delivered per instance, except an
+  // unquoted theme token: the theme publishes those once, application-wide.
+  // A source inside a quoted string is delivered as text.
+  private declarationVariables(
+    declarations: Readonly<Record<string, string>>,
+    into = new Map<string, IStyleVariable>(),
+  ): IStyleVariable[] {
+    const add = (source: string, text: boolean): void => {
+      if (text || parseBindingExpression(source).type !== "theme") {
+        into.set(`${text ? "text" : "raw"} ${source}`, { source, text })
+      }
+    }
 
     for (const value of Object.values(declarations)) {
-      for (const inner of extractParameters(value)) {
-        const binding = parseBindingExpression(inner)
-
-        if (binding.type === "state" && binding.value) {
-          props.add(binding.value)
+      for (const token of parseStyleValue(value)) {
+        if (token.kind === "binding") {
+          add(token.source, false)
+        } else if (token.kind === "string") {
+          for (const part of token.parts) {
+            if (part.kind === "binding") {
+              add(part.source, true)
+            }
+          }
         }
       }
     }
 
-    return [...props]
+    return [...into.values()]
   }
 
-  private keyframeProps(definition: IStyleDefinition): string[] {
-    const props = new Set<string>()
+  private keyframeVariables(definition: IStyleDefinition): IStyleVariable[] {
+    const variables = new Map<string, IStyleVariable>()
 
     for (const frames of Object.values(definition.keyframes ?? {})) {
       for (const declarations of Object.values(frames)) {
-        for (const prop of this.declarationStateProps(declarations)) {
-          props.add(prop)
-        }
+        this.declarationVariables(declarations, variables)
       }
     }
 
-    return [...props]
+    return [...variables.values()]
   }
-
-  private release(key: string): void {
-    const existing = this.cache.get(key)
-
-    if (!existing) {
-      return
-    }
-
-    existing.refs--
-
-    if (existing.refs === 0) {
-      this.driver().release(existing.handle)
-      this.cache.delete(key)
-    }
-  }
-}
-
-function fqPropertyOf(component: Component, prop: string): FQPropertyName {
-  return joinFQPropertyName(component.fqName, prop)
-}
-
-function hasScopeRule(definition: IStyleDefinition): boolean {
-  return Object.keys(definition.rules).some((signature) =>
-    parseRuleKey(signature).some((usage) => usage.name === SCOPE_QUALIFIER),
-  )
 }

@@ -1,6 +1,7 @@
 import type { IApplicationBootstrap } from "../IApplicationBootstrap"
 import type { IDimensionProvider } from "../dimensions/IDimensionProvider"
 import type { IState } from "../state/IState"
+import type { BindingEvaluator } from "../bindings/BindingEvaluator"
 import type { ApplicationRuntime } from "../platform/ApplicationRuntime"
 import type { ThemeManager } from "../theming/ThemeManager"
 import type { ClearableCollection } from "./ClearableCollection"
@@ -14,6 +15,7 @@ export function composeStyling(
   deps: {
     dimensions: IDimensionProvider
     state: IState
+    evaluator: BindingEvaluator
     runtime: ApplicationRuntime
     themes: ThemeManager | undefined
     clearables: ClearableCollection
@@ -33,7 +35,8 @@ export function composeStyling(
       loader,
       deps.themes,
       deps.state,
-      composeQualifiers(bootstrap, { state: deps.state }),
+      deps.evaluator,
+      composeQualifiers(bootstrap),
     ),
   )
 }

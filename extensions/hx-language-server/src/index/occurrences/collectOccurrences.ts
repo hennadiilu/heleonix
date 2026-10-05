@@ -18,6 +18,7 @@ import {
 } from "@heleonix/hx-language"
 import { definitionName } from "../../languages/jsonc/definitionName"
 import { headSegment } from "../../references/headSegment"
+import type { IInterpolationRef } from "../../references/IInterpolationRef"
 import { inlineOverrideScopes, scopeOwnerAt } from "../../references/inlineOverrideScopes"
 import { splitComponentPrefix } from "../../references/splitComponentPrefix"
 import { IParsedFile } from "../parseFile"
@@ -41,6 +42,8 @@ export function collectOccurrences(filePath: string, source: string, parsed: IPa
     collectDictionary(name, parsed.body, parsed.bodyStart, parsed.entries, raw)
   } else if (parsed.kind === "config") {
     collectConfig(name, parsed.bodyStart, parsed.entries, raw)
+  } else if (parsed.kind === "style") {
+    collectStyle(parsed.references, raw)
   }
 
   return { filePath, lineStarts: lineStartsOf(source), raw }
@@ -347,6 +350,23 @@ function collectConfig(
       start: bodyStart + entry.keyStart,
       end: bodyStart + entry.keyEnd,
     })
+  }
+}
+
+// --- Styles (*.hxs) ----------------------------------------------------------
+
+function collectStyle(references: readonly IInterpolationRef[], raw: IRawOccurrence[]): void {
+  for (const ref of references) {
+    if (ref.name && ref.entry) {
+      raw.push({
+        kind: ref.kind === "dictionary" ? "dictionaryEntry" : "configEntry",
+        role: "reference",
+        name: ref.name,
+        entry: ref.entry,
+        start: ref.start,
+        end: ref.end,
+      })
+    }
   }
 }
 

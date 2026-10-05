@@ -1,5 +1,6 @@
-import type { IScheduler, IStyleEffect, StyleHandle } from "@heleonix/hx-core"
-import { mangleVariable } from "./mangleVariable"
+import type { IScheduler, IStyleEffect, IStyleVariable, StyleHandle } from "@heleonix/hx-core"
+import { cssVariableValue } from "./cssVariableValue"
+import { styleVariableName } from "./styleVariableName"
 import type { WebStyleHandle } from "./WebStyleHandle"
 
 export class WebStyleEffect implements IStyleEffect {
@@ -28,18 +29,23 @@ export class WebStyleEffect implements IStyleEffect {
     })
   }
 
-  public setVariable(name: string, value: string): void {
-    const property = mangleVariable(name)
+  public setVariable(variable: IStyleVariable, value: string): void {
+    const property = styleVariableName(variable)
+    const css = cssVariableValue(variable, value)
 
     this.scheduler.scheduleCommit(() => {
       for (const root of this.roots) {
-        root.style.setProperty(property, value)
+        if (css === undefined) {
+          root.style.removeProperty(property)
+        } else {
+          root.style.setProperty(property, css)
+        }
       }
     })
   }
 
-  public removeVariable(name: string): void {
-    const property = mangleVariable(name)
+  public removeVariable(variable: IStyleVariable): void {
+    const property = styleVariableName(variable)
 
     this.scheduler.scheduleCommit(() => {
       for (const root of this.roots) {

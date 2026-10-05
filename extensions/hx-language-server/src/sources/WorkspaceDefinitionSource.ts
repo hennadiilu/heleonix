@@ -7,6 +7,7 @@ import {
   CONTENT_TAG,
   EXT_CONFIG,
   EXT_DICTIONARY,
+  EXT_STYLE,
   EXT_TEMPLATE,
   IDENTIFIER_PATTERN,
   NAME_ATTRIBUTE,
@@ -21,6 +22,7 @@ import {
 } from "@heleonix/hx-language"
 import { inlineOverrideScopes, scopeOwnerAt } from "../references/inlineOverrideScopes"
 import { scanInterpolations } from "../references/scanInterpolations"
+import type { IInterpolationRef } from "../references/IInterpolationRef"
 import { scanParameters } from "../references/scanParameters"
 import { collectOccurrences } from "../index/occurrences/collectOccurrences"
 import { IIncrementalDefinitionSource } from "./IIncrementalDefinitionSource"
@@ -29,7 +31,7 @@ import { compositeKey } from "../index/compositeKey"
 import { createEmptyContribution } from "../index/createEmptyContribution"
 import { parseFile } from "../index/parseFile"
 
-const HX_EXTS = new Set<string>([EXT_TEMPLATE, EXT_DICTIONARY, EXT_CONFIG])
+const HX_EXTS = new Set<string>([EXT_TEMPLATE, EXT_DICTIONARY, EXT_CONFIG, EXT_STYLE])
 
 // Inline component name declared by a leading comment, e.g. `<!--CustomAddButton-->`.
 const COMPONENT_COMMENT = new RegExp(`<!--\\s*(${IDENTIFIER_PATTERN}(?:\\.${IDENTIFIER_PATTERN})*)`, "g")
@@ -106,6 +108,8 @@ export class WorkspaceDefinitionSource implements IIncrementalDefinitionSource {
       if (docs) {
         result.componentDocs[name] = docs
       }
+    } else if (parsed.kind === "style") {
+      indexStyleReferences(name, parsed.references, result)
     }
 
     result.occurrences = collectOccurrences(filePath, source, parsed)
@@ -302,6 +306,20 @@ function indexBinding(raw: string, componentNames: readonly string[], result: II
       for (const comp of componentNames) {
         pushUnique((result.componentState[comp] ??= []), path)
       }
+    }
+  }
+}
+
+// A style is its component's presentation, so the component is the referrer: a
+// `{param}` inside a referenced dictionary entry resolves against its state.
+function indexStyleReferences(
+  componentName: string,
+  references: readonly IInterpolationRef[],
+  result: IIndexContribution,
+): void {
+  for (const ref of references) {
+    if ((ref.kind === "dictionary" || ref.kind === "config") && ref.name && ref.entry) {
+      pushUnique((result.entryReferrers[ref.kind][compositeKey(ref.name, ref.entry)] ??= []), componentName)
     }
   }
 }

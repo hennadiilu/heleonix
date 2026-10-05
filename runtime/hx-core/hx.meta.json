@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "package": "@heleonix/hx-core",
+  "version": "1.0.0",
+  "qualifiers": [
+    {
+      "name": "If",
+      "args": [
+        {
+          "name": "value",
+          "optional": false,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "The condition subject: a property of the styled component, `{prop}` or `{ctrl.path:prop}`.",
+          "refKind": "property"
+        },
+        {
+          "name": "is",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Applies while the subject equals this operand; a boolean operand tests truthiness (`{false}` negates)."
+        },
+        {
+          "name": "isNot",
+          "optional": true,
+          "kind": "unknown",
+          "isFunction": false,
+          "docs": "Applies while the subject differs from this operand; a boolean operand tests truthiness."
+        }
+      ]
+    }
+  ]
+}

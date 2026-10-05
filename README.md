@@ -245,7 +245,8 @@ Syntax rules:
 
 - **Declarations are CSS**: `padding: {$Spacing.xs};`. Values are raw CSS text with optional `{...}` binding-source
   interpolations — `{prop}` (state), `{@Dict.key}` (dictionary), `{#Config.path}` (config), `{$Theme.token}` (theme);
-  the surrounding text is literal.
+  the surrounding text is literal. A source inside a quoted string is inserted as text (`content: '{@Labels.required}'`,
+  `content: 'Hi, {name}'`); outside quotes it is a raw CSS value (`gap: {#Layout.gap}`, `width: {size}px`).
 - **Native CSS spelling for what CSS already has**: pseudo-classes/elements (`:hover`, `::before`), media
   (`@media (...)`), keyframes (`@keyframes`). They are recognized and compiled to platform-neutral signatures.
 - **`@hx-*(named: args)` blocks for framework qualifiers** - concepts CSS has no syntax for: `@hx-if` (property
@@ -261,7 +262,11 @@ Syntax rules:
   expression each: a literal (`3`, `true`, a string literal `'primary'` checked against the subject's enum, raw CSS
   text — equality is strict lexical/numeric, never unit-aware, so `12px` != `1em`), or any `{...}` binding source —
   `{other.prop}` (another property, for selected-item/active-state styling), `{@Dict.key}`, `{#Config.path}` or
-  `{$Theme.token}` (the rule re-evaluates when the bound dictionary/config/theme changes). A **boolean** operand is the
+  `{$Theme.token}`. Braces are what make a binding source: bare argument text is always a literal — a number or
+  boolean as typed, anything else the raw text itself — so `is: primary` is the text `primary`, never a property.
+  Sources resolve relative to the component exactly as `*.hxm` bindings do, so the rule re-evaluates when any property
+  it reads changes — including one a dictionary or config entry interpolates — and dictionary/config/theme operands
+  re-resolve under a culture/dimension switch. A **boolean** operand is the
   one that does not compare strictly: it tests the subject's truthiness, so `is: {true}` is the bare condition spelled
   out and `is: {false}` / `isNot: {true}` is its negation, for a subject of any type. (Strict equality against a
   boolean would be dead for every non-boolean subject, so nothing is given up.) That is the whole of negation — there is
@@ -358,8 +363,16 @@ Media queries use native CSS `@media`:
 - The prelude is a raw CSS media query: media types (`print`), features (`(orientation: landscape)`), `and`, `,` lists
   (OR), `not`, `only`, and range syntax like `(400px <= width <= 700px)`. The compiler captures it as the `query`
   argument of the neutral `Media` signature.
-- `{$Theme.token}` interpolations are allowed inside the query; breakpoints are referenced explicitly:
-  `@media (max-width: {$Breakpoints.mobile})`.
+- Binding sources are allowed inside the query: `{$Theme.token}`, `{@Dict.key}`, `{#Config.path}` and `{prop}`;
+  breakpoints are referenced explicitly: `@media (max-width: {$Breakpoints.mobile})`,
+  `@media (max-width: {maxWidth}px)`. A `{prop}` must sit inside the query's parentheses - a bare `{` after `@media`
+  opens the block - while `$@#` sources may stand alone (`@media {#Layout.compact}`).
+- A media condition cannot read a CSS variable, so every source's value (theme aliases followed through, a dictionary
+  entry's own `{prop}` interpolations applied) is resolved into the query when the rule is composed. The rule
+  recomposes - under a new class - when a dimension switch changes the theme, dictionaries or configs, and, for a
+  query that reads a property, whenever that property changes; instances whose queries resolve alike share one
+  rule. A value that could escape the condition into the stylesheet (a brace, `;`, a comment, `</`), or a source
+  left unresolved, makes the condition `not all`: the rule never applies.
 - Nesting `@media` inside other blocks (or another `@media`) combines with `and`.
 
 ```css
@@ -522,16 +535,20 @@ conditions. One qualifier can claim many spellings (the pseudo families each cla
 - Qualifiers provide behavior in one of two kinds:
   - Selector qualifiers return the platform's static mapping: on web `Hover` -> `:hover`, `Media(query:...)` ->
     `@media (...)`; another platform maps the same signatures to its own state/viewport mechanisms.
-  - Runtime qualifiers attach per component instance: they receive the component, the compiled rule group and an
-    apply/remove API (toggle the generated class or a `data-*` attribute, set CSS variables). `@hx-if` is one: it
-    subscribes to its properties (and to the theme when a `{$...}` operand is used) and toggles `data-*` attributes.
+  - Runtime qualifiers attach per component instance: they receive the rule's usage, a binding scope that resolves
+    and watches any `{...}` source relative to the component, and an apply/remove API (toggle a `data-*` attribute,
+    set CSS variables). `@hx-if` is one: it watches the sources its subject and operand read and toggles `data-*`
+    attributes. Attaching may be asynchronous (a dictionary loads on first use); the component mounts only once its
+    initial state is applied.
 - There is one code path: the definition -> styling generator is a pure isomorphic function over the registered
   qualifiers. It runs at app startup on the client, on the server for SSR, and in Node during build for static CSS
   extraction - "build-time CSS" is the same runtime generator executed early, not a second qualifier API.
 
-Built-in qualifiers ship registered by default: `PseudoClassQualifier` and `PseudoElementQualifier` (every CSS
-pseudo-class/element), `MediaQualifier` (`@media`), `ConditionQualifier` (`@hx-if`), and `ScopeQualifier`
-(`@hx-style`). Not every construct is a qualifier: `@keyframes` emits a named `keyframes` timeline, and the
+Built-in qualifiers ship registered by default: `PseudoQualifier` (every CSS pseudo-class/element), `MediaQualifier`
+(`@media`) and `IfQualifier` (`@hx-if`); `@hx-style` scoping is resolved by the style manager itself. Like any library,
+`@heleonix/hx-core` publishes the contracts of its `@hx-*` built-ins (`@hx-if`'s typed `value`/`is`/`isNot`) in its
+`hx.meta.json`, so editors complete and document them; natively spelled ones (`@media`, `:hover`) are not listed, as
+they are never written `@hx-*`. Not every construct is a qualifier: `@keyframes` emits a named `keyframes` timeline, and the
 `@hx-apply(token: ...);` statement expands declarations at class-generation time - neither produces a rule-key
 segment. A custom qualifier is a runtime class plus its `.d.ts`; e.g. an
 `@hx-on-raising(event: ...)` qualifier that applies a rule group when an event fires is an opt-in - the core stays a
@@ -642,7 +659,11 @@ Codegen/runtime:
 - On web, static values and `{$theme}` references become static CSS classes generated once. Themes publish
   `--hx-theme-*` CSS variables, so switching a theme or dimension is a variable swap with zero per-component work.
 - `{prop}` references become `var(--hx-<prop>)` set via `style.setProperty` on each of the component's root elements
-  when the property changes - per-instance, no class regeneration.
+  when the property changes - per-instance, no class regeneration. `{@Dict.key}` and `{#Config.path}` work the same way,
+  as per-instance variables under the reserved `--hx--` prefix: they re-resolve under a dimension switch and whenever a
+  property their entry interpolates changes. A source inside a quoted string becomes a CSS-string variable and the
+  literal splits around it (`'Hi, ' var(...)`, which `content` concatenates); an unquoted theme token is the one source
+  read straight from the theme's published variables.
 - `@hx-if` conditions toggle `data-*` attributes on every root element.
 - Scoped rules (`Style(for:path)`, `Style(for:Component)`) are resolved through the component tree, not through CSS
   descendant/child combinators: each scope group compiles to its own class, and the runtime applies that class to the
@@ -659,13 +680,16 @@ Codegen/runtime:
   server and the client produce byte-identical CSS and class attributes, and hydration only attaches subscriptions -
   no style recomputation, no DOM writes. Initial `@hx-if` states render as `data-*` attributes and `{prop}` values as
   inline CSS variables directly in the HTML. Selector qualifiers are pure functions and SSR-safe by construction;
-  runtime qualifiers must derive their initial state from properties alone - one more reason core qualifiers stay
-  state-pure.
+  runtime qualifiers must derive their initial state deterministically - from properties and the current dimension's
+  dictionaries, configs and theme, which resolve identically on server and client - one more reason core qualifiers
+  stay state-pure.
 - Sanitization: declaration names are validated at compile time against the known CSS property list, and static values
   are validated to be well-formed CSS values (unbalanced quotes/parens, `;`, `}` and rule/at-rule injection are
-  compile errors). Property-bound values are sanitized by the runtime before `style.setProperty`: values that could
-  escape the declaration or inject behavior (`;`, `}`, `!important`, `url(`, `expression(`) are rejected and the
-  declaration falls back to its static/theme value, so user data flowing into `{prop}` bindings cannot inject CSS.
+  compile errors). Bound raw values (`{prop}`, `{@...}`, `{#...}`) are sanitized by the runtime before
+  `style.setProperty`: values that could escape the declaration or inject behavior (`;`, `{`, `}`, `!important`, `url(`,
+  `expression(`) are rejected, leaving the variable unset so the declaration falls back, and user data flowing into
+  bindings cannot inject CSS. Text values (sources inside quotes) are escaped into CSS strings instead, so any text is
+  safe. SSR escapes every value it writes into element attributes.
 
 ### THEMES (Mergeable): \*.hxt
 
