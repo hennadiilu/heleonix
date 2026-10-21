@@ -12,8 +12,8 @@ import type { ApplicationRuntime } from "./platform/ApplicationRuntime"
 import type { PlatformComponent } from "./components/PlatformComponent"
 import type { IApplicationBootstrap } from "./IApplicationBootstrap"
 import type { IClearable } from "./common/IClearable"
-import type { ThemeManager } from "./theming/ThemeManager"
-import type { StyleManager } from "./styling/StyleManager"
+import type { IThemeManager } from "./theming/IThemeManager"
+import type { IStyleManager } from "./styling/IStyleManager"
 import { HeleonixError } from "./errors/HeleonixError"
 import { Errors } from "./errors/Errors"
 import { composeApplication } from "./composition/composeApplication"
@@ -47,9 +47,9 @@ export abstract class Application {
 
   private isStarted = false
 
-  private readonly themes: ThemeManager | undefined
+  private readonly themes: IThemeManager | undefined
 
-  private readonly styles: StyleManager | undefined
+  private readonly styles: IStyleManager | undefined
 
   public constructor(
     protected readonly name: string,

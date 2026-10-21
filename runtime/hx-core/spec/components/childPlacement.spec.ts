@@ -98,7 +98,6 @@ function createHarness(definitions: Map<string, IComponentDefinition>): Harness 
     { loadDefinition: (tag: string) => Promise.resolve(definitions.get(tag)) } as never,
     { current: {} } as never,
     {} as never,
-    {} as never,
     new Map<string, never>([
       ["DeclarativeComponent", DeclarativeComponent as never],
       ["FakeElement", FakeElement as never],

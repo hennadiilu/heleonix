@@ -1,8 +1,6 @@
-import { pathToFileURL } from "node:url"
 import { TextDocument } from "vscode-languageserver-textdocument"
 import { CompletionItemKind, MarkupContent } from "vscode-languageserver"
-import type { IThemeTokenLocation } from "@heleonix/hx-analyzer"
-import { completeThemeToken, hoverThemeToken, definitionThemeToken } from "../src/languages/styling/themeTokenFeature"
+import { completeThemeToken, hoverThemeToken } from "../src/languages/styling/themeTokenFeature"
 
 const tokens = new Map<string, string>([
   ["Palette.Blue.t60", "#0f62fe"],
@@ -81,32 +79,5 @@ describe("hoverThemeToken", () => {
 
   it("then returns null off any token", () => {
     expect(hover("color: re|d;")).toBeUndefined()
-  })
-})
-
-const locations = new Map<string, IThemeTokenLocation>([
-  ["Palette.Blue.t60", { file: "C:/proj/Primitives.hxt", line: 3, character: 4, length: 3 }],
-])
-
-function definition(text: string) {
-  const { doc, offset } = at(text)
-
-  return definitionThemeToken(doc, offset, locations)
-}
-
-describe("definitionThemeToken", () => {
-  it("then resolves a token to its declaration location as a file URI and range", () => {
-    expect(definition("color: {$Palette.Blue.t|60};")).toEqual({
-      uri: pathToFileURL("C:/proj/Primitives.hxt").toString(),
-      range: { start: { line: 3, character: 4 }, end: { line: 3, character: 7 } },
-    })
-  })
-
-  it("then returns null for a token with no known location", () => {
-    expect(definition("color: {$Spacing.x|s};")).toBeNull()
-  })
-
-  it("then returns null off any token", () => {
-    expect(definition("color: re|d;")).toBeNull()
   })
 })

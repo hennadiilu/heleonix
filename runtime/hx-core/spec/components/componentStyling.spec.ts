@@ -1,6 +1,6 @@
 import { PlatformComponent } from "@heleonix/hx-core"
 import { ComponentManager } from "../../src/components/ComponentManager"
-import type { StyleManager } from "../../src/styling/StyleManager"
+import type { IStyleManager } from "../../src/styling/IStyleManager"
 import type { Component, IComponentContext, IComponentManager } from "@heleonix/hx-core"
 import type { IComponentDefinition } from "@heleonix/hx-language"
 
@@ -28,7 +28,7 @@ class RecordingElement extends PlatformComponent {
   public override setContent(): void {}
 }
 
-class FakeStyleManager {
+class FakeStyleManager implements IStyleManager {
   public readonly styled: Component[] = []
 
   public readonly removed: Component[] = []
@@ -48,8 +48,8 @@ class FakeStyleManager {
     RecordingElement.log.push("unstyled")
   }
 
-  public asManager(): StyleManager {
-    return this as unknown as StyleManager
+  public reapply(): Promise<void> {
+    return Promise.resolve()
   }
 }
 
@@ -73,13 +73,12 @@ function createContext(components: () => IComponentManager): IComponentContext {
   } as unknown as IComponentContext
 }
 
-function createManager(styles: StyleManager | undefined): ComponentManager {
+function createManager(styles: IStyleManager | undefined): ComponentManager {
   const definition = { tag: "el", type: "RecordingElement" } as IComponentDefinition
 
   const manager = new ComponentManager(
     { loadDefinition: () => Promise.resolve(definition) } as never,
     { current: {} } as never,
-    {} as never,
     {} as never,
     new Map<string, never>([["RecordingElement", RecordingElement as never]]),
     () => context,
@@ -96,7 +95,7 @@ function createManager(styles: StyleManager | undefined): ComponentManager {
 describe("ComponentManager styling", () => {
   it("then styles a component and awaits it before the component mounts", async () => {
     const styles = new FakeStyleManager()
-    const manager = createManager(styles.asManager())
+    const manager = createManager(styles)
 
     const component = await manager.build({ tag: "el" }, undefined, undefined, undefined)
 
@@ -106,7 +105,7 @@ describe("ComponentManager styling", () => {
 
   it("then removes the styling while the component is still intact, before it is destroyed", async () => {
     const styles = new FakeStyleManager()
-    const manager = createManager(styles.asManager())
+    const manager = createManager(styles)
 
     const component = await manager.build({ tag: "el" }, undefined, undefined, undefined)
 

@@ -1,10 +1,10 @@
 import {
   BindingEvaluator,
-  ConfigValueSource,
+  ConfigBindingValueSource,
   Converter,
-  DictionaryValueSource,
-  LiteralValueSource,
-  StateValueSource,
+  DictionaryBindingValueSource,
+  LiteralBindingValueSource,
+  StateBindingValueSource,
 } from "@heleonix/hx-core"
 import { Binder } from "../../src/bindings/Binder"
 import { ConverterProvider } from "../../src/converters/ConverterProvider"
@@ -110,10 +110,10 @@ function binderWith(): { binder: Binder; state: FakeStateManager } {
   )
 
   const evaluator = new BindingEvaluator(converterProvider, [
-    new StateValueSource(state as never),
-    new LiteralValueSource(),
-    new ConfigValueSource(new FakeConfigDefinitionLoader() as never),
-    new DictionaryValueSource(new FakeDictionaryDefinitionLoader() as never),
+    new StateBindingValueSource(state as never),
+    new LiteralBindingValueSource(),
+    new ConfigBindingValueSource(new FakeConfigDefinitionLoader() as never),
+    new DictionaryBindingValueSource(new FakeDictionaryDefinitionLoader() as never),
   ])
 
   return { binder: new Binder(state as never, evaluator), state }

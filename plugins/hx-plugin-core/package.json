@@ -43,8 +43,10 @@
     "sources.d.ts"
   ],
   "peerDependencies": {
+    "@heleonix/hx-analyzer": "workspace:*",
     "@heleonix/hx-compiler-components": "workspace:*",
     "@heleonix/hx-compiler-configs": "workspace:*",
+    "@heleonix/hx-compiler-core": "workspace:*",
     "@heleonix/hx-compiler-dictionaries": "workspace:*",
     "@heleonix/hx-compiler-styles": "workspace:*",
     "@heleonix/hx-compiler-themes": "workspace:*",

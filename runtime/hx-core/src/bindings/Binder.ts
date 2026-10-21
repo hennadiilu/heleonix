@@ -1,6 +1,6 @@
 import { getComponentName, getPropertyName, joinFQPropertyName } from "@heleonix/hx-language"
 import type { FQComponentName, FQPropertyName, IBindingExpression } from "@heleonix/hx-language"
-import { StateManager } from "../state/StateManager"
+import type { IStateManager } from "../state/IStateManager"
 import type { MaybePromise } from "../common/MaybePromise"
 import { isThenable } from "../common/isThenable"
 import { thenMaybe } from "../common/thenMaybe"
@@ -47,7 +47,7 @@ export class Binder implements IBinder, IClearable {
   private readonly endpointDeactivatedEmitter = new KeyedEventEmitter<FQComponentName, BindingEndpointHandler>()
 
   public constructor(
-    private readonly state: StateManager,
+    private readonly state: IStateManager,
     private readonly evaluator: BindingEvaluator,
   ) {}
 
@@ -92,6 +92,7 @@ export class Binder implements IBinder, IClearable {
 
   public unbind(targetFQ: FQPropertyName): void {
     this.teardown(targetFQ)
+
     this.setEndpoints(targetFQ, EMPTY_ENDPOINTS)
   }
 
@@ -128,12 +129,14 @@ export class Binder implements IBinder, IClearable {
 
     if (edgeSource !== undefined) {
       this.state.unbind(targetFQ, edgeSource)
+
       this.edges.delete(targetFQ)
     }
   }
 
   private bindStateEdge(targetFQ: FQPropertyName, sourceFQ: FQPropertyName): void {
     this.state.bind(targetFQ, sourceFQ)
+
     this.edges.set(targetFQ, sourceFQ)
 
     this.setEndpoints(targetFQ, [targetFQ, sourceFQ])

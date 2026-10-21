@@ -9,9 +9,11 @@ export function makeDiagnostic(
   end: number,
   message: string,
   severity: DiagnosticSeverity,
+  code?: string,
 ): Diagnostic {
   return {
     severity,
+    ...(code ? { code } : {}),
     range: Range.create(doc.positionAt(start), doc.positionAt(Math.max(end, start + 1))),
     message,
     source: DIAGNOSTIC_SOURCE,

@@ -1,7 +1,7 @@
 import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
-import { Analyzer, TypeResolver, createNodeTypeProgramHost } from "@heleonix/hx-analyzer"
+import { Analyzer, TypeResolver, createNodeTypeProgramHosts } from "@heleonix/hx-analyzer"
 
 describe("TypeResolver.discover (style qualifiers)", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "hx-qualifiers-"))
@@ -54,7 +54,7 @@ describe("TypeResolver.discover (style qualifiers)", () => {
 
   describe("when the project is scanned", () => {
     it("then reads declared names, resolves TArgs members and branded ref kinds", () => {
-      const resolver = new TypeResolver(createNodeTypeProgramHost(root))
+      const resolver = new TypeResolver(createNodeTypeProgramHosts([root]))
       resolver.discover()
 
       const found = new Map(resolver.qualifiers().map((q) => [q.className, q]))
@@ -80,7 +80,7 @@ describe("TypeResolver.discover (style qualifiers)", () => {
     })
 
     it("then flags a qualifier declaring no static hxName and skips the abstract base", () => {
-      const resolver = new TypeResolver(createNodeTypeProgramHost(root))
+      const resolver = new TypeResolver(createNodeTypeProgramHosts([root]))
       resolver.discover()
 
       const found = new Map(resolver.qualifiers().map((q) => [q.className, q]))

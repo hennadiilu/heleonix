@@ -6,7 +6,7 @@ import type {
   IStyleEffect,
   IStyleQualifier,
   IStyleVariable,
-  IValueSource,
+  IBindingValueSource,
   StyleFragment,
   StyleHandle,
 } from "@heleonix/hx-core"
@@ -378,7 +378,7 @@ describe("StyleManager.applyDefinition", () => {
     async function applied(
       declarations: Record<string, string>,
       state = new FakeState(),
-      sources: IValueSource[] = [labels, layout],
+      sources: IBindingValueSource[] = [labels, layout],
     ): Promise<{ effect: FakeEffect; state: FakeState; manager: ReturnType<typeof managerWith> }> {
       const driver = new FakeDriver()
       const manager = managerWith({ driver, state, sources })
@@ -446,7 +446,7 @@ describe("StyleManager.applyDefinition", () => {
     it("then writes nothing for a resolve that settles after the styling was removed", async () => {
       let release!: () => void
       const gate = new Promise<void>((r) => (release = r))
-      const slow: IValueSource = { type: "config", get: () => gate.then(() => "8px") }
+      const slow: IBindingValueSource = { type: "config", get: () => gate.then(() => "8px") }
       const driver = new FakeDriver()
       const manager = managerWith({ driver, sources: [slow] })
 
@@ -462,7 +462,7 @@ describe("StyleManager.applyDefinition", () => {
     it("then lets the newest value win when an older resolve settles later", async () => {
       const later: ((value: string) => void)[] = []
       let calls = 0
-      const slow: IValueSource = {
+      const slow: IBindingValueSource = {
         type: "dictionary",
         get: () => (++calls <= 2 ? Promise.resolve("{n}") : new Promise<string>((r) => later.push(r))),
       }

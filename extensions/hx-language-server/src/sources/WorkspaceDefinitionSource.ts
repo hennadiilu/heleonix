@@ -9,6 +9,7 @@ import {
   EXT_DICTIONARY,
   EXT_STYLE,
   EXT_TEMPLATE,
+  EXT_THEME,
   IDENTIFIER_PATTERN,
   NAME_ATTRIBUTE,
   REFERENCE_SEPARATORS,
@@ -31,7 +32,7 @@ import { compositeKey } from "../index/compositeKey"
 import { createEmptyContribution } from "../index/createEmptyContribution"
 import { parseFile } from "../index/parseFile"
 
-const HX_EXTS = new Set<string>([EXT_TEMPLATE, EXT_DICTIONARY, EXT_CONFIG, EXT_STYLE])
+const HX_EXTS = new Set<string>([EXT_TEMPLATE, EXT_DICTIONARY, EXT_CONFIG, EXT_STYLE, EXT_THEME])
 
 // Inline component name declared by a leading comment, e.g. `<!--CustomAddButton-->`.
 const COMPONENT_COMMENT = new RegExp(`<!--\\s*(${IDENTIFIER_PATTERN}(?:\\.${IDENTIFIER_PATTERN})*)`, "g")
@@ -39,9 +40,11 @@ const COMPONENT_COMMENT = new RegExp(`<!--\\s*(${IDENTIFIER_PATTERN}(?:\\.${IDEN
 export class WorkspaceDefinitionSource implements IIncrementalDefinitionSource {
   public readonly id = "workspace"
 
+  /** @param accepts Which hx* files to index - those a build compiles. */
   public constructor(
     private readonly roots: readonly string[],
     private readonly exclude: ReadonlySet<string>,
+    private readonly accepts: (filePath: string) => boolean = () => true,
   ) {}
 
   public async load(): Promise<IIndexContribution> {
@@ -71,7 +74,10 @@ export class WorkspaceDefinitionSource implements IIncrementalDefinitionSource {
       return false
     }
 
-    return !filePath.split(/[\\/]/).some((segment) => segment.startsWith(".") || this.exclude.has(segment))
+    return (
+      !filePath.split(/[\\/]/).some((segment) => segment.startsWith(".") || this.exclude.has(segment)) &&
+      this.accepts(filePath)
+    )
   }
 
   public async indexFile(filePath: string, text?: string): Promise<IIndexContribution> {
@@ -137,7 +143,7 @@ export class WorkspaceDefinitionSource implements IIncrementalDefinitionSource {
         if (!this.exclude.has(entry.name)) {
           yield* this.walk(full)
         }
-      } else if (HX_EXTS.has(path.extname(entry.name))) {
+      } else if (HX_EXTS.has(path.extname(entry.name)) && this.accepts(full)) {
         yield full
       }
     }

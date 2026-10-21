@@ -17,7 +17,11 @@ export default function hxWebpackLoader(this: LoaderContext<IHxWebpackLoaderOpti
     this.cacheable(true)
   }
 
-  const { dimensions = [] } = this.getOptions() || {}
+  const { dimensions = [], dependencies = [] } = this.getOptions() || {}
+
+  for (const file of dependencies) {
+    this.addDependency(file)
+  }
 
   let parsed: IParsedAssetFileName
 

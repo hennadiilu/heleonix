@@ -23,7 +23,7 @@ export function composeApplication(bootstrap: IApplicationBootstrap): IApplicati
 
   const services = composeServices(bootstrap, { clearables })
 
-  const actions = composeActions(bootstrap, { configs, services, dimensions, clearables })
+  const actions = composeActions(bootstrap, { configs, dictionaries, services, dimensions, clearables })
 
   const themes = composeTheming(bootstrap, { dimensions, runtime, clearables })
 
@@ -34,6 +34,7 @@ export function composeApplication(bootstrap: IApplicationBootstrap): IApplicati
     dimensions,
     state,
     binder,
+    evaluator,
     configs,
     dictionaries,
     actions,

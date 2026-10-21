@@ -4,6 +4,7 @@ import { Diagnostic, DiagnosticSeverity } from "vscode-languageserver"
 import { TextDocument } from "vscode-languageserver-textdocument"
 import { DefinitionIndex } from "../../index/DefinitionIndex"
 import { makeDiagnostic } from "../../lsp/makeDiagnostic"
+import { UNUSED_ENTRY_CODE } from "../../lsp/UNUSED_ENTRY_CODE"
 import { REFERENCE_MESSAGES } from "../../references/referenceMessages"
 import { definitionName } from "./definitionName"
 
@@ -31,6 +32,7 @@ export function diagnoseUnusedEntries(
           bodyStart + entry.keyEnd,
           REFERENCE_MESSAGES.unusedEntry(kind, name, entry.key),
           severity,
+          UNUSED_ENTRY_CODE,
         ),
       )
     }

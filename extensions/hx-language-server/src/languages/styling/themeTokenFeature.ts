@@ -1,7 +1,5 @@
-import { pathToFileURL } from "node:url"
-import { CompletionItem, CompletionItemKind, Hover, Location, MarkupKind, Range, TextEdit } from "vscode-languageserver"
+import { CompletionItem, CompletionItemKind, Hover, MarkupKind, Range, TextEdit } from "vscode-languageserver"
 import { TextDocument } from "vscode-languageserver-textdocument"
-import type { IThemeTokenLocation } from "@heleonix/hx-analyzer"
 
 const PATH_CHAR = /[A-Za-z0-9_.]/
 
@@ -67,27 +65,6 @@ export function hoverThemeToken(
   }
 
   return { contents: { kind: MarkupKind.Markdown, value: lines.join("\n") } }
-}
-
-export function definitionThemeToken(
-  doc: TextDocument,
-  offset: number,
-  locations: ReadonlyMap<string, IThemeTokenLocation>,
-): Location | null {
-  const path = themePathAt(doc.getText(), offset)
-  const location = path === undefined ? undefined : locations.get(path)
-
-  if (!location) {
-    return null
-  }
-
-  return {
-    uri: pathToFileURL(location.file).toString(),
-    range: {
-      start: { line: location.line, character: location.character },
-      end: { line: location.line, character: location.character + location.length },
-    },
-  }
 }
 
 function item(label: string, value: string | undefined, range: Range): CompletionItem {

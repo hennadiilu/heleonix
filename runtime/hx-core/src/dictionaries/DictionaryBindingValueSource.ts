@@ -1,11 +1,11 @@
 import { DICTIONARY_ENTRY_SEPARATOR } from "@heleonix/hx-language"
 import type { BindingType, FQDictionaryEntryName } from "@heleonix/hx-language"
-import type { IValueSource } from "../bindings/IValueSource"
+import type { IBindingValueSource } from "../bindings/IBindingValueSource"
 import { DictionaryDefinitionLoader } from "./DictionaryDefinitionLoader"
 import { HeleonixError } from "../errors/HeleonixError"
 import { Errors } from "../errors/Errors"
 
-export class DictionaryValueSource implements IValueSource {
+export class DictionaryBindingValueSource implements IBindingValueSource {
   public readonly type: BindingType = "dictionary"
 
   public constructor(private readonly loader: DictionaryDefinitionLoader) {}

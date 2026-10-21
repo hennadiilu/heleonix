@@ -20,8 +20,9 @@ import type { IQualifierProvider } from "./qualifiers/IQualifierProvider"
 import { StyleDefinitionLoader } from "./StyleDefinitionLoader"
 import type { StyleHandle } from "../platform/StyleHandle"
 import type { StyleFragment } from "./StyleFragment"
-import { ThemeManager } from "../theming/ThemeManager"
+import type { IThemeManager } from "../theming/IThemeManager"
 import type { IClearable } from "../common/IClearable"
+import type { IStyleManager } from "./IStyleManager"
 import type { IDisposable } from "../common/IDisposable"
 import type { MaybePromise } from "../common/MaybePromise"
 import { isThenable } from "../common/isThenable"
@@ -47,7 +48,7 @@ interface Applied {
   disposers: (() => void)[]
 }
 
-export class StyleManager implements IClearable {
+export class StyleManager implements IStyleManager, IClearable {
   private readonly cache = new Map<string, { handle: StyleHandle; refs: number }>()
 
   private readonly applied = new Map<Component, Applied>()
@@ -62,7 +63,7 @@ export class StyleManager implements IClearable {
     // resolved per use rather than captured once at composition time.
     private readonly driver: () => IStyleDriver,
     private readonly loader: StyleDefinitionLoader,
-    private readonly themes: ThemeManager,
+    private readonly themes: IThemeManager,
     private readonly state: IState,
     private readonly evaluator: BindingEvaluator,
     private readonly qualifiers: IQualifierProvider,

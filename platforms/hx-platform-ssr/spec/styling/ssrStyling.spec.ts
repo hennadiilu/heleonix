@@ -1,6 +1,6 @@
 import { StyleManager } from "../../../../runtime/hx-core/src/styling/StyleManager"
-import { BindingEvaluator, LiteralValueSource, MediaQualifier, StateValueSource } from "@heleonix/hx-core"
-import type { Component, IQualifierProvider, IState, IValueSource, StyleHandle } from "@heleonix/hx-core"
+import { BindingEvaluator, LiteralBindingValueSource, MediaQualifier, StateBindingValueSource } from "@heleonix/hx-core"
+import type { Component, IQualifierProvider, IState, IBindingValueSource, StyleHandle } from "@heleonix/hx-core"
 import { composeClassName, composeRule, styleVariableName } from "@heleonix/hx-platform-web"
 import {
   SsrElementState,
@@ -43,7 +43,7 @@ function stateWith(values: Record<string, unknown>): IState {
 function managerWith(
   driver: SsrStyleDriver,
   values: Record<string, unknown> = {},
-  sources: IValueSource[] = [],
+  sources: IBindingValueSource[] = [],
 ): StyleManager {
   const state = stateWith(values)
 
@@ -53,8 +53,8 @@ function managerWith(
     { getTheme: () => Promise.resolve(undefined) } as never,
     state,
     new BindingEvaluator({ get: () => ({}) as never }, [
-      new StateValueSource(state),
-      new LiteralValueSource(),
+      new StateBindingValueSource(state),
+      new LiteralBindingValueSource(),
       ...sources,
     ]),
     NO_QUALIFIERS,
@@ -149,11 +149,11 @@ describe("SSR styling through the core StyleManager", () => {
 })
 
 describe("SSR dictionary and config values in declarations", () => {
-  const labels: IValueSource = {
+  const labels: IBindingValueSource = {
     type: "dictionary",
     get: (path: string) => Promise.resolve(path === "Labels.title" ? 'Say "hi" <b>' : undefined),
   }
-  const layout: IValueSource = {
+  const layout: IBindingValueSource = {
     type: "config",
     get: (path: string) => Promise.resolve(path === "Layout.gap" ? "8" : undefined),
   }
@@ -199,7 +199,10 @@ describe("SSR theme tokens in media queries", () => {
         getTheme: () => Promise.resolve({ name: "", dimension: {}, groups: { Breakpoints: { mobile: "600px" } } }),
       } as never,
       state,
-      new BindingEvaluator({ get: () => ({}) as never }, [new StateValueSource(state), new LiteralValueSource()]),
+      new BindingEvaluator({ get: () => ({}) as never }, [
+        new StateBindingValueSource(state),
+        new LiteralBindingValueSource(),
+      ]),
       { get: (name: string) => (name === "Media" ? new MediaQualifier() : undefined) },
     )
 
@@ -223,7 +226,10 @@ describe("SSR component properties in media queries", () => {
       { loadDefinition: () => Promise.resolve(undefined) } as never,
       { getTheme: () => Promise.resolve(undefined) } as never,
       state,
-      new BindingEvaluator({ get: () => ({}) as never }, [new StateValueSource(state), new LiteralValueSource()]),
+      new BindingEvaluator({ get: () => ({}) as never }, [
+        new StateBindingValueSource(state),
+        new LiteralBindingValueSource(),
+      ]),
       { get: (name: string) => (name === "Media" ? new MediaQualifier() : undefined) },
     )
 

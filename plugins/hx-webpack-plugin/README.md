@@ -23,6 +23,29 @@ definition-source per kind under the bare specifiers `hx-compiled-components`,
 `hx-compiled-dictionaries`, `hx-compiled-configs`, `hx-compiled-styles`,
 `hx-compiled-themes`. Register those in the application bootstrap.
 
+`include`, `exclude`, `dimensions` and the diagnostic levels are better kept in the
+package's `hx.config.json` (the nearest one above the webpack `context`), which the
+editor reads too - so the build and the editor compile and report the same:
+
+```jsonc
+// hx.config.json
+{
+  "include": ["src"],
+  "dimensions": "./hx.dimensions.json",
+  "diagnostics": { "severity": { "HX_ANALYZER_0002": "warning" } },
+}
+```
+
+Options passed to the plugin win over the file. With `validate`, each finding is
+reported at its configured level: `error` fails the build, `warning` is a warning
+(an error with `failOnWarnings`), and `information`, `hint` and `off` are not
+reported by the build.
+
+In watch mode (and under the dev server) editing `hx.config.json` - or the dimensions
+file it names, or adding a configuration above the package - rebuilds with the new
+settings. A configuration that fails to load is reported as a build error at the
+line at fault; the build carries on with the defaults until it is fixed.
+
 ## Shipping uncompiled definitions in a library
 
 A library can publish its raw `*.hxm`/`*.hxd`/... sources so a consuming app compiles

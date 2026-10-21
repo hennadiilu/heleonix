@@ -1,7 +1,7 @@
 import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
-import { TypeResolver, createNodeTypeProgramHost } from "@heleonix/hx-analyzer"
+import { TypeResolver, createNodeTypeProgramHosts } from "@heleonix/hx-analyzer"
 
 describe("TypeResolver.discover", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "hx-discover-"))
@@ -55,7 +55,9 @@ describe("TypeResolver.discover", () => {
 
   describe("when the project is scanned", () => {
     it("then finds converter and action classes with declared names and resolved params", () => {
-      const found = new Map(new TypeResolver(createNodeTypeProgramHost(root)).discover().map((c) => [c.className, c]))
+      const found = new Map(
+        new TypeResolver(createNodeTypeProgramHosts([root])).discover().map((c) => [c.className, c]),
+      )
 
       const truncate = found.get("TruncateConverter")!
       expect(truncate.base).toBe("Converter")
@@ -76,7 +78,9 @@ describe("TypeResolver.discover", () => {
     })
 
     it("then flags a class declaring no static hxName", () => {
-      const found = new Map(new TypeResolver(createNodeTypeProgramHost(root)).discover().map((c) => [c.className, c]))
+      const found = new Map(
+        new TypeResolver(createNodeTypeProgramHosts([root])).discover().map((c) => [c.className, c]),
+      )
 
       expect(found.get("Weird")!.hasHxName).toBeFalse()
       expect(found.get("Weird")!.name).toBe("Weird")

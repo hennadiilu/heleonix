@@ -7,7 +7,7 @@ describe("AnalyzerHost styling bridge", () => {
     expect(ANALYZER_EXTS.has(EXT_THEME)).toBeTrue()
   })
 
-  it("then exposes theme tokens and qualifiers from dependency meta", () => {
+  it("then exposes theme tokens and qualifiers from dependency meta", async () => {
     const host = new AnalyzerHost()
 
     host.addMeta({
@@ -16,7 +16,7 @@ describe("AnalyzerHost styling bridge", () => {
       qualifiers: [{ name: "If", args: [] }],
     })
 
-    const snapshot = host.snapshot()
+    const snapshot = await host.snapshot()
 
     expect(snapshot.themeTokens.get("Brand.accent")).toBe("#7c3aed")
     expect(snapshot.qualifiers.map((q) => q.name)).toEqual(["If"])

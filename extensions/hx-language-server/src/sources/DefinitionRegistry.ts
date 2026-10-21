@@ -1,6 +1,8 @@
 import { IMetaDocument } from "@heleonix/hx-language"
 import { OccurrenceIndex } from "../index/occurrences/OccurrenceIndex"
 import { DefinitionIndex } from "../index/DefinitionIndex"
+import { ScopedDefinitionIndex } from "../index/ScopedDefinitionIndex"
+import type { IPackageScope } from "../packages/IPackageScope"
 import { IDefinitionSource } from "./IDefinitionSource"
 import { IIncrementalDefinitionSource } from "./IIncrementalDefinitionSource"
 import { IIndexContribution } from "../index/IIndexContribution"
@@ -14,14 +16,35 @@ export class DefinitionRegistry {
 
   private index = new DefinitionIndex([])
 
+  // Per package scope, built on first use since the last reindex.
+  private readonly scopedIndexes = new Map<string, DefinitionIndex>()
+
   private occurrences = new OccurrenceIndex([], this.index)
 
   public register(source: IDefinitionSource): void {
     this.sources.push(source)
   }
 
-  public getIndex(): DefinitionIndex {
-    return this.index
+  // A package scope sees the external sources plus its own packages' files;
+  // the whole workspace (or no scope) sees everything.
+  public getIndex(scope?: IPackageScope): DefinitionIndex {
+    if (!scope || scope.key === "") {
+      return this.index
+    }
+
+    let index = this.scopedIndexes.get(scope.key)
+
+    if (!index) {
+      const visible = [...this.fileContributions].filter(([filePath]) => scope.contains(filePath))
+
+      index = new ScopedDefinitionIndex(
+        [...this.sourceContributions.values(), ...visible.map(([, contribution]) => contribution)],
+        this.index,
+      )
+      this.scopedIndexes.set(scope.key, index)
+    }
+
+    return index
   }
 
   public metas(): IMetaDocument[] {
@@ -104,6 +127,7 @@ export class DefinitionRegistry {
 
   private reindex(): DefinitionIndex {
     this.index = new DefinitionIndex([...this.sourceContributions.values(), ...this.fileContributions.values()])
+    this.scopedIndexes.clear()
 
     const files = []
 

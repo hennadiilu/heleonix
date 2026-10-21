@@ -7,7 +7,7 @@ import type { IClearable } from "../common/IClearable"
 export abstract class DefinitionLoader<TDefinition extends { dimension: IDimension }> implements IClearable {
   protected readonly selectionStrategy: DefinitionSelectionStrategy
 
-  protected readonly cache = new Map<string, TDefinition | undefined>()
+  protected readonly definitions = new Map<string, TDefinition | undefined>()
 
   public constructor(
     protected readonly dimensions: IDimensionProvider,
@@ -18,24 +18,24 @@ export abstract class DefinitionLoader<TDefinition extends { dimension: IDimensi
   }
 
   public clear(): void {
-    this.cache.clear()
+    this.definitions.clear()
   }
 
   public async loadDefinition(name: string): Promise<TDefinition | undefined> {
     const key = `${name}.${this.dimensions.currentKey}`
 
-    if (this.cache.has(key)) {
-      return this.cache.get(key)
+    if (this.definitions.has(key)) {
+      return this.definitions.get(key)
     }
 
-    const resolved =
+    const resolvedDefinition =
       this.selectionStrategy === DefinitionSelectionStrategy.Layered
-        ? await this.resolveLayered(name)
-        : this.resolveAcrossSources(await this.getApplicableDefinitions(name))
+        ? await this.resolveLayeredDefinition(name)
+        : this.resolveDefinitionsAcrossSources(await this.getApplicableDefinitions(name))
 
-    this.cache.set(key, resolved)
+    this.definitions.set(key, resolvedDefinition)
 
-    return resolved
+    return resolvedDefinition
   }
 
   protected async getApplicableDefinitions(name: string): Promise<readonly TDefinition[]> {
@@ -65,7 +65,7 @@ export abstract class DefinitionLoader<TDefinition extends { dimension: IDimensi
     return []
   }
 
-  protected abstract resolveLayered(name: string): Promise<TDefinition | undefined>
+  protected abstract resolveLayeredDefinition(name: string): Promise<TDefinition | undefined>
 
-  protected abstract resolveAcrossSources(definitions: readonly TDefinition[]): TDefinition | undefined
+  protected abstract resolveDefinitionsAcrossSources(definitions: readonly TDefinition[]): TDefinition | undefined
 }

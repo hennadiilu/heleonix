@@ -13,11 +13,10 @@ import {
   joinFQPropertyName,
 } from "@heleonix/hx-language"
 import type { ComponentConstructor } from "./ComponentConstructor"
-import type { StyleManager } from "../styling/StyleManager"
+import type { IStyleManager } from "../styling/IStyleManager"
 import type { IComponentContext } from "./IComponentContext"
 import type { IDimensionProvider } from "../dimensions/IDimensionProvider"
-import type { IDictionaryProvider } from "../dictionaries/IDictionaryProvider"
-import type { IConfigProvider } from "../configs/IConfigProvider"
+import type { BindingEvaluator } from "../bindings/BindingEvaluator"
 import type { IComponentManager } from "./IComponentManager"
 import type { IClearable } from "../common/IClearable"
 
@@ -41,14 +40,13 @@ export class ComponentManager implements IComponentManager, IClearable {
     // components at all, so every tag resolves to nothing.
     private readonly loader: ComponentDefinitionLoader | undefined,
     private readonly dimensions: IDimensionProvider,
-    private readonly dictionaries: IDictionaryProvider,
-    private readonly configs: IConfigProvider,
+    private readonly evaluator: BindingEvaluator,
     private readonly componentCtors: ReadonlyMap<string, ComponentConstructor>,
     // A thunk: the context holds this manager as its `components`, so it is
     // created after the manager. Resolved lazily when a component is first built.
     private readonly context: () => IComponentContext,
     // Absent when the application bootstraps no style definitions.
-    private readonly styles: StyleManager | undefined,
+    private readonly styles: IStyleManager | undefined,
   ) {}
 
   public clear(): void {
@@ -206,13 +204,12 @@ export class ComponentManager implements IComponentManager, IClearable {
     switch (binding.type) {
       case "state":
         return binding.value
-      case "config": {
-        const value = await this.configs.get(binding.value)
+      case "config":
+      case "dictionary": {
+        const value = await this.evaluator.resolve(binding, scopedParent?.fqName ?? "")
 
         return typeof value === "string" ? value : undefined
       }
-      case "dictionary":
-        return this.dictionaries.get(binding.value, scopedParent?.fqName ?? "")
       case "literal": {
         // Quoted static text names the replacement component directly.
         const value: unknown = JSON.parse(binding.value)

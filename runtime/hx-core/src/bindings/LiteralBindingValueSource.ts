@@ -1,7 +1,7 @@
 import type { BindingType } from "@heleonix/hx-language"
-import type { IValueSource } from "./IValueSource"
+import type { IBindingValueSource } from "./IBindingValueSource"
 
-export class LiteralValueSource implements IValueSource {
+export class LiteralBindingValueSource implements IBindingValueSource {
   public readonly type: BindingType = "literal"
 
   public get(path: string): unknown {

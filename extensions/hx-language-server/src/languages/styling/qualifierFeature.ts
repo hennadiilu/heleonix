@@ -1,6 +1,7 @@
 import { CompletionItem, CompletionItemKind, Hover, MarkupKind, Range, TextEdit } from "vscode-languageserver"
 import { TextDocument } from "vscode-languageserver-textdocument"
 import type { IComponentInfo } from "@heleonix/hx-analyzer"
+import { NATIVE_QUALIFIERS } from "@heleonix/hx-language"
 import type { IQualifierArg, IQualifierDefinition, QualifierRefKind } from "@heleonix/hx-language"
 
 const NAME = /@hx-([A-Za-z-]*)$/
@@ -33,7 +34,9 @@ export function completeQualifier(
   }
 
   if (context.kind === "name") {
-    return qualifiers.map((q) => nameItem(pascalToKebab(q.name), replacing(doc, offset, context.partial)))
+    return qualifiers
+      .filter((q) => !NATIVE_QUALIFIERS.has(q.name))
+      .map((q) => nameItem(pascalToKebab(q.name), replacing(doc, offset, context.partial)))
   }
 
   // `@hx-style(for: ...)` scope paths route to the component's control tree even

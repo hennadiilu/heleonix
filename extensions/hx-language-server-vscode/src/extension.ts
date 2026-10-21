@@ -12,6 +12,8 @@ let client: LanguageClient | undefined
 
 const RELOAD_COMMAND = "heleonix.reloadDefinitions"
 
+const CONFIG_FILES = ["hx.config.json", "hx.dimensions.json"]
+
 const LANGUAGES = [
   "heleonix-hx-component",
   "heleonix-hx-dictionary",
@@ -67,13 +69,25 @@ function createClient(context: ExtensionContext): LanguageClient {
   const config = workspace.getConfiguration("heleonix.hx")
 
   const clientOptions: LanguageClientOptions = {
-    documentSelector: LANGUAGES.map((language) => ({ scheme: "file", language })),
+    // The configuration documents too, so the server reads their unsaved edits.
+    documentSelector: [
+      ...LANGUAGES.map((language) => ({ scheme: "file", language })),
+      ...CONFIG_FILES.map((name) => ({ scheme: "file", pattern: `**/${name}` })),
+    ],
+    // The server's options contract (see the language server's README), from the
+    // `heleonix.hx.*` settings.
     initializationOptions: {
       exclude: config.get<string[]>("exclude", []),
-      diagnostics: config.get<boolean>("diagnostics.enable", true),
-      unknownReferenceSeverity: config.get<string>("diagnostics.unknownReferenceSeverity", "warning"),
-      unusedEntrySeverity: config.get<string>("diagnostics.unusedEntrySeverity", "information"),
+      diagnostics: {
+        enable: config.get<boolean>("diagnostics.enable", true),
+        severity: config.get<Record<string, string>>("diagnostics.severity", {}),
+      },
       definitionSources: config.get<string[]>("definitionSources", []),
+      typescript: {
+        projects: config.get<string[]>("typescript.projects"),
+        exclude: config.get<string[]>("typescript.exclude"),
+        linkedPackages: config.get<boolean>("typescript.linkedPackages", false),
+      },
       // Custom transport modules execute workspace code, so the server only loads
       // them when the workspace is trusted (see onDidGrantWorkspaceTrust below).
       workspaceTrusted: workspace.isTrusted,

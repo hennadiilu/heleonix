@@ -5,5 +5,8 @@ export interface IBlockDeclaration {
 
   value: string
 
+  /** Source offset of the name. */
+  start: number
+
   doc?: string
 }

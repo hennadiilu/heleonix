@@ -114,6 +114,12 @@
           "light": "./icons/hxt-light.svg",
           "dark": "./icons/hxt-dark.svg"
         }
+      },
+      {
+        "id": "jsonc",
+        "filenames": [
+          "hx.config.json"
+        ]
       }
     ],
     "grammars": [
@@ -158,27 +164,20 @@
           "default": true,
           "description": "Enable syntax/semantic diagnostics for Heleonix files."
         },
-        "heleonix.hx.diagnostics.unknownReferenceSeverity": {
-          "type": "string",
-          "enum": [
-            "error",
-            "warning",
-            "off"
-          ],
-          "default": "warning",
-          "description": "How to report unresolved @dictionary / #config references. 'off' disables the check."
-        },
-        "heleonix.hx.diagnostics.unusedEntrySeverity": {
-          "type": "string",
-          "enum": [
-            "error",
-            "warning",
-            "information",
-            "hint",
-            "off"
-          ],
-          "default": "information",
-          "description": "How to report dictionary/config entry keys that are never referenced (@Name.key / #Name.key) from any component, dictionary or style. 'off' disables the check."
+        "heleonix.hx.diagnostics.severity": {
+          "type": "object",
+          "default": {},
+          "additionalProperties": {
+            "type": "string",
+            "enum": [
+              "error",
+              "warning",
+              "information",
+              "hint",
+              "off"
+            ]
+          },
+          "markdownDescription": "Levels by diagnostic code (as shown in the Problems panel, e.g. `\"HX_ANALYZER_0002\": \"warning\"`), used where no `hx.config.json` sets one under `diagnostics.severity` - prefer the configuration file, which builds read too. `HX_LANGUAGE_SERVER_0001` (unused dictionary/config entries) is editor-only and reported as `information` by default."
         },
         "heleonix.hx.exclude": {
           "type": "array",
@@ -188,11 +187,6 @@
           "default": [],
           "description": "Additional folder names to exclude when indexing workspace definitions."
         },
-        "heleonix.hx.dimensionsPath": {
-          "type": "string",
-          "default": "",
-          "description": "Path to hx.dimensions.json (relative to a workspace folder). Reserved for future dimension-aware features."
-        },
         "heleonix.hx.definitionSources": {
           "type": "array",
           "default": [],
@@ -200,6 +194,32 @@
           "items": {
             "type": "string"
           }
+        },
+        "heleonix.hx.typescript.projects": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "**/tsconfig.json"
+          ],
+          "markdownDescription": "TypeScript projects whose classes (converters, actions, style qualifiers, programmatic components) are discovered: `tsconfig` files, folders holding a `tsconfig.json`, or glob patterns, relative to each workspace folder (folders in `#heleonix.hx.exclude#` and `node_modules` are not searched). Each project's `references` are followed, and a project whose files an outer one already covers is skipped. When nothing matches, the folder's nearest `tsconfig.json` above it is used."
+        },
+        "heleonix.hx.typescript.exclude": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "**/*.{spec,test}.{ts,tsx,mts,cts}",
+            "**/{spec,specs,test,tests,__tests__}/**"
+          ],
+          "markdownDescription": "Glob patterns of TypeScript files left out of discovery (test fixtures by default), relative to each workspace folder."
+        },
+        "heleonix.hx.typescript.linkedPackages": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Also discover classes in dependencies linked into a workspace folder from outside it (package-manager workspace links), each through its own `tsconfig.json` - useful when one app of a monorepo is opened alone. Their `hx.meta.json` then no longer supplies converters, actions or qualifiers."
         },
         "heleonix.hx.trace.server": {
           "type": "string",
@@ -212,7 +232,13 @@
           "description": "Trace communication between VS Code and the Heleonix Framework Language Server."
         }
       }
-    }
+    },
+    "jsonValidation": [
+      {
+        "fileMatch": "hx.config.json",
+        "url": "./schemas/hx.config.schema.json"
+      }
+    ]
   },
   "dependencies": {
     "vscode-languageclient": "^9.0.1"

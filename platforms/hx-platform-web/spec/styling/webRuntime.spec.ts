@@ -1,5 +1,5 @@
 import { StyleManager } from "../../../../runtime/hx-core/src/styling/StyleManager"
-import { BindingEvaluator, LiteralValueSource, StateValueSource } from "@heleonix/hx-core"
+import { BindingEvaluator, LiteralBindingValueSource, StateBindingValueSource } from "@heleonix/hx-core"
 import type { Component, IQualifierProvider, IScheduler, IState } from "@heleonix/hx-core"
 import type { IStyleDefinition } from "@heleonix/hx-language"
 import { WebStyleDriver, RefcountedStyleSheet, DomStyleSheet } from "@heleonix/hx-platform-web"
@@ -60,7 +60,10 @@ function managerWith(driver: WebStyleDriver, qualifiers: IQualifierProvider, val
     { loadDefinition: () => Promise.resolve(undefined) } as never,
     { getTheme: () => Promise.resolve(undefined) } as never,
     state,
-    new BindingEvaluator({ get: () => ({}) as never }, [new StateValueSource(state), new LiteralValueSource()]),
+    new BindingEvaluator({ get: () => ({}) as never }, [
+      new StateBindingValueSource(state),
+      new LiteralBindingValueSource(),
+    ]),
     qualifiers,
   )
 }

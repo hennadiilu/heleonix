@@ -6,7 +6,7 @@ import type { IDimensionProvider } from "../dimensions/IDimensionProvider"
 import type { IClearable } from "../common/IClearable"
 
 export class ThemeDefinitionLoader implements IClearable {
-  protected readonly cache = new Map<string, IThemeDefinition | undefined>()
+  protected readonly themes = new Map<string, IThemeDefinition | undefined>()
 
   public constructor(
     protected readonly dimensions: IDimensionProvider,
@@ -16,8 +16,8 @@ export class ThemeDefinitionLoader implements IClearable {
   public async loadTheme(): Promise<IThemeDefinition | undefined> {
     const key = this.dimensions.currentKey
 
-    if (this.cache.has(key)) {
-      return this.cache.get(key)
+    if (this.themes.has(key)) {
+      return this.themes.get(key)
     }
 
     let merged: IThemeDefinition | undefined
@@ -35,13 +35,13 @@ export class ThemeDefinitionLoader implements IClearable {
       )
     }
 
-    this.cache.set(key, merged)
+    this.themes.set(key, merged)
 
     return merged
   }
 
   public clear(): void {
-    this.cache.clear()
+    this.themes.clear()
   }
 
   private mergeDeeply = (base: IThemeDefinition | undefined, extension: IThemeDefinition): IThemeDefinition => {

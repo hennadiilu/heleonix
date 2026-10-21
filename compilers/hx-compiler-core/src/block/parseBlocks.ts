@@ -46,6 +46,7 @@ export function parseBlocks(source: string): IBlockDocument {
   }
 
   function parseNode(): IBlockNode | undefined {
+    const start = pos
     let buffer = ""
     let parenDepth = 0
     let colonIndex = -1
@@ -88,7 +89,7 @@ export function parseBlocks(source: string): IBlockDocument {
 
         pos++
 
-        const block: IBlock = { kind: "block", prelude: buffer.trim(), nodes: parseNodes(true) }
+        const block: IBlock = { kind: "block", prelude: buffer.trim(), start, nodes: parseNodes(true) }
 
         return block
       }
@@ -100,7 +101,7 @@ export function parseBlocks(source: string): IBlockDocument {
       if (ch === ";" && parenDepth === 0) {
         pos++
 
-        return makeNode(buffer, colonIndex)
+        return makeNode(buffer, colonIndex, start)
       }
 
       if (ch === ":" && parenDepth === 0 && colonIndex < 0) {
@@ -116,21 +117,22 @@ export function parseBlocks(source: string): IBlockDocument {
       pos++
     }
 
-    return makeNode(buffer, colonIndex)
+    return makeNode(buffer, colonIndex, start)
   }
 
-  function makeNode(buffer: string, colonIndex: number): IBlockNode | undefined {
+  function makeNode(buffer: string, colonIndex: number, start: number): IBlockNode | undefined {
     if (colonIndex >= 0) {
       return {
         kind: "declaration",
         name: buffer.slice(0, colonIndex).trim(),
         value: buffer.slice(colonIndex + 1).trim(),
+        start,
       }
     }
 
     const text = buffer.trim()
 
-    return text === "" ? undefined : { kind: "statement", text }
+    return text === "" ? undefined : { kind: "statement", text, start }
   }
 
   function isInterpolationAhead(): boolean {

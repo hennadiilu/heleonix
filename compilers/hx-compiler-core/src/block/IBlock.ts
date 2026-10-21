@@ -5,6 +5,9 @@ export interface IBlock {
 
   prelude: string
 
+  /** Source offset of the prelude. */
+  start: number
+
   nodes: IBlockNode[]
 
   doc?: string

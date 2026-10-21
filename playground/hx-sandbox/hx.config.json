@@ -1,0 +1,5 @@
+{
+  // Shared by the webpack plugin and the editor: both compile `src` under these dimensions.
+  "include": ["src"],
+  "dimensions": "./hx.dimensions.json"
+}

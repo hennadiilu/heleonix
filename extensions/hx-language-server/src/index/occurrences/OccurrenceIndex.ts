@@ -102,6 +102,9 @@ function keysOf(raw: IRawOccurrence, index: DefinitionIndex): string[] {
     case "configEntry":
       return [symbolKey.entry("config", raw.name, raw.entry)]
 
+    case "themeToken":
+      return [symbolKey.themeToken(raw.path)]
+
     case "property": {
       const components =
         raw.base.source === "components"

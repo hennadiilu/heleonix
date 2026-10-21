@@ -4,7 +4,7 @@ import type { DefinitionLoaderConstructor } from "../definitions/DefinitionLoade
 
 export function createDefinitionLoader<TSource, TLoader>(
   section: IDefinitionSection<TSource, TLoader> | undefined,
-  Default: DefinitionLoaderConstructor<TSource, TLoader>,
+  defaultLoaderCtor: DefinitionLoaderConstructor<TSource, TLoader>,
   dimensions: IDimensionProvider,
   builtinSources: readonly TSource[] = [],
 ): TLoader | undefined {
@@ -12,9 +12,9 @@ export function createDefinitionLoader<TSource, TLoader>(
     return undefined
   }
 
-  const Loader = section.loader ?? Default
+  const LoaderCtor = section.loader ?? defaultLoaderCtor
 
-  return new Loader(
+  return new LoaderCtor(
     dimensions,
     [...builtinSources, ...section.sources.map((Source) => new Source())],
     section.selectionStrategy,

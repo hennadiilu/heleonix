@@ -1,4 +1,4 @@
-import type { IComponentInfo, IConverterActionInfo, IThemeTokenLocation } from "@heleonix/hx-analyzer"
+import type { IComponentInfo, IConverterActionInfo } from "@heleonix/hx-analyzer"
 import type { IQualifierDefinition } from "@heleonix/hx-language"
 
 export interface IAnalyzerSnapshot {
@@ -13,6 +13,4 @@ export interface IAnalyzerSnapshot {
   qualifiers: readonly IQualifierDefinition[]
 
   controlNames: ReadonlyMap<string, readonly string[]>
-
-  themeTokenLocations: ReadonlyMap<string, IThemeTokenLocation>
 }

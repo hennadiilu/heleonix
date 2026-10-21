@@ -1,10 +1,10 @@
 import {
   BindingEvaluator,
-  ConfigValueSource,
+  ConfigBindingValueSource,
   Converter,
-  DictionaryValueSource,
-  LiteralValueSource,
-  StateValueSource,
+  DictionaryBindingValueSource,
+  LiteralBindingValueSource,
+  StateBindingValueSource,
 } from "@heleonix/hx-core"
 import { ConverterProvider } from "../../src/converters/ConverterProvider"
 import { StateManager } from "../../src/state/StateManager"
@@ -20,7 +20,7 @@ class FakeConfigDefinitionLoader {
 
 class FakeDictionaryDefinitionLoader {
   public loadDefinition(name: string): Promise<{ entries: Record<string, string> }> {
-    return Promise.resolve({ entries: { hello: `${name}: hi {name}` } })
+    return Promise.resolve({ entries: { hello: `${name}: hi {name}`, user: "hi {user.name}" } })
   }
 }
 
@@ -50,20 +50,35 @@ class SuffixConverter extends Converter<string, string, { text: string }> {
   }
 }
 
+class LocalizedConverter extends Converter<string, string> {
+  public static readonly hxName = "Localized"
+
+  public override readonly isDimensionSensitive = true
+
+  public format(value: string): string {
+    return value
+  }
+
+  public parse(value: string): string {
+    return value
+  }
+}
+
 function evaluatorWith(state: StateManager = new StateManager()): BindingEvaluator {
   const converterProvider = new ConverterProvider(
     new Map<string, ConverterConstructor>([
       ["Upper", UpperConverter],
       ["Suffix", SuffixConverter],
+      ["Localized", LocalizedConverter],
     ]),
     () => ({}) as IConverterContext,
   )
 
   return new BindingEvaluator(converterProvider, [
-    new StateValueSource(state),
-    new LiteralValueSource(),
-    new ConfigValueSource(new FakeConfigDefinitionLoader() as never),
-    new DictionaryValueSource(new FakeDictionaryDefinitionLoader() as never),
+    new StateBindingValueSource(state),
+    new LiteralBindingValueSource(),
+    new ConfigBindingValueSource(new FakeConfigDefinitionLoader() as never),
+    new DictionaryBindingValueSource(new FakeDictionaryDefinitionLoader() as never),
   ])
 }
 
@@ -111,6 +126,44 @@ describe("BindingEvaluator", () => {
       expect(await evaluatorWith(state).resolve({ type: "dictionary", value: "Greet.hello" }, "app")).toBe(
         "Greet: hi bob",
       )
+    })
+
+    it("then interpolates a template's expressions against the given values", async () => {
+      expect(await evaluatorWith().resolve({ type: "dictionary", value: "Greet.hello" }, { name: "ann" })).toBe(
+        "Greet: hi ann",
+      )
+    })
+
+    it("then reads a dotted path from the given values", async () => {
+      const values = { user: { name: "ann" } }
+
+      expect(await evaluatorWith().resolve({ type: "dictionary", value: "Greet.user" }, values)).toBe("hi ann")
+    })
+
+    it("then renders a missing value as an empty string", async () => {
+      expect(await evaluatorWith().resolve({ type: "dictionary", value: "Greet.hello" }, {})).toBe("Greet: hi ")
+    })
+
+    it("then renders unset scoped state as an empty string", async () => {
+      expect(await evaluatorWith().resolve({ type: "dictionary", value: "Greet.hello" }, "app")).toBe("Greet: hi ")
+    })
+  })
+
+  describe("resolve with values", () => {
+    it("then reads the source and converter arguments from the given values", async () => {
+      const binding: IBindingExpression = { type: "state", value: "name", converters: ["Suffix(text: extra)"] }
+
+      expect(await evaluatorWith().resolve(binding, { name: "bob", extra: "?" })).toBe("bob?")
+    })
+  })
+
+  describe("isDimensionSensitive", () => {
+    it("then reports a binding whose converter declares itself dimension-sensitive", () => {
+      expect(evaluatorWith().isDimensionSensitive({ type: "state", value: "n", converters: ["Localized"] })).toBeTrue()
+    })
+
+    it("then ignores a converter that does not declare itself dimension-sensitive", () => {
+      expect(evaluatorWith().isDimensionSensitive({ type: "state", value: "n", converters: ["Upper"] })).toBeFalse()
     })
   })
 

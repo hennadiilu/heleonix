@@ -22,4 +22,18 @@ export const Errors = {
     code: "HX_PLUGIN_0300",
     ...(DEV && { message: "Include directory '{0}' does not exist." }),
   },
+
+  // Configuration errors 0600-0699
+  invalidConfig: {
+    code: "HX_PLUGIN_0600",
+    ...(DEV && { message: "Invalid configuration '{0}': {1}" }),
+  },
+  configExtendsCycle: {
+    code: "HX_PLUGIN_0601",
+    ...(DEV && { message: "Configuration extends itself: {0}." }),
+  },
+  configNotFound: {
+    code: "HX_PLUGIN_0602",
+    ...(DEV && { message: "Configuration '{0}' extended by '{1}' was not found." }),
+  },
 } as const satisfies Record<string, IErrorInfo>

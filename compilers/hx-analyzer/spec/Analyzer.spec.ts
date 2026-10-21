@@ -1,7 +1,7 @@
 import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
-import { Analyzer, createNodeTypeProgramHost } from "@heleonix/hx-analyzer"
+import { Analyzer, createNodeTypeProgramHosts } from "@heleonix/hx-analyzer"
 import { EXT_CONFIG, EXT_DICTIONARY, EXT_TEMPLATE } from "@heleonix/hx-language"
 
 const dictionary = {
@@ -280,7 +280,7 @@ props: { variant?: 'primary' | 'default'; count?: number; active?: boolean }
     function typedAnalyzer(usageSource: string): Analyzer {
       const analyzer = new Analyzer()
 
-      analyzer.setTypeProgramHost(createNodeTypeProgramHost(root))
+      analyzer.setTypeProgramHosts(createNodeTypeProgramHosts([root]))
       analyzer.addMeta({ schemaVersion: 1, components: [{ name: "button", dimension: {}, open: true }] })
       analyzer.setFile(typedButton)
       analyzer.setFile(labels)
@@ -415,7 +415,7 @@ props: { variant?: 'primary' | 'default'; count?: number; active?: boolean }
       function converterAnalyzer(chain: string): Analyzer {
         const analyzer = new Analyzer()
 
-        analyzer.setTypeProgramHost(createNodeTypeProgramHost(root))
+        analyzer.setTypeProgramHosts(createNodeTypeProgramHosts([root]))
         analyzer.addMeta({ schemaVersion: 1, components: [{ name: "span", dimension: {}, open: true }] })
         analyzer.setFile({
           path: path.join(root, "Form.hxm"),
@@ -467,7 +467,7 @@ props: { variant?: 'primary' | 'default'; count?: number; active?: boolean }
       function convertedPropAnalyzer(value: string): Analyzer {
         const analyzer = new Analyzer()
 
-        analyzer.setTypeProgramHost(createNodeTypeProgramHost(root))
+        analyzer.setTypeProgramHosts(createNodeTypeProgramHosts([root]))
         analyzer.addMeta({ schemaVersion: 1, components: [{ name: "button", dimension: {}, open: true }] })
         analyzer.setFile(typedButton)
         analyzer.setFile(settings)
@@ -499,7 +499,7 @@ props: { variant?: 'primary' | 'default'; count?: number; active?: boolean }
       it("then still reports an unknown prop when the value is converted", async () => {
         const analyzer = new Analyzer()
 
-        analyzer.setTypeProgramHost(createNodeTypeProgramHost(root))
+        analyzer.setTypeProgramHosts(createNodeTypeProgramHosts([root]))
         analyzer.addMeta({ schemaVersion: 1, components: [{ name: "button", dimension: {}, open: true }] })
         analyzer.setFile(typedButton)
         analyzer.setFile({
@@ -538,7 +538,7 @@ props: { variant?: 'primary' | 'default'; count?: number; active?: boolean }
       function executeAnalyzer(attributes: string): Analyzer {
         const analyzer = new Analyzer()
 
-        analyzer.setTypeProgramHost(createNodeTypeProgramHost(root))
+        analyzer.setTypeProgramHosts(createNodeTypeProgramHosts([root]))
         analyzer.setFile(labels)
         analyzer.setFile({
           path: path.join(root, "Form.hxm"),
@@ -622,7 +622,7 @@ props: { variant?: 'primary' | 'default'; count?: number; active?: boolean }
       function cardAnalyzer(attributes: string): Analyzer {
         const analyzer = new Analyzer()
 
-        analyzer.setTypeProgramHost(createNodeTypeProgramHost(root))
+        analyzer.setTypeProgramHosts(createNodeTypeProgramHosts([root]))
         analyzer.setFile({
           path: path.join(root, "Form.hxm"),
           ext: EXT_TEMPLATE,
@@ -674,7 +674,7 @@ props: { variant?: 'primary' | 'default'; count?: number; active?: boolean }
       it("then reports the no-functions guardrail violation at the header", async () => {
         const analyzer = new Analyzer()
 
-        analyzer.setTypeProgramHost(createNodeTypeProgramHost(root))
+        analyzer.setTypeProgramHosts(createNodeTypeProgramHosts([root]))
         analyzer.setFile({
           path: path.join(root, "Fancy.hxm"),
           ext: EXT_TEMPLATE,

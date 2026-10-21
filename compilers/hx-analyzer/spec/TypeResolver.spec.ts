@@ -1,7 +1,7 @@
 import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
-import { TypeResolver, createNodeTypeProgramHost } from "@heleonix/hx-analyzer"
+import { TypeResolver, createNodeTypeProgramHosts } from "@heleonix/hx-analyzer"
 
 describe("TypeResolver", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "hx-typeresolver-"))
@@ -20,7 +20,7 @@ describe("TypeResolver", () => {
     let resolved: ReturnType<TypeResolver["resolve"]>
 
     beforeAll(() => {
-      resolved = new TypeResolver(createNodeTypeProgramHost(root)).resolve([
+      resolved = new TypeResolver(createNodeTypeProgramHosts([root])).resolve([
         {
           id: "Inline",
           dir: root,

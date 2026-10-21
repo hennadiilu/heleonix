@@ -30,15 +30,13 @@
     ".": {
       "types": "./dist/types/index.d.ts",
       "require": "./dist/cjs/index.cjs",
-      "import": "./dist/esm/index.js",
-      "hxmeta": "./hx.meta.json"
+      "import": "./dist/esm/index.js"
     }
   },
   "files": [
     "dist/cjs/index.cjs",
     "dist/esm/index.js",
-    "dist/types/index.d.ts",
-    "hx.meta.json"
+    "dist/types/index.d.ts"
   ],
   "peerDependencies": {
     "@heleonix/hx-language": "workspace:*",

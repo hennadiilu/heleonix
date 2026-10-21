@@ -26,7 +26,6 @@ function context(): ILanguageContext {
     actions: [],
     components: [],
     themeTokens: new Map([["Colors.primary", "#0f62fe"]]),
-    themeTokenLocations: new Map(),
     qualifiers: [],
     controlNames: new Map(),
   } as unknown as ILanguageContext

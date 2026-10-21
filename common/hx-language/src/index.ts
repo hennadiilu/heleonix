@@ -108,6 +108,7 @@ export * from "./qualifiers/IQualifierDefinition"
 export * from "./qualifiers/parseRuleKey"
 export * from "./qualifiers/stringifyQualifierUsage"
 export * from "./qualifiers/stringifyRuleKey"
+export * from "./qualifiers/NATIVE_QUALIFIERS"
 
 export * from "./styles/IStyleDeclarations"
 export * from "./styles/IStyleDefinition"

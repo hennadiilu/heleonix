@@ -6,7 +6,7 @@ import type {
   IStyleDriver,
   IStyleEffect,
   IStyleQualifier,
-  IValueSource,
+  IBindingValueSource,
   StyleFragment,
   StyleHandle,
 } from "@heleonix/hx-core"
@@ -122,7 +122,7 @@ function spyOnApplyOwn(manager: StyleManager): jasmine.Spy {
   return spyOn(manager as unknown as { applyOwn(component: Component): Promise<void> }, "applyOwn").and.resolveTo()
 }
 
-function subject(sources: IValueSource[] = []): {
+function subject(sources: IBindingValueSource[] = []): {
   manager: StyleManager
   driver: FakeStyleDriver
   loader: FakeDefinitionLoader

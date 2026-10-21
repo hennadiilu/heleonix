@@ -1,6 +1,6 @@
 import esbuild from "esbuild"
 
-export async function buildNodeBundles({ entryPoints, external = [], watch = false }) {
+export async function buildNodeBundles({ entryPoints, external = [], watch = false, banner }) {
   /** @type {import("esbuild").BuildOptions} */
   const options = {
     entryPoints,
@@ -12,6 +12,7 @@ export async function buildNodeBundles({ entryPoints, external = [], watch = fal
     sourcemap: true,
     external,
     logLevel: "info",
+    ...(banner ? { banner } : {}),
   }
 
   if (watch) {

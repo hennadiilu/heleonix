@@ -1,4 +1,4 @@
-import { IJsoncEntry, IXmlScan } from "@heleonix/hx-compiler-core"
+import { IBlockNode, IJsoncEntry, IXmlScan } from "@heleonix/hx-compiler-core"
 import {
   BUILTIN_TAGS,
   CONFIG_REF_PREFIX,
@@ -11,6 +11,7 @@ import {
   NAME_ATTRIBUTE,
   REFERENCE_SEPARATORS,
   ROOT_TAG,
+  THEME_ENTRY_SEPARATOR,
   getOverrideTarget,
   isBindingExpression,
   parseBindingExpression,
@@ -19,6 +20,7 @@ import {
 import { definitionName } from "../../languages/jsonc/definitionName"
 import { headSegment } from "../../references/headSegment"
 import type { IInterpolationRef } from "../../references/IInterpolationRef"
+import type { IThemeReference } from "../../references/IThemeReference"
 import { inlineOverrideScopes, scopeOwnerAt } from "../../references/inlineOverrideScopes"
 import { splitComponentPrefix } from "../../references/splitComponentPrefix"
 import { IParsedFile } from "../parseFile"
@@ -44,6 +46,12 @@ export function collectOccurrences(filePath: string, source: string, parsed: IPa
     collectConfig(name, parsed.bodyStart, parsed.entries, raw)
   } else if (parsed.kind === "style") {
     collectStyle(parsed.references, raw)
+  } else if (parsed.kind === "theme") {
+    collectThemeDefinitions(parsed.nodes, "", parsed.bodyStart, raw)
+  }
+
+  if (parsed.kind === "style" || parsed.kind === "theme") {
+    collectThemeReferences(parsed.themeReferences, raw)
   }
 
   return { filePath, lineStarts: lineStartsOf(source), raw }
@@ -367,6 +375,40 @@ function collectStyle(references: readonly IInterpolationRef[], raw: IRawOccurre
         end: ref.end,
       })
     }
+  }
+}
+
+// --- Themes (*.hxt) ----------------------------------------------------------
+
+// Groups and tokens are both addressable (`@hx-apply` names a group), so each
+// defines its dot-path. `@`-blocks are named CSS artifacts, not tokens.
+function collectThemeDefinitions(
+  nodes: readonly IBlockNode[],
+  prefix: string,
+  bodyStart: number,
+  raw: IRawOccurrence[],
+): void {
+  for (const node of nodes) {
+    const name = node.kind === "declaration" ? node.name : node.kind === "block" ? node.prelude : ""
+
+    if (!name || name.startsWith("@") || name.startsWith(":")) {
+      continue
+    }
+
+    const path = prefix ? `${prefix}${THEME_ENTRY_SEPARATOR}${name}` : name
+    const start = bodyStart + node.start
+
+    raw.push({ kind: "themeToken", role: "definition", path, start, end: start + name.length })
+
+    if (node.kind === "block") {
+      collectThemeDefinitions(node.nodes, path, bodyStart, raw)
+    }
+  }
+}
+
+function collectThemeReferences(references: readonly IThemeReference[], raw: IRawOccurrence[]): void {
+  for (const ref of references) {
+    raw.push({ kind: "themeToken", role: "reference", path: ref.path, start: ref.start, end: ref.end })
   }
 }
 

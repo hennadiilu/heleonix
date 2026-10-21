@@ -1,13 +1,13 @@
-import { BindingEvaluator, LiteralValueSource, StateValueSource } from "@heleonix/hx-core"
+import { BindingEvaluator, LiteralBindingValueSource, StateBindingValueSource } from "@heleonix/hx-core"
 import { QualifierProvider } from "../../src/styling/qualifiers/QualifierProvider"
 import { StyleManager } from "../../src/styling/StyleManager"
-import type { ThemeManager } from "../../src/theming/ThemeManager"
+import type { IThemeManager } from "../../src/theming/IThemeManager"
 import type {
   Component,
   IConverterProvider,
   IState,
   IStyleDriver,
-  IValueSource,
+  IBindingValueSource,
   StyleDefinitionLoader,
 } from "@heleonix/hx-core"
 import type { IStyleDefinition, IThemeDefinition } from "@heleonix/hx-language"
@@ -115,19 +115,19 @@ export class FakeDefinitionLoader {
   }
 }
 
-export class FakeThemeManager {
+export class FakeThemeManager implements IThemeManager {
   public groups: IThemeDefinition["groups"] = {}
 
   public getTheme(): Promise<IThemeDefinition> {
     return Promise.resolve({ name: "", dimension: {}, groups: this.groups })
   }
 
-  public asManager(): ThemeManager {
-    return this as unknown as ThemeManager
+  public apply(): Promise<void> {
+    return Promise.resolve()
   }
 }
 
-export function entrySource(type: "dictionary" | "config", entries: Record<string, string>): IValueSource {
+export function entrySource(type: "dictionary" | "config", entries: Record<string, string>): IBindingValueSource {
   return { type, get: (path: string) => Promise.resolve(entries[path]) }
 }
 
@@ -142,7 +142,7 @@ export interface ManagerParts {
   loader?: FakeDefinitionLoader
   theme?: FakeThemeManager
   state?: FakeState
-  sources?: IValueSource[]
+  sources?: IBindingValueSource[]
   qualifiers?: QualifierProvider
 }
 
@@ -152,11 +152,11 @@ export function managerWith(parts: ManagerParts): StyleManager {
   return new StyleManager(
     () => parts.driver,
     (parts.loader ?? new FakeDefinitionLoader()).asLoader(),
-    (parts.theme ?? new FakeThemeManager()).asManager(),
+    parts.theme ?? new FakeThemeManager(),
     state,
     new BindingEvaluator(NO_CONVERTERS, [
-      new StateValueSource(state),
-      new LiteralValueSource(),
+      new StateBindingValueSource(state),
+      new LiteralBindingValueSource(),
       ...(parts.sources ?? []),
     ]),
     parts.qualifiers ?? new QualifierProvider(new Map()),

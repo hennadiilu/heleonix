@@ -6,4 +6,7 @@ export interface ITypeProgramHost {
   rootFiles: readonly string[]
 
   host: ts.CompilerHost
+
+  /** The directory of the project's `tsconfig.json` (the folder it serves when there is none). */
+  projectDir: string
 }

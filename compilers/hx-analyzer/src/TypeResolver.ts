@@ -21,12 +21,26 @@ export interface ITypeRequest {
 
 const ALIAS = "__HxType"
 
-export class TypeResolver {
-  private readonly programHost: ITypeProgramHost
+interface IProject {
+  readonly programHost: ITypeProgramHost
 
   // Reused as the `oldProgram` of the next creation so TypeScript reuses the
   // unchanged structure (lib, unedited project files) instead of rebuilding it.
-  private oldProgram?: ts.Program
+  oldProgram?: ts.Program
+}
+
+interface IScan {
+  readonly classes: IDiscoveredClass[]
+
+  readonly qualifiers: IDiscoveredQualifier[]
+
+  readonly components: IDiscoveredComponent[]
+}
+
+export class TypeResolver {
+  private readonly projects: IProject[]
+
+  private readonly discoverable: (fileName: string) => boolean
 
   // Style qualifiers found by the most recent `discover()` scan (collected in
   // the same pass as converters/actions; read via `qualifiers()`).
@@ -35,8 +49,16 @@ export class TypeResolver {
   // Programmatic components found by the most recent `discover()` scan.
   private lastComponents: IDiscoveredComponent[] = []
 
-  public constructor(programHost: ITypeProgramHost) {
-    this.programHost = programHost
+  /**
+   * @param discoverable The source files whose classes `discover()` reports (every project file by default) - a
+   * project may span more than its caller can see, e.g. a root `tsconfig` mapping every package's sources.
+   */
+  public constructor(
+    programHosts: readonly ITypeProgramHost[],
+    discoverable: (fileName: string) => boolean = () => true,
+  ) {
+    this.projects = programHosts.map((programHost) => ({ programHost }))
+    this.discoverable = discoverable
   }
 
   public qualifiers(): IDiscoveredQualifier[] {
@@ -49,161 +71,217 @@ export class TypeResolver {
 
   public resolve(requests: readonly ITypeRequest[]): Map<string, IResolvedType> {
     const result = new Map<string, IResolvedType>()
+    const byProject = new Map<IProject, ITypeRequest[]>()
 
-    if (requests.length === 0) {
-      return result
+    for (const request of requests) {
+      const project = this.ownerOf(request.dir)
+
+      if (project) {
+        byProject.set(project, [...(byProject.get(project) ?? []), request])
+      }
     }
 
-    // Real paths keep their case so `import("./…")` module resolution works; the
-    // overlay Map is keyed case-insensitively so the host's lookups match.
-    const virtual = new Map<string, string>()
-    const rootNames: string[] = []
-    const idByPath = new Map<string, string>()
-
-    requests.forEach((request, index) => {
-      const realPath = path.join(request.dir, `__hxtype_${index}.ts`)
-
-      virtual.set(normalize(realPath), `export type ${ALIAS} = (${request.typeText})\n`)
-      rootNames.push(realPath)
-      idByPath.set(realPath, request.id)
-    })
-
-    const host = overlay(this.programHost.host, virtual)
-    // The project's own files are included so ambient/global types and bare
-    // workspace type references resolve, alongside the virtual header modules.
-    const program = ts.createProgram(
-      [...this.programHost.rootFiles, ...rootNames],
-      this.programHost.options,
-      host,
-      this.oldProgram,
-    )
-
-    this.oldProgram = program
-
-    const checker = program.getTypeChecker()
-
-    for (const [realPath, id] of idByPath) {
-      const source = program.getSourceFile(realPath)
-
-      result.set(id, source ? resolveAlias(source, checker) : { resolved: false, members: [] })
+    for (const [project, owned] of byProject) {
+      for (const [id, type] of resolveIn(project, owned)) {
+        result.set(id, type)
+      }
     }
 
     return result
   }
 
+  // Projects are scanned outermost first. One whose files an earlier program
+  // already read (a package inside a root `tsconfig` spanning the monorepo), or
+  // none of whose files is discoverable, is not built at all - it stays for
+  // typing the files in its directory.
   public discover(): IDiscoveredClass[] {
-    const program = ts.createProgram(
-      [...this.programHost.rootFiles],
-      this.programHost.options,
-      this.programHost.host,
-      this.oldProgram,
-    )
+    const scan: IScan = { classes: [], qualifiers: [], components: [] }
+    const scanned = new Set<string>()
 
-    this.oldProgram = program
+    for (const project of this.projects) {
+      const { rootFiles, options, host } = project.programHost
 
-    const checker = program.getTypeChecker()
-    const result: IDiscoveredClass[] = []
-    const qualifiers: IDiscoveredQualifier[] = []
-    const components: IDiscoveredComponent[] = []
-
-    for (const source of program.getSourceFiles()) {
-      if (source.isDeclarationFile || source.fileName.includes("node_modules")) {
+      if (rootFiles.length > 0 && rootFiles.every((file) => scanned.has(normalize(file)) || !this.discoverable(file))) {
         continue
       }
 
-      for (const node of source.statements) {
-        if (!ts.isClassDeclaration(node) || !node.name || isAbstract(node)) {
+      const program = ts.createProgram([...rootFiles], options, host, project.oldProgram)
+
+      project.oldProgram = program
+
+      const checker = program.getTypeChecker()
+
+      for (const source of program.getSourceFiles()) {
+        const key = normalize(source.fileName)
+
+        if (scanned.has(key)) {
           continue
         }
 
-        const symbol = checker.getSymbolAtLocation(node.name)
+        scanned.add(key)
 
-        if (!symbol) {
-          continue
+        if (
+          !source.isDeclarationFile &&
+          !source.fileName.includes("node_modules") &&
+          this.discoverable(source.fileName)
+        ) {
+          scanSource(source, checker, scan)
         }
-
-        const instanceType = checker.getDeclaredTypeOfSymbol(symbol)
-        const matched = matchBase(instanceType, checker)
-
-        if (!matched) {
-          continue
-        }
-
-        const className = node.name.text
-        const hxName = readHxName(node)
-        const at = source.getLineAndCharacterOfPosition(node.name.getStart())
-        const docs = ts.displayPartsToString(symbol.getDocumentationComment(checker)).trim()
-
-        if (matched.base === QUALIFIER_BASE) {
-          const argType = checker.getTypeArguments(matched.type as ts.TypeReference)[0]
-          const qualifier: IDiscoveredQualifier = {
-            className,
-            name: hxName ?? className,
-            hasHxName: hxName !== undefined,
-            file: source.fileName,
-            line: at.line,
-            character: at.character,
-            args: argType ? resolveQualifierArgs(argType, checker, node) : [],
-          }
-
-          if (docs) {
-            qualifier.docs = docs
-          }
-
-          qualifiers.push(qualifier)
-
-          continue
-        }
-
-        if (matched.base === COMPONENT_BASE) {
-          // A programmatic component's contract is its two type arguments; its
-          // tag is the name it declares, like every other framework element.
-          const args = checker.getTypeArguments(matched.type as ts.TypeReference)
-          const component: IDiscoveredComponent = {
-            className,
-            name: hxName ?? className,
-            hasHxName: hxName !== undefined,
-            file: source.fileName,
-            line: at.line,
-            character: at.character,
-            props: args[0] ? resolveMembers(args[0], checker, node) : [],
-            events: args[1] ? resolveMembers(args[1], checker, node) : [],
-          }
-
-          if (docs) {
-            component.docs = docs
-          }
-
-          components.push(component)
-
-          continue
-        }
-
-        const [method, paramIndex] = matched.base === "Converter" ? (["format", 1] as const) : (["Execute", 0] as const)
-
-        const discovered: IDiscoveredClass = {
-          className,
-          base: matched.base,
-          name: hxName ?? className,
-          hasHxName: hxName !== undefined,
-          file: source.fileName,
-          line: at.line,
-          character: at.character,
-          params: readParams(instanceType, checker, node, method, paramIndex),
-        }
-
-        if (docs) {
-          discovered.docs = docs
-        }
-
-        result.push(discovered)
       }
     }
 
-    this.lastQualifiers = qualifiers
-    this.lastComponents = components
+    this.lastQualifiers = scan.qualifiers
+    this.lastComponents = scan.components
 
-    return result
+    return scan.classes
+  }
+
+  // A request belongs to the project with the deepest directory containing it,
+  // so a file is typed by its own package's compiler options.
+  private ownerOf(dir: string): IProject | undefined {
+    let owner = this.projects[0]
+    let depth = -1
+
+    for (const project of this.projects) {
+      const projectDir = project.programHost.projectDir
+      const relative = path.relative(projectDir, dir)
+
+      if (relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+        continue
+      }
+
+      if (projectDir.length > depth) {
+        owner = project
+        depth = projectDir.length
+      }
+    }
+
+    return owner
+  }
+}
+
+function resolveIn(project: IProject, requests: readonly ITypeRequest[]): Map<string, IResolvedType> {
+  const result = new Map<string, IResolvedType>()
+
+  // Real paths keep their case so `import("./…")` module resolution works; the
+  // overlay Map is keyed case-insensitively so the host's lookups match.
+  const virtual = new Map<string, string>()
+  const rootNames: string[] = []
+  const idByPath = new Map<string, string>()
+
+  requests.forEach((request, index) => {
+    const realPath = path.join(request.dir, `__hxtype_${index}.ts`)
+
+    virtual.set(normalize(realPath), `export type ${ALIAS} = (${request.typeText})\n`)
+    rootNames.push(realPath)
+    idByPath.set(realPath, request.id)
+  })
+
+  const { rootFiles, options, host } = project.programHost
+  // The project's own files are included so ambient/global types and bare
+  // workspace type references resolve, alongside the virtual header modules.
+  const program = ts.createProgram([...rootFiles, ...rootNames], options, overlay(host, virtual), project.oldProgram)
+
+  project.oldProgram = program
+
+  const checker = program.getTypeChecker()
+
+  for (const [realPath, id] of idByPath) {
+    const source = program.getSourceFile(realPath)
+
+    result.set(id, source ? resolveAlias(source, checker) : { resolved: false, members: [] })
+  }
+
+  return result
+}
+
+function scanSource(source: ts.SourceFile, checker: ts.TypeChecker, scan: IScan): void {
+  for (const node of source.statements) {
+    if (!ts.isClassDeclaration(node) || !node.name || isAbstract(node)) {
+      continue
+    }
+
+    const symbol = checker.getSymbolAtLocation(node.name)
+
+    if (!symbol) {
+      continue
+    }
+
+    const instanceType = checker.getDeclaredTypeOfSymbol(symbol)
+    const matched = matchBase(instanceType, checker)
+
+    if (!matched) {
+      continue
+    }
+
+    const className = node.name.text
+    const hxName = readHxName(node)
+    const at = source.getLineAndCharacterOfPosition(node.name.getStart())
+    const docs = ts.displayPartsToString(symbol.getDocumentationComment(checker)).trim()
+
+    if (matched.base === QUALIFIER_BASE) {
+      const argType = checker.getTypeArguments(matched.type as ts.TypeReference)[0]
+      const qualifier: IDiscoveredQualifier = {
+        className,
+        name: hxName ?? className,
+        hasHxName: hxName !== undefined,
+        file: source.fileName,
+        line: at.line,
+        character: at.character,
+        args: argType ? resolveQualifierArgs(argType, checker, node) : [],
+      }
+
+      if (docs) {
+        qualifier.docs = docs
+      }
+
+      scan.qualifiers.push(qualifier)
+
+      continue
+    }
+
+    if (matched.base === COMPONENT_BASE) {
+      // A programmatic component's contract is its two type arguments; its
+      // tag is the name it declares, like every other framework element.
+      const args = checker.getTypeArguments(matched.type as ts.TypeReference)
+      const component: IDiscoveredComponent = {
+        className,
+        name: hxName ?? className,
+        hasHxName: hxName !== undefined,
+        file: source.fileName,
+        line: at.line,
+        character: at.character,
+        props: args[0] ? resolveMembers(args[0], checker, node) : [],
+        events: args[1] ? resolveMembers(args[1], checker, node) : [],
+      }
+
+      if (docs) {
+        component.docs = docs
+      }
+
+      scan.components.push(component)
+
+      continue
+    }
+
+    const [method, paramIndex] = matched.base === "Converter" ? (["format", 1] as const) : (["Execute", 0] as const)
+
+    const discovered: IDiscoveredClass = {
+      className,
+      base: matched.base,
+      name: hxName ?? className,
+      hasHxName: hxName !== undefined,
+      file: source.fileName,
+      line: at.line,
+      character: at.character,
+      params: readParams(instanceType, checker, node, method, paramIndex),
+    }
+
+    if (docs) {
+      discovered.docs = docs
+    }
+
+    scan.classes.push(discovered)
   }
 }
 

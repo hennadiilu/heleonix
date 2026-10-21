@@ -1,0 +1,103 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Heleonix configuration",
+  "description": "Shared by builds (the bundler plugins), editors (the language server) and tooling. The nearest hx.config.json at or above a package governs it; relative paths resolve against the file declaring them.",
+  "type": "object",
+  "allowTrailingCommas": true,
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "extends": {
+      "type": "string",
+      "markdownDescription": "A configuration to build on: a path (`../../hx.config.json`, or a folder holding one) or a file of an installed package (`@acme/config/hx.config.json`). This file's settings win key by key; `diagnostics.severity` merges code by code."
+    },
+    "include": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "markdownDescription": "The directories holding the sources to compile (default: this file's directory). Declare it in each package's own configuration - a plugin's `include` option wins over it."
+    },
+    "exclude": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "markdownDescription": "Folder names skipped wherever they occur (`fixtures`), or paths skipped with everything below them (`./src/legacy`). Replaces the default `[\"node_modules\"]`."
+    },
+    "dimensions": {
+      "markdownDescription": "The dimensions sources are named under (`Buttons.en-US.hxd`): a path to a dimensions file (`./hx.dimensions.json`), or the definitions themselves. Files with a segment outside them are not compiled.",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "values"],
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "values": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "typescript": {
+      "type": "object",
+      "additionalProperties": false,
+      "markdownDescription": "Where editors find the TypeScript classes (converters, actions, style qualifiers, programmatic components) - read from the configuration governing a workspace folder.",
+      "properties": {
+        "projects": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "`tsconfig` files, folders holding one, or glob patterns naming the projects to read; their `references` are followed. Default: `[\"**/tsconfig.json\"]`."
+        },
+        "exclude": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "Glob patterns of TypeScript files left out of discovery (test fixtures). Builds apply it to the classes their `hx.meta.json` describes."
+        },
+        "linkedPackages": {
+          "type": "boolean",
+          "markdownDescription": "Also read dependencies linked in from outside the workspace folders - for opening one app of a monorepo alone."
+        }
+      }
+    },
+    "diagnostics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "severity": {
+          "type": "object",
+          "markdownDescription": "Levels by diagnostic code, replacing each diagnostic's own in builds and editors alike: builds fail on `error` and report `warning`; `information` and `hint` show in editors only; `off` silences a diagnostic everywhere.",
+          "propertyNames": {
+            "pattern": "^HX_[A-Z_]+_[0-9]{4}$"
+          },
+          "additionalProperties": {
+            "enum": ["error", "warning", "information", "hint", "off"]
+          }
+        },
+        "failOnWarnings": {
+          "type": "boolean",
+          "markdownDescription": "Whether builds fail on warnings too. A plugin's `validate.failOnWarnings` option wins over it."
+        }
+      }
+    }
+  }
+}

@@ -2,7 +2,10 @@
   "name": "@heleonix/hx-language-server",
   "version": "1.0.0",
   "main": "./dist/server.js",
-  "description": "Language Server (LSP) for Heleonix source formats (*.hxm, *.hxd, *.hxc).",
+  "bin": {
+    "hx-language-server": "./dist/server.js"
+  },
+  "description": "Language Server (LSP) for Heleonix source formats (*.hxm, *.hxd, *.hxc, *.hxs, *.hxt) and hx.config.json.",
   "author": "Heleonix - Hennadii Lutsyshyn",
   "license": "MIT",
   "homepage": "https://github.com/Heleonix/heleonix",

@@ -1,10 +1,7 @@
 import path from "node:path"
-import { readFileSync } from "node:fs"
 import webpack from "webpack"
 import HtmlWebpackPlugin from "html-webpack-plugin"
 import { HxWebpackPlugin } from "@heleonix/hx-webpack-plugin"
-
-const dimensions = JSON.parse(readFileSync(path.resolve("./hx.dimensions.json"), "utf8"))
 
 export default (env, argv) => {
   const mode = argv.mode === "production" ? "production" : "development"
@@ -56,8 +53,6 @@ export default (env, argv) => {
         DEV: JSON.stringify(mode === "development"),
       }),
       new HxWebpackPlugin({
-        dimensions,
-        include: ["./src"],
         declarationFile: "./src/hx-virtual.d.ts",
         emitMeta: true,
         validate: true,

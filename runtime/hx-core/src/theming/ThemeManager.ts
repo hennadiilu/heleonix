@@ -2,8 +2,9 @@ import { flattenThemeTokens } from "@heleonix/hx-language"
 import type { IThemeDefinition } from "@heleonix/hx-language"
 import type { IThemeDriver } from "../platform/IThemeDriver"
 import { ThemeDefinitionLoader } from "./ThemeDefinitionLoader"
+import type { IThemeManager } from "./IThemeManager"
 
-export class ThemeManager {
+export class ThemeManager implements IThemeManager {
   public constructor(
     private readonly loader: ThemeDefinitionLoader,
     // A thunk for the same reason the style manager takes one: a runtime may

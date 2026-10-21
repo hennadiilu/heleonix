@@ -1,11 +1,11 @@
 import { performance } from "node:perf_hooks"
 import {
   BindingEvaluator,
-  ConfigValueSource,
+  ConfigBindingValueSource,
   Converter,
-  DictionaryValueSource,
-  LiteralValueSource,
-  StateValueSource,
+  DictionaryBindingValueSource,
+  LiteralBindingValueSource,
+  StateBindingValueSource,
   isThenable,
 } from "@heleonix/hx-core"
 import type { ConverterConstructor, IConverterContext } from "@heleonix/hx-core"
@@ -83,10 +83,10 @@ function makeGraph(): Graph {
     () => ({}) as IConverterContext,
   )
   const evaluator = new BindingEvaluator(converterProvider, [
-    new StateValueSource(state),
-    new LiteralValueSource(),
-    new ConfigValueSource(new FakeConfigDefinitionLoader() as never),
-    new DictionaryValueSource(new FakeDictionaryDefinitionLoader() as never),
+    new StateBindingValueSource(state),
+    new LiteralBindingValueSource(),
+    new ConfigBindingValueSource(new FakeConfigDefinitionLoader() as never),
+    new DictionaryBindingValueSource(new FakeDictionaryDefinitionLoader() as never),
   ])
 
   return { state, binder: new Binder(state, evaluator), evaluator }

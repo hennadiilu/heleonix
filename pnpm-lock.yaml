@@ -285,12 +285,18 @@ importers:
 
   plugins/hx-plugin-core:
     dependencies:
+      '@heleonix/hx-analyzer':
+        specifier: workspace:*
+        version: link:../../compilers/hx-analyzer
       '@heleonix/hx-compiler-components':
         specifier: workspace:*
         version: link:../../compilers/hx-compiler-components
       '@heleonix/hx-compiler-configs':
         specifier: workspace:*
         version: link:../../compilers/hx-compiler-configs
+      '@heleonix/hx-compiler-core':
+        specifier: workspace:*
+        version: link:../../compilers/hx-compiler-core
       '@heleonix/hx-compiler-dictionaries':
         specifier: workspace:*
         version: link:../../compilers/hx-compiler-dictionaries

@@ -1,5 +1,9 @@
-import type { FQComponentName, FQDictionaryEntryName } from "@heleonix/hx-language"
+import type { FQDictionaryEntryName } from "@heleonix/hx-language"
+import type { DataObject } from "../common/DataObject"
 
 export interface IDictionaryProvider {
-  get(path: FQDictionaryEntryName, scopeFQ: FQComponentName): Promise<string | undefined>
+  get<TValues extends DataObject<TValues>>(
+    fqEntryName: FQDictionaryEntryName,
+    values?: TValues,
+  ): Promise<string | undefined>
 }

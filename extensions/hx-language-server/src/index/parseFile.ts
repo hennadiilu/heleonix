@@ -1,8 +1,19 @@
 import path from "node:path"
-import { IJsoncComment, IJsoncEntry, IXmlScan, parseJsonc, scanXml, splitFrontmatter } from "@heleonix/hx-compiler-core"
-import { EXT_CONFIG, EXT_DICTIONARY, EXT_STYLE, EXT_TEMPLATE } from "@heleonix/hx-language"
+import {
+  IBlockNode,
+  IJsoncComment,
+  IJsoncEntry,
+  IXmlScan,
+  parseBlocks,
+  parseJsonc,
+  scanXml,
+  splitFrontmatter,
+} from "@heleonix/hx-compiler-core"
+import { EXT_CONFIG, EXT_DICTIONARY, EXT_STYLE, EXT_TEMPLATE, EXT_THEME } from "@heleonix/hx-language"
 import type { IInterpolationRef } from "../references/IInterpolationRef"
+import type { IThemeReference } from "../references/IThemeReference"
 import { scanStyleReferences } from "../references/scanStyleReferences"
+import { scanThemeReferences } from "../references/scanThemeReferences"
 
 export type IParsedFile =
   | { kind: "component"; scan: IXmlScan }
@@ -20,7 +31,8 @@ export type IParsedFile =
       entries: readonly IJsoncEntry[]
       comments: readonly IJsoncComment[]
     }
-  | { kind: "style"; references: readonly IInterpolationRef[] }
+  | { kind: "style"; references: readonly IInterpolationRef[]; themeReferences: readonly IThemeReference[] }
+  | { kind: "theme"; bodyStart: number; nodes: readonly IBlockNode[]; themeReferences: readonly IThemeReference[] }
   | { kind: "other" }
 
 export function parseFile(filePath: string, source: string): IParsedFile {
@@ -39,10 +51,26 @@ export function parseFile(filePath: string, source: string): IParsedFile {
   }
 
   if (ext === EXT_STYLE) {
-    return { kind: "style", references: scanStyleReferences(source) }
+    return { kind: "style", references: scanStyleReferences(source), themeReferences: scanThemeReferences(source) }
+  }
+
+  if (ext === EXT_THEME) {
+    return { kind: "theme", ...parseTheme(source), themeReferences: scanThemeReferences(source) }
   }
 
   return { kind: "other" }
+}
+
+function parseTheme(source: string): { bodyStart: number; nodes: readonly IBlockNode[] } {
+  let body: string
+
+  try {
+    body = splitFrontmatter(source).body
+  } catch {
+    return { bodyStart: 0, nodes: [] }
+  }
+
+  return { bodyStart: source.length - body.length, nodes: parseBlocks(body).nodes }
 }
 
 function parseData(source: string): {

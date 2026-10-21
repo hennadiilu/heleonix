@@ -33,10 +33,8 @@ import type {
   IStyleDefinition,
 } from "@heleonix/hx-language"
 import { Diagnostics } from "./Diagnostics"
-import { locateThemeToken } from "./locateThemeToken"
 import type { IAnalyzerFile } from "./IAnalyzerFile"
 import type { IComponentInfo } from "./IComponentInfo"
-import type { IThemeTokenLocation } from "./IThemeTokenLocation"
 import type { IDiagnostic } from "./IDiagnostic"
 import type { IDiscoveredClass } from "./IDiscoveredClass"
 import type { IDiscoveredComponent } from "./IDiscoveredComponent"
@@ -72,8 +70,6 @@ interface IFileFacts {
   configEntries?: IConfigEntryDefinition
   // Theme files: this partial's flattened token space (dot-path -> value).
   themeTokens?: Record<string, string>
-  // Theme files: each token's leaf declaration position in this partial's source.
-  themeTokenLocations?: Record<string, { line: number; character: number; length: number }>
   // Style files: every `{...}` binding source in the style, by kind (theme
   // tokens, state reads, dictionary/config references) - collected from rule
   // keys (qualifier args), declaration values and keyframe values.
@@ -142,10 +138,8 @@ export class Analyzer {
   // Style qualifiers found by the most recent class scan, retained for editor queries.
   private discoveredQualifiers: IDiscoveredQualifier[] = []
 
-  private typeProgramHost?: ITypeProgramHost
-
-  // One resolver per host so its incremental `oldProgram` survives across
-  // analyses - the hot path when the language server re-analyzes on each edit.
+  // Kept across analyses so each project's incremental `oldProgram` survives -
+  // the hot path when the language server re-analyzes on each edit.
   private typeResolver?: TypeResolver
 
   // The most recent class scan, retained so editor features (completion, hover,
@@ -160,9 +154,9 @@ export class Analyzer {
   // editor can offer tag/prop completion and hover between analyses.
   private componentInfos = new Map<string, IComponentInfo>()
 
-  public setTypeProgramHost(host: ITypeProgramHost | undefined): void {
-    this.typeProgramHost = host
-    this.typeResolver = host ? new TypeResolver(host) : undefined
+  /** @param discoverable The source files whose classes are discovered (every project file by default). */
+  public setTypeProgramHosts(hosts: readonly ITypeProgramHost[], discoverable?: (fileName: string) => boolean): void {
+    this.typeResolver = hosts.length > 0 ? new TypeResolver(hosts, discoverable) : undefined
   }
 
   public setFile(file: IAnalyzerFile): void {
@@ -247,18 +241,6 @@ export class Analyzer {
     }
 
     return tokens
-  }
-
-  public themeTokenLocations(): Map<string, IThemeTokenLocation> {
-    const locations = new Map<string, IThemeTokenLocation>()
-
-    for (const state of this.files.values()) {
-      for (const [tokenPath, location] of Object.entries(state.facts?.themeTokenLocations ?? {})) {
-        locations.set(tokenPath, { file: state.file.path, ...location })
-      }
-    }
-
-    return locations
   }
 
   public controlNames(): Map<string, string[]> {
@@ -1372,18 +1354,7 @@ async function compileFacts(file: IAnalyzerFile): Promise<IFileFacts> {
       }
       case EXT_THEME: {
         const definition = await new ThemeCompiler().compile(file.source, file.dimension, { name: file.name })
-        const themeTokens = flattenThemeTokens(definition.groups)
-        const themeTokenLocations: Record<string, { line: number; character: number; length: number }> = {}
-
-        for (const tokenPath of Object.keys(themeTokens)) {
-          const location = locateThemeToken(file.source, tokenPath)
-
-          if (location) {
-            themeTokenLocations[tokenPath] = location
-          }
-        }
-
-        return { themeTokens, themeTokenLocations }
+        return { themeTokens: flattenThemeTokens(definition.groups) }
       }
       case EXT_STYLE: {
         const definition = await new StyleCompiler().compile(file.source, file.dimension, { name: file.name })

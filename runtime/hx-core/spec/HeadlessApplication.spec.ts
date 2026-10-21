@@ -4,8 +4,8 @@ import {
   ApplicationRuntime,
   BindingEvaluator,
   DefinitionLoader,
-  LiteralValueSource,
-  StateValueSource,
+  LiteralBindingValueSource,
+  StateBindingValueSource,
 } from "@heleonix/hx-core"
 import { ConverterProvider } from "../src/converters/ConverterProvider"
 import { StateManager } from "../src/state/StateManager"
@@ -111,8 +111,8 @@ describe("application without component, dictionary and config definitions", () 
 
   it("then resolves a config or dictionary binding to undefined rather than demanding a definition", async () => {
     const evaluator = new BindingEvaluator(new ConverterProvider(new Map(), () => ({}) as never), [
-      new StateValueSource(new StateManager()),
-      new LiteralValueSource(),
+      new StateBindingValueSource(new StateManager()),
+      new LiteralBindingValueSource(),
     ])
 
     const config: IBindingExpression = { type: "config", value: "Sizes.width" }

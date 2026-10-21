@@ -29,42 +29,6 @@ const semantic = {
   source: `Colors { Text { default: {$Palette.Neutral.t90}; } }`,
 }
 
-describe("Analyzer themeTokenLocations()", () => {
-  it("then locates a token's leaf declaration, narrowing same-named leaves by group", async () => {
-    const analyzer = analyzerWith(primitives)
-    await analyzer.analyze()
-
-    const location = analyzer.themeTokenLocations().get("Palette.Blue.t60")
-
-    expect(location?.file).toBe("/src/Primitives.hxt")
-    expect(location?.line).toBe(0)
-    expect(primitives.source.slice(location!.character, location!.character + location!.length)).toBe("t60")
-  })
-
-  it("then computes the line for a multi-line theme partial", async () => {
-    const spacing = {
-      path: "/src/Spacing.hxt",
-      ext: EXT_THEME,
-      name: "Spacing",
-      dimension: {},
-      source: "Spacing {\n  xs: 4px;\n  md: 16px;\n}",
-    }
-    const analyzer = analyzerWith(spacing)
-    await analyzer.analyze()
-
-    const location = analyzer.themeTokenLocations().get("Spacing.md")
-
-    expect(location).toEqual({ file: "/src/Spacing.hxt", line: 2, character: 2, length: 2 })
-  })
-
-  it("then omits tokens with no workspace source", async () => {
-    const analyzer = analyzerWith(primitives)
-    await analyzer.analyze()
-
-    expect(analyzer.themeTokenLocations().get("Palette.Nope.t10")).toBeUndefined()
-  })
-})
-
 describe("Analyzer theme references (0004/0005)", () => {
   describe("given a style referencing a defined token", () => {
     const style = {

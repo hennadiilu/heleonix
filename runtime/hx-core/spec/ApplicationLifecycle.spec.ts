@@ -97,7 +97,6 @@ describe("restart teardown", () => {
         { loadDefinition: () => Promise.resolve(undefined) } as never,
         { changed: { on: () => {}, off: () => {} } } as never,
         {} as never,
-        {} as never,
         new Map(),
         () => ({}) as never,
         undefined,

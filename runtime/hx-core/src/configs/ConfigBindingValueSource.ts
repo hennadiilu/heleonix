@@ -1,11 +1,11 @@
 import type { BindingType } from "@heleonix/hx-language"
-import type { IValueSource } from "../bindings/IValueSource"
+import type { IBindingValueSource } from "../bindings/IBindingValueSource"
 import type { ConfigDefinitionLoader } from "./ConfigDefinitionLoader"
 import { CONFIG_ENTRY_SEPARATOR } from "@heleonix/hx-language"
 import { HeleonixError } from "../errors/HeleonixError"
 import { Errors } from "../errors/Errors"
 
-export class ConfigValueSource implements IValueSource {
+export class ConfigBindingValueSource implements IBindingValueSource {
   public readonly type: BindingType = "config"
 
   public constructor(private readonly loader: ConfigDefinitionLoader) {}

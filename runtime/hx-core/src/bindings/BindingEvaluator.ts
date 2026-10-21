@@ -1,5 +1,6 @@
 import {
   EXPRESSION_PATTERN,
+  getPropertySegments,
   joinFQPropertyName,
   parseBindingExpression,
   parseConverterCall,
@@ -9,7 +10,7 @@ import type { MaybePromise } from "../common/MaybePromise"
 import { isThenable } from "../common/isThenable"
 import { thenMaybe } from "../common/thenMaybe"
 import type { IConverterProvider } from "../converters/IConverterProvider"
-import type { IValueSource } from "./IValueSource"
+import type { IBindingValueSource } from "./IBindingValueSource"
 
 const EXPRESSION_REGEX = new RegExp(EXPRESSION_PATTERN, "g")
 
@@ -20,29 +21,29 @@ const LEAF_TYPES: ReadonlySet<BindingType> = new Set<BindingType>(["state", "lit
 type ConverterCall = ReturnType<typeof parseConverterCall>
 
 export class BindingEvaluator {
-  private readonly sources: Map<BindingType, IValueSource>
+  private readonly sources: Map<BindingType, IBindingValueSource>
 
   private readonly argEntries = new WeakMap<ConverterCall, [string, IBindingExpression][]>()
 
   public constructor(
     private readonly converters: IConverterProvider,
-    sources: readonly IValueSource[],
+    sources: readonly IBindingValueSource[],
   ) {
     this.sources = new Map(sources.map((source) => [source.type, source]))
   }
 
-  public resolve(binding: IBindingExpression, scopeFQ: FQComponentName): MaybePromise<unknown> {
-    return this.applyFormat(this.resolveSource(binding, scopeFQ), binding.converters ?? [], 0, scopeFQ)
+  public resolve(binding: IBindingExpression, scope: FQComponentName | object): MaybePromise<unknown> {
+    return this.applyFormat(this.resolveSource(binding, scope), binding.converters ?? [], 0, scope)
   }
 
   public resolveBack(
     targetValue: unknown,
     binding: IBindingExpression,
-    scopeFQ: FQComponentName,
+    scope: FQComponentName | object,
   ): MaybePromise<unknown> {
     const converters = binding.converters ?? []
 
-    return this.applyParse(targetValue, converters, converters.length - 1, scopeFQ)
+    return this.applyParse(targetValue, converters, converters.length - 1, scope)
   }
 
   public collectParameters(binding: IBindingExpression, scopeFQ: FQComponentName): MaybePromise<FQPropertyName[]> {
@@ -57,7 +58,13 @@ export class BindingEvaluator {
     }
 
     for (const segment of binding.converters ?? []) {
-      for (const expression of Object.values(parseConverterCall(segment).args)) {
+      const call = parseConverterCall(segment)
+
+      if (this.converters.get(call.name).isDimensionSensitive) {
+        return true
+      }
+
+      for (const expression of Object.values(call.args)) {
         if (expression.type === "dictionary" || expression.type === "config") {
           return true
         }
@@ -71,23 +78,23 @@ export class BindingEvaluator {
     value: MaybePromise<unknown>,
     converters: readonly string[],
     index: number,
-    scopeFQ: FQComponentName,
+    scope: FQComponentName | object,
   ): MaybePromise<unknown> {
     while (index < converters.length) {
       if (isThenable(value)) {
         const next = index
 
-        return value.then((source) => this.applyFormat(source, converters, next, scopeFQ))
+        return value.then((source) => this.applyFormat(source, converters, next, scope))
       }
 
       const call = parseConverterCall(converters[index])
-      const args = this.resolveArgs(call, scopeFQ)
+      const args = this.resolveArgs(call, scope)
       const source = value
       const next = index + 1
 
       if (isThenable(args)) {
         return args.then((resolved) =>
-          this.applyFormat(this.converters.get(call.name).format(source, resolved), converters, next, scopeFQ),
+          this.applyFormat(this.converters.get(call.name).format(source, resolved), converters, next, scope),
         )
       }
 
@@ -102,23 +109,23 @@ export class BindingEvaluator {
     value: MaybePromise<unknown>,
     converters: readonly string[],
     index: number,
-    scopeFQ: FQComponentName,
+    scope: FQComponentName | object,
   ): MaybePromise<unknown> {
     while (index >= 0) {
       if (isThenable(value)) {
         const next = index
 
-        return value.then((target) => this.applyParse(target, converters, next, scopeFQ))
+        return value.then((target) => this.applyParse(target, converters, next, scope))
       }
 
       const call = parseConverterCall(converters[index])
-      const args = this.resolveArgs(call, scopeFQ)
+      const args = this.resolveArgs(call, scope)
       const target = value
       const next = index - 1
 
       if (isThenable(args)) {
         return args.then((resolved) =>
-          this.applyParse(this.converters.get(call.name).parse(target, resolved), converters, next, scopeFQ),
+          this.applyParse(this.converters.get(call.name).parse(target, resolved), converters, next, scope),
         )
       }
 
@@ -129,33 +136,55 @@ export class BindingEvaluator {
     return value
   }
 
-  private resolveSource(expression: IBindingExpression, scopeFQ: FQComponentName): MaybePromise<unknown> {
+  private resolveSource(expression: IBindingExpression, scope: FQComponentName | object): MaybePromise<unknown> {
+    if (expression.type === "state" && typeof scope !== "string") {
+      return this.readValue(scope, expression.value)
+    }
+
     const source = this.sources.get(expression.type)
 
     if (!source) {
       return undefined
     }
 
-    const raw = source.get(this.pathFor(expression, scopeFQ))
+    const raw = source.get(this.getPathFor(expression, scope))
 
-    return LEAF_TYPES.has(expression.type) ? raw : this.interpolateMaybe(raw, scopeFQ)
+    return LEAF_TYPES.has(expression.type) ? raw : this.interpolateMaybe(raw, scope)
   }
 
-  private interpolateMaybe(raw: MaybePromise<unknown>, scopeFQ: FQComponentName): MaybePromise<unknown> {
-    if (isThenable(raw)) {
-      return raw.then((value) => this.interpolateMaybe(value, scopeFQ))
+  private readValue(values: object, path: string): unknown {
+    let current: unknown = values
+
+    for (const segment of getPropertySegments(path)) {
+      if (current === null || typeof current !== "object") {
+        return undefined
+      }
+
+      current = (current as Record<string, unknown>)[segment]
     }
 
-    return typeof raw === "string" ? this.interpolate(raw, scopeFQ) : raw
+    return current
   }
 
-  private async interpolate(template: string, scopeFQ: FQComponentName): Promise<string> {
+  private interpolateMaybe(raw: MaybePromise<unknown>, scope: FQComponentName | object): MaybePromise<unknown> {
+    if (isThenable(raw)) {
+      return raw.then((value) => this.interpolateMaybe(value, scope))
+    }
+
+    return typeof raw === "string" ? this.interpolate(raw, scope) : raw
+  }
+
+  private async interpolate(template: string, scope: FQComponentName | object): Promise<string> {
     let result = ""
     let lastIndex = 0
 
     for (const match of template.matchAll(EXPRESSION_REGEX)) {
       result += template.slice(lastIndex, match.index)
-      result += String(await this.resolve(parseBindingExpression(match[1]), scopeFQ))
+
+      const value = await this.resolve(parseBindingExpression(match[1]), scope)
+
+      // eslint-disable-next-line @typescript-eslint/no-base-to-string
+      result += value === undefined || value === null ? "" : String(value)
       lastIndex = match.index + match[0].length
     }
 
@@ -177,7 +206,7 @@ export class BindingEvaluator {
       const source = this.sources.get(expression.type)
 
       if (source) {
-        sourcePart = this.collectFromTemplate(source.get(this.pathFor(expression, scopeFQ)), scopeFQ, params)
+        sourcePart = this.collectFromTemplate(source.get(this.getPathFor(expression, scopeFQ)), scopeFQ, params)
       }
     }
 
@@ -224,11 +253,13 @@ export class BindingEvaluator {
     return chain
   }
 
-  private pathFor(expression: IBindingExpression, scopeFQ: FQComponentName): string {
-    return expression.type === "state" ? joinFQPropertyName(scopeFQ, expression.value) : expression.value
+  private getPathFor(expression: IBindingExpression, scope: FQComponentName | object): string {
+    return expression.type === "state" && typeof scope === "string"
+      ? joinFQPropertyName(scope, expression.value)
+      : expression.value
   }
 
-  private resolveArgs(call: ConverterCall, scopeFQ: FQComponentName): MaybePromise<Record<string, unknown>> {
+  private resolveArgs(call: ConverterCall, scope: FQComponentName | object): MaybePromise<Record<string, unknown>> {
     let entries = this.argEntries.get(call)
 
     if (entries === undefined) {
@@ -244,7 +275,7 @@ export class BindingEvaluator {
     let pending: Promise<void>[] | undefined
 
     for (const [name, expression] of entries) {
-      const value = this.resolveSource(expression, scopeFQ)
+      const value = this.resolveSource(expression, scope)
 
       if (isThenable(value)) {
         ;(pending ??= []).push(value.then((resolved) => void (args[name] = resolved)))

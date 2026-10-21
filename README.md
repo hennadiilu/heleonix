@@ -208,11 +208,64 @@ sidecars: metadata's consumers always need the whole package index, and one arti
 - Authority is per-facet: contracts validate at error grade, docs never affect compilation — stripping any facet only
   degrades tooling, never behavior.
 - Emitted by the build plugin (`emitMeta: true` -> `hx.meta.json` in `output.path`); sections are sorted so the
-  artifact doesn't churn with scan order.
+  artifact doesn't churn with scan order. A package's manifest describes its own sources only.
+- Editors read a package inside the open workspace from its TypeScript sources instead (every `tsconfig.json` project
+  there), so its converters, actions, qualifiers and programmatic components are live without a rebuild. A dependency
+  linked in from outside the workspace can be read the same way on request; its manifest's
+  `converters`/`actions`/`qualifiers` are then superseded, every other section still applies.
+- Editors validate a file the way its package's build does: against the package and what it depends on (workspace
+  packages read live, installed ones through their manifests) - a library never sees the components, dictionaries,
+  converters or theme tokens of the applications using it. Usage-wide facts (find references, unused entries) still
+  span the workspace, since a package's users are its dependents.
 
 Shared, reusable prop/param types are ordinary **TypeScript** types in `.ts` modules (enums, string-literal unions,
 interfaces), referenced from a component/converter/action — there is no separate DSL type format. See _Typings
 frontmatter_ under COMPONENTS and the CONVERTERS/ACTIONS sections.
+
+### CONFIGURATION: hx.config.json
+
+One file read alike by builds (the bundler plugins), editors (the language server) and tooling, so a package compiles
+and validates the same everywhere. It holds the project's decisions only - which packages exist and what they depend
+on still come from `package.json` and the workspace's own manifests. Without one, conventions apply.
+
+```jsonc
+// apps/web/hx.config.json
+{
+  "extends": "../../hx.config.json", // a path, or a file of an installed package
+  "include": ["src"], // the directories holding the sources to compile (default: this file's directory)
+  "exclude": ["fixtures"], // folder names, or paths; replaces the default ["node_modules"]
+  "dimensions": "./hx.dimensions.json", // or the definitions inline
+  "typescript": {
+    "projects": ["**/tsconfig.json"], // where editors find converters, actions, qualifiers, components
+    "exclude": ["**/*.spec.ts"], // sources left out of that discovery (and of the package's hx.meta.json)
+    "linkedPackages": false, // also read dependencies linked in from outside the workspace
+  },
+  "diagnostics": {
+    "severity": { "HX_ANALYZER_0002": "warning", "HX_LANGUAGE_SERVER_0001": "off" },
+    "failOnWarnings": false,
+  },
+}
+```
+
+- **Lookup**: the nearest `hx.config.json` at or above a package governs it. A file merges over the one it `extends`
+  key by key (`diagnostics.severity` code by code); relative paths resolve against the file declaring them, as in
+  `tsconfig`. A monorepo keeps shared policy (dimensions, severities) in a root file, and each package's own file
+  extends it and declares its `include`.
+- **Severity**: a level per diagnostic code - the code an editor shows and a build prints - replaces the diagnostic's
+  own in builds and editors alike. Builds fail on `error` and report `warning` (failing on it too with
+  `failOnWarnings`); `information` and `hint` show in editors only; `off` silences a diagnostic everywhere. Editor-only
+  checks have codes too (`HX_LANGUAGE_SERVER_0001`: an entry nothing references, which only the workspace-wide view of
+  an editor can tell).
+- **Precedence**: a bundler plugin's explicit options win over the file; editor settings apply only where no file
+  sets a value. A file that fails to load counts as none - the defaults apply - and is reported as an error on the
+  file at fault (a build error in a build, a diagnostic in an editor).
+- **Live**: every reader watches the files a configuration was read from (the dimensions file it names included)
+  and where one may yet appear: a watching build rebuilds, an editor re-reads - applying unsaved edits as typed.
+- **Format**: JSON with comments and trailing commas - no code runs to read it, so editors read it in untrusted
+  workspaces and tooling can rewrite it.
+- **Workspace**: a monorepo's packages are those its manifest declares (`pnpm-workspace.yaml`, `package.json`
+  `workspaces`, `lerna.json`); without one, every folder holding a `package.json`. Each package depends on the
+  others by name.
 
 ### STYLES (Mergeable): \*.hxs
 
@@ -545,10 +598,11 @@ conditions. One qualifier can claim many spellings (the pseudo families each cla
   extraction - "build-time CSS" is the same runtime generator executed early, not a second qualifier API.
 
 Built-in qualifiers ship registered by default: `PseudoQualifier` (every CSS pseudo-class/element), `MediaQualifier`
-(`@media`) and `IfQualifier` (`@hx-if`); `@hx-style` scoping is resolved by the style manager itself. Like any library,
-`@heleonix/hx-core` publishes the contracts of its `@hx-*` built-ins (`@hx-if`'s typed `value`/`is`/`isNot`) in its
-`hx.meta.json`, so editors complete and document them; natively spelled ones (`@media`, `:hover`) are not listed, as
-they are never written `@hx-*`. Not every construct is a qualifier: `@keyframes` emits a named `keyframes` timeline, and the
+(`@media`) and `IfQualifier` (`@hx-if`); `@hx-style` scoping is resolved by the style manager itself. `IfQualifier`
+types its arguments (`value: PropertyRef`, `is`, `isNot`) like any qualifier, so editors read its contract the same way
+as a project's own converters and actions: from TypeScript sources within the workspace, and from an installed
+package's build-generated `hx.meta.json`. Natively spelled qualifiers (`@media`, `:hover`) are never offered as
+`@hx-*`. Not every construct is a qualifier: `@keyframes` emits a named `keyframes` timeline, and the
 `@hx-apply(token: ...);` statement expands declarations at class-generation time - neither produces a rule-key
 segment. A custom qualifier is a runtime class plus its `.d.ts`; e.g. an
 `@hx-on-raising(event: ...)` qualifier that applies a rule group when an event fires is an opt-in - the core stays a
@@ -738,7 +792,8 @@ Merge rules:
 
 The LSP derives everything from the indexed theme files, not from a schema - all partials form one token space:
 completion after `{$` and `.`, unknown-path and alias-cycle diagnostics, hover with the resolved value/alias chain,
-and go-to-definition all work for whatever structure a theme defines.
+go-to-definition (to every partial defining the token) and find-references (from styles and theme aliases; a group's
+references include the `@hx-apply` sites expanding it) all work for whatever structure a theme defines.
 
 Everything below is **one possible design system** built on these rules (used for the framework's own UI components) -
 not a structure the framework prescribes. It organizes tokens into two tiers:
@@ -1414,7 +1469,8 @@ source | converter | converter(name: value, ...) | ...
   string literal type-checked against the parameter's declared enum/union type — e.g. `Pad(side: 'left')`.
 - Reactivity falls out of the argument kind: a property argument re-evaluates the binding when the property changes,
   dictionary/config arguments follow culture/dimension switches, literals are static. There are no
-  special semantics per argument — they are ordinary binding sources.
+  special semantics per argument — they are ordinary binding sources. A converter that reads dictionaries or configs
+  through its context itself declares `isDimensionSensitive = true`, so its bindings follow dimension switches too.
 - The chain runs left-to-right for `format` (state → view) and right-to-left for `parse` (view → state). Each
   converter receives its resolved arguments as one plain object in both directions: `format(value, args)` /
   `parse(value, args)`.

@@ -7,7 +7,7 @@ export abstract class MergingDefinitionLoader<
 > extends DefinitionLoader<TDefinition> {
   protected abstract readonly defaultUsage: DimensionUsage
 
-  protected async resolveLayered(name: string): Promise<TDefinition | undefined> {
+  protected async resolveLayeredDefinition(name: string): Promise<TDefinition | undefined> {
     let merged: TDefinition | undefined
 
     for (const source of this.sources) {
@@ -17,7 +17,7 @@ export abstract class MergingDefinitionLoader<
     return merged
   }
 
-  protected resolveAcrossSources(definitions: readonly TDefinition[]): TDefinition | undefined {
+  protected resolveDefinitionsAcrossSources(definitions: readonly TDefinition[]): TDefinition | undefined {
     return this.mergeMatches(definitions)
   }
 

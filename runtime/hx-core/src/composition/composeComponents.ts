@@ -1,12 +1,13 @@
 import type { IApplicationBootstrap } from "../IApplicationBootstrap"
 import type { IState } from "../state/IState"
 import type { IBinder } from "../bindings/IBinder"
+import type { BindingEvaluator } from "../bindings/BindingEvaluator"
 import type { IDimensionProvider } from "../dimensions/IDimensionProvider"
 import type { IConfigProvider } from "../configs/IConfigProvider"
 import type { IDictionaryProvider } from "../dictionaries/IDictionaryProvider"
 import type { IActionProvider } from "../actions/IActionProvider"
 import type { ApplicationRuntime } from "../platform/ApplicationRuntime"
-import type { StyleManager } from "../styling/StyleManager"
+import type { IStyleManager } from "../styling/IStyleManager"
 import type { IComponentContext } from "../components/IComponentContext"
 import type { ClearableCollection } from "./ClearableCollection"
 import { ComponentDefinitionLoader } from "../components/ComponentDefinitionLoader"
@@ -22,10 +23,11 @@ export function composeComponents(
     dimensions: IDimensionProvider
     state: IState
     binder: IBinder
+    evaluator: BindingEvaluator
     configs: IConfigProvider
     dictionaries: IDictionaryProvider
     actions: IActionProvider
-    styles: StyleManager | undefined
+    styles: IStyleManager | undefined
     clearables: ClearableCollection
   },
 ): { components: ComponentManager; componentContext: IComponentContext; isHeadless: boolean } {
@@ -42,8 +44,7 @@ export function composeComponents(
     new ComponentManager(
       loader,
       deps.dimensions,
-      deps.dictionaries,
-      deps.configs,
+      deps.evaluator,
       composeComponentConstructors(bootstrap, { runtime: deps.runtime }),
       () => componentContext,
       deps.styles,

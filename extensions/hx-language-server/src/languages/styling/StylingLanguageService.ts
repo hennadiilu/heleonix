@@ -1,5 +1,5 @@
 import path from "node:path"
-import { CompletionItem, Diagnostic, Hover, Location, Position } from "vscode-languageserver"
+import { CompletionItem, Diagnostic, Hover, Position } from "vscode-languageserver"
 import { TextDocument } from "vscode-languageserver-textdocument"
 import {
   CONFIG_REF_PREFIX,
@@ -10,7 +10,7 @@ import {
 } from "@heleonix/hx-language"
 import { ILanguageContext } from "../ILanguageContext"
 import { ILanguageService } from "../ILanguageService"
-import { completeThemeToken, hoverThemeToken, definitionThemeToken } from "./themeTokenFeature"
+import { completeThemeToken, hoverThemeToken } from "./themeTokenFeature"
 import { completeQualifier, hoverQualifier } from "./qualifierFeature"
 import { completeReference, hoverReference } from "./referenceFeature"
 import { completeProperty } from "./propertyFeature"
@@ -64,9 +64,5 @@ export class StylingLanguageService implements ILanguageService {
       (this.bindsComponent ? hoverReference(doc, offset, context.index) : null) ??
       hoverQualifier(doc, offset, context.qualifiers)
     )
-  }
-
-  public definition(doc: TextDocument, position: Position, context: ILanguageContext): Location | null {
-    return definitionThemeToken(doc, doc.offsetAt(position), context.themeTokenLocations)
   }
 }
