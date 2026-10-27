@@ -13,13 +13,13 @@ export class DomStyleSheet implements StyleSheetTarget {
     this.element = element
   }
 
-  public insert(className: string, rule: string): void {
-    this.rules.set(className, rule)
+  public insert(id: string, rule: string): void {
+    this.rules.set(id, rule)
     this.flush()
   }
 
-  public remove(className: string): void {
-    this.rules.delete(className)
+  public remove(id: string): void {
+    this.rules.delete(id)
     this.flush()
   }
 

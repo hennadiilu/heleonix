@@ -1,5 +1,5 @@
-import type { IStyleQualifier } from "./IStyleQualifier"
+import type { StyleQualifier } from "./StyleQualifier"
 
 export interface IQualifierProvider {
-  get(name: string): IStyleQualifier | undefined
+  get(name: string): StyleQualifier | undefined
 }

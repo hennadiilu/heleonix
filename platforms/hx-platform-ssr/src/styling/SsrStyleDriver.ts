@@ -1,59 +1,25 @@
-import type {
-  Component,
-  IKeyframeScope,
-  IStyleDriver,
-  IStyleEffect,
-  StyleFragment,
-  StyleHandle,
-} from "@heleonix/hx-core"
+import type { Component, IStyleDriver, IStyleEffect, IStyleRule } from "@heleonix/hx-core"
 import type { IStyleDeclarations } from "@heleonix/hx-language"
-import {
-  composeKeyframes,
-  composeRule,
-  composeClassName,
-  rewriteAnimationRefs,
-  scopedKeyframeName,
-} from "@heleonix/hx-platform-web"
+import { composeKeyframes, composeRule } from "@heleonix/hx-platform-web"
 import { SsrElementState } from "./SsrElementState"
 import { SsrStyleEffect } from "./SsrStyleEffect"
 import { SsrStyleSheet } from "./SsrStyleSheet"
-import type { SsrStyleHandle } from "./SsrStyleHandle"
 
 export class SsrStyleDriver implements IStyleDriver {
   private readonly sheet = new SsrStyleSheet()
 
   private readonly states = new Map<Component, SsrElementState>()
 
-  public compose(
-    signature: string,
-    fragments: readonly StyleFragment[],
-    declarations: Readonly<Record<string, string>>,
-    keyframeScope?: IKeyframeScope,
-  ): StyleHandle {
-    const scoped = keyframeScope
-      ? rewriteAnimationRefs(declarations, keyframeScope.names, keyframeScope.scope)
-      : declarations
-    const className = composeClassName(signature, fragments, scoped)
-
-    this.sheet.insert(className, composeRule(className, fragments, scoped))
-
-    return { className } as SsrStyleHandle as unknown as StyleHandle
+  public insertRule(rule: IStyleRule): void {
+    this.sheet.insert(rule.id, composeRule(rule))
   }
 
-  public composeKeyframe(
-    scope: string,
-    name: string,
-    frames: Readonly<Record<string, IStyleDeclarations>>,
-  ): StyleHandle {
-    const scopedName = scopedKeyframeName(scope, name)
-
-    this.sheet.insert(scopedName, composeKeyframes(scopedName, frames))
-
-    return { className: scopedName } as SsrStyleHandle as unknown as StyleHandle
+  public insertKeyframes(id: string, frames: Readonly<Record<string, IStyleDeclarations>>): void {
+    this.sheet.insert(id, composeKeyframes(id, frames))
   }
 
-  public release(handle: StyleHandle): void {
-    this.sheet.remove((handle as unknown as SsrStyleHandle).className)
+  public remove(id: string): void {
+    this.sheet.remove(id)
   }
 
   public effectFor(component: Component): IStyleEffect {

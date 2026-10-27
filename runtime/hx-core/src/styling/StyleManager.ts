@@ -12,14 +12,14 @@ import type { BindingEvaluator } from "../bindings/BindingEvaluator"
 import type { IState } from "../state/IState"
 import type { StateChangedHandler } from "../state/StateChangedHandler"
 import type { IBindingScope } from "./qualifiers/IBindingScope"
-import type { IKeyframeScope } from "../platform/IKeyframeScope"
 import type { IStyleDriver } from "../platform/IStyleDriver"
 import type { IStyleEffect } from "../platform/IStyleEffect"
 import type { IStyleVariable } from "../platform/IStyleVariable"
 import type { IQualifierProvider } from "./qualifiers/IQualifierProvider"
 import { StyleDefinitionLoader } from "./StyleDefinitionLoader"
-import type { StyleHandle } from "../platform/StyleHandle"
-import type { StyleFragment } from "./StyleFragment"
+import type { StyleCondition } from "./StyleCondition"
+import { hashStyleKey } from "./hashStyleKey"
+import { styleVariableName } from "./styleVariableName"
 import type { IThemeManager } from "../theming/IThemeManager"
 import type { IClearable } from "../common/IClearable"
 import type { IStyleManager } from "./IStyleManager"
@@ -32,24 +32,30 @@ const SCOPE_QUALIFIER = "Style"
 
 const SCOPE_PATH_SEPARATOR = "."
 
+const ANIMATION_PROPERTIES = new Set(["animation", "animation-name"])
+
 interface AppliedRule {
-  key: string
-  handle: StyleHandle | undefined
+  id: string | undefined
   effects: readonly IStyleEffect[]
+}
+
+interface VariableSource {
+  source: string
+  text: boolean
 }
 
 interface Applied {
   // Whether the style has a `@hx-style(for: ...)` rule, so a newly built
   // descendant can trigger the component to re-resolve its scope and pick it up.
   scoped: boolean
-  keyframeKeys: string[]
+  keyframes: string[]
   rules: AppliedRule[]
   variables: { effect: IStyleEffect; variable: IStyleVariable }[]
   disposers: (() => void)[]
 }
 
 export class StyleManager implements IStyleManager, IClearable {
-  private readonly cache = new Map<string, { handle: StyleHandle; refs: number }>()
+  private readonly refs = new Map<string, number>()
 
   private readonly applied = new Map<Component, Applied>()
 
@@ -84,7 +90,7 @@ export class StyleManager implements IStyleManager, IClearable {
   public async applyDefinition(component: Component, definition: IStyleDefinition): Promise<void> {
     this.removeApplied(component)
 
-    const record: Applied = { scoped: false, keyframeKeys: [], rules: [], variables: [], disposers: [] }
+    const record: Applied = { scoped: false, keyframes: [], rules: [], variables: [], disposers: [] }
 
     this.applied.set(component, record)
 
@@ -109,20 +115,19 @@ export class StyleManager implements IStyleManager, IClearable {
       }
     }
 
-    const keyframeScope: IKeyframeScope | undefined = definition.keyframes
-      ? { scope: definition.name, names: Object.keys(definition.keyframes) }
-      : undefined
+    const keyframes = this.keyframeIdsOf(definition)
+    const driver = this.driver()
 
-    if (definition.keyframes && this.driver().composeKeyframe) {
-      for (const [name, frames] of Object.entries(definition.keyframes)) {
-        const key = `@keyframes ${definition.name} ${name} ${JSON.stringify(frames)}`
+    if (driver.insertKeyframes) {
+      for (const [name, frames] of Object.entries(definition.keyframes ?? {})) {
+        const id = keyframes.get(name)!
 
-        this.acquire(key, () => this.driver().composeKeyframe!(definition.name, name, frames))
-        record.keyframeKeys.push(key)
+        this.acquire(id, () => driver.insertKeyframes!(id, frames))
+        record.keyframes.push(id)
       }
     }
 
-    for (const [signature, declarations] of Object.entries(definition.rules)) {
+    for (const [signature, written] of Object.entries(definition.rules)) {
       const usages = parseRuleKey(signature)
       const scopeUsage = usages.find((usage) => usage.name === SCOPE_QUALIFIER)
       const qualified = scopeUsage ? usages.filter((usage) => usage !== scopeUsage) : usages
@@ -134,20 +139,12 @@ export class StyleManager implements IStyleManager, IClearable {
         continue
       }
 
-      const fragments = qualified.flatMap((usage) => this.qualifiers.get(usage.name)?.build?.(usage) ?? [])
+      const conditions = qualified.flatMap((usage) => this.qualifiers.get(usage.name)?.build?.(usage) ?? [])
+      const declarations = this.scopeAnimations(written, keyframes)
       const variables = this.declarationVariables(declarations)
       const targetEffects = targets.map(effectFor)
 
-      settle(
-        this.applyRule(
-          component,
-          record,
-          bindings,
-          { signature, declarations, fragments },
-          targetEffects,
-          keyframeScope,
-        ),
-      )
+      settle(this.applyRule(component, record, bindings, { declarations, conditions }, targetEffects))
 
       for (const effect of targetEffects) {
         for (const usage of qualified) {
@@ -177,7 +174,7 @@ export class StyleManager implements IStyleManager, IClearable {
     }
 
     this.components.clear()
-    this.cache.clear()
+    this.refs.clear()
   }
 
   public remove(component: Component): void {
@@ -230,17 +227,17 @@ export class StyleManager implements IStyleManager, IClearable {
     }
 
     for (const rule of record.rules) {
-      if (rule.handle) {
+      if (rule.id) {
         for (const effect of rule.effects) {
-          effect.removeClass(rule.handle)
+          effect.removeClass(rule.id)
         }
 
-        this.release(rule.key)
+        this.release(rule.id)
       }
     }
 
-    for (const key of record.keyframeKeys) {
-      this.release(key)
+    for (const id of record.keyframes) {
+      this.release(id)
     }
 
     for (const { effect, variable } of record.variables) {
@@ -301,18 +298,17 @@ export class StyleManager implements IStyleManager, IClearable {
   }
 
   // A media condition cannot read a CSS variable, so the sources in a rule's
-  // environment are resolved into it, and the rule recomposes - under the class
-  // of its resolved input - whenever a property it reads changes; a dimension
+  // environment are resolved into it, and the rule recomposes - under the id of
+  // its resolved input - whenever a property it reads changes; a dimension
   // switch re-applies the whole style. A rule without sources composes at once.
   private applyRule(
     component: Component,
     record: Applied,
     bindings: IBindingScope,
-    rule: { signature: string; declarations: Readonly<Record<string, string>>; fragments: readonly StyleFragment[] },
+    rule: { declarations: Readonly<Record<string, string>>; conditions: readonly StyleCondition[] },
     effects: readonly IStyleEffect[],
-    keyframeScope: IKeyframeScope | undefined,
   ): MaybePromise<void> {
-    const entry: AppliedRule = { key: "", handle: undefined, effects }
+    const entry: AppliedRule = { id: undefined, effects }
     let latest = 0
 
     record.rules.push(entry)
@@ -320,44 +316,39 @@ export class StyleManager implements IStyleManager, IClearable {
     const recompose = (): MaybePromise<void> => {
       const run = ++latest
 
-      return thenMaybe(this.resolveFragments(rule.fragments, bindings), (fragments) => {
+      return thenMaybe(this.resolveConditions(rule.conditions, bindings), (conditions) => {
         if (run !== latest || this.applied.get(component) !== record) {
           return
         }
 
-        // The share key is the compose input, not the signature alone: only
-        // byte-identical rules share one composed artifact, and a resolved
-        // environment is part of it. A style with local keyframes also
-        // scope-qualifies the key, since its rules resolve animation references
-        // against its own keyframes.
-        const key = `${keyframeScope?.scope ?? ""} ${rule.signature} ${JSON.stringify(fragments)} ${JSON.stringify(rule.declarations)}`
+        // The id is derived from the whole compose input, so only identical
+        // rules share one inserted rule, and a resolved environment is part of
+        // it; the signature is not, since it reaches the rule through both.
+        const id = `hx-${hashStyleKey(`${JSON.stringify(conditions)} ${JSON.stringify(rule.declarations)}`)}`
 
-        if (key === entry.key) {
+        if (id === entry.id) {
           return
         }
 
-        const handle = this.acquire(key, () =>
-          this.driver().compose(rule.signature, fragments, rule.declarations, keyframeScope),
-        )
+        this.acquire(id, () => this.driver().insertRule({ id, conditions, declarations: rule.declarations }))
 
         for (const effect of effects) {
-          effect.setClass(handle)
+          effect.addClass(id)
 
-          if (entry.handle) {
-            effect.removeClass(entry.handle)
+          if (entry.id) {
+            effect.removeClass(entry.id)
           }
         }
 
-        if (entry.handle) {
-          this.release(entry.key)
+        if (entry.id) {
+          this.release(entry.id)
         }
 
-        entry.key = key
-        entry.handle = handle
+        entry.id = id
       })
     }
 
-    const subscribing = this.environmentSources(rule.fragments)
+    const subscribing = this.environmentSources(rule.conditions)
       .filter((source) => source.type !== "theme")
       .map((source) =>
         thenMaybe(
@@ -372,29 +363,29 @@ export class StyleManager implements IStyleManager, IClearable {
       : recompose()
   }
 
-  private environmentSources(fragments: readonly StyleFragment[]): IBindingExpression[] {
-    return fragments.flatMap((fragment) =>
-      "environment" in fragment ? extractParameters(fragment.environment).map(parseBindingExpression) : [],
+  private environmentSources(conditions: readonly StyleCondition[]): IBindingExpression[] {
+    return conditions.flatMap((condition) =>
+      "environment" in condition ? extractParameters(condition.environment).map(parseBindingExpression) : [],
     )
   }
 
-  private resolveFragments(
-    fragments: readonly StyleFragment[],
+  private resolveConditions(
+    conditions: readonly StyleCondition[],
     bindings: IBindingScope,
-  ): MaybePromise<readonly StyleFragment[]> {
-    if (this.environmentSources(fragments).length === 0) {
-      return fragments
+  ): MaybePromise<readonly StyleCondition[]> {
+    if (this.environmentSources(conditions).length === 0) {
+      return conditions
     }
 
-    const resolved = fragments.map((fragment) =>
-      "environment" in fragment
-        ? thenMaybe(this.resolveEnvironment(fragment.environment, bindings), (environment) => ({ environment }))
-        : fragment,
+    const resolved = conditions.map((condition) =>
+      "environment" in condition
+        ? thenMaybe(this.resolveEnvironment(condition.environment, bindings), (environment) => ({ environment }))
+        : condition,
     )
 
     return resolved.some(isThenable)
-      ? Promise.all(resolved.map((fragment) => Promise.resolve(fragment)))
-      : (resolved as StyleFragment[])
+      ? Promise.all(resolved.map((condition) => Promise.resolve(condition)))
+      : (resolved as StyleCondition[])
   }
 
   // An unresolved source stays as written, which leaves the condition invalid,
@@ -468,11 +459,12 @@ export class StyleManager implements IStyleManager, IClearable {
   private bindVariable(
     component: Component,
     effect: IStyleEffect,
-    variable: IStyleVariable,
+    { source, text }: VariableSource,
     record: Applied,
     bindings: IBindingScope,
   ): MaybePromise<void> {
-    const binding = parseBindingExpression(variable.source)
+    const binding = parseBindingExpression(source)
+    const variable: IStyleVariable = { name: styleVariableName(source, text), text }
     let latest = 0
 
     const push = (): MaybePromise<void> => {
@@ -510,35 +502,62 @@ export class StyleManager implements IStyleManager, IClearable {
     }
   }
 
-  private acquire(key: string, build: () => StyleHandle): StyleHandle {
-    const existing = this.cache.get(key)
+  private acquire(id: string, insert: () => void): void {
+    const refs = this.refs.get(id) ?? 0
 
-    if (existing) {
-      existing.refs++
-
-      return existing.handle
+    if (refs === 0) {
+      insert()
     }
 
-    const handle = build()
-
-    this.cache.set(key, { handle, refs: 1 })
-
-    return handle
+    this.refs.set(id, refs + 1)
   }
 
-  private release(key: string): void {
-    const existing = this.cache.get(key)
+  private release(id: string): void {
+    const refs = this.refs.get(id)
 
-    if (!existing) {
+    if (refs === undefined) {
       return
     }
 
-    existing.refs--
-
-    if (existing.refs === 0) {
-      this.driver().release(existing.handle)
-      this.cache.delete(key)
+    if (refs === 1) {
+      this.refs.delete(id)
+      this.driver().remove(id)
+    } else {
+      this.refs.set(id, refs - 1)
     }
+  }
+
+  // A local timeline is named by its style and its frames, so components cannot
+  // clash over a name, and an overlay that retunes the frames gets a timeline of
+  // its own instead of the one its siblings still play.
+  private keyframeIdsOf(definition: IStyleDefinition): ReadonlyMap<string, string> {
+    return new Map(
+      Object.entries(definition.keyframes ?? {}).map(([name, frames]) => [
+        name,
+        `hx-${definition.name}-${name}-${hashStyleKey(JSON.stringify(frames))}`,
+      ]),
+    )
+  }
+
+  // An animation reference resolves against the style's own timelines first;
+  // any other name is left to the theme's shared ones.
+  private scopeAnimations(
+    declarations: Readonly<Record<string, string>>,
+    keyframes: ReadonlyMap<string, string>,
+  ): Readonly<Record<string, string>> {
+    if (keyframes.size === 0) {
+      return declarations
+    }
+
+    const scoped: Record<string, string> = {}
+
+    for (const [property, value] of Object.entries(declarations)) {
+      scoped[property] = ANIMATION_PROPERTIES.has(property)
+        ? value.replace(/[^\s,]+/g, (token) => keyframes.get(token) ?? token)
+        : value
+    }
+
+    return scoped
   }
 
   private expandApplies(definition: IStyleDefinition, groups: IThemeGroup): IStyleDefinition {
@@ -580,8 +599,8 @@ export class StyleManager implements IStyleManager, IClearable {
   // A source inside a quoted string is delivered as text.
   private declarationVariables(
     declarations: Readonly<Record<string, string>>,
-    into = new Map<string, IStyleVariable>(),
-  ): IStyleVariable[] {
+    into = new Map<string, VariableSource>(),
+  ): VariableSource[] {
     const add = (source: string, text: boolean): void => {
       if (text || parseBindingExpression(source).type !== "theme") {
         into.set(`${text ? "text" : "raw"} ${source}`, { source, text })
@@ -605,8 +624,8 @@ export class StyleManager implements IStyleManager, IClearable {
     return [...into.values()]
   }
 
-  private keyframeVariables(definition: IStyleDefinition): IStyleVariable[] {
-    const variables = new Map<string, IStyleVariable>()
+  private keyframeVariables(definition: IStyleDefinition): VariableSource[] {
+    const variables = new Map<string, VariableSource>()
 
     for (const frames of Object.values(definition.keyframes ?? {})) {
       for (const declarations of Object.values(frames)) {

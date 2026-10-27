@@ -1,6 +1,7 @@
 import { flattenThemeTokens } from "@heleonix/hx-language"
 import type { IThemeDefinition } from "@heleonix/hx-language"
 import type { IThemeDriver } from "../platform/IThemeDriver"
+import { themeVariableName } from "./themeVariableName"
 import { ThemeDefinitionLoader } from "./ThemeDefinitionLoader"
 import type { IThemeManager } from "./IThemeManager"
 
@@ -20,7 +21,9 @@ export class ThemeManager implements IThemeManager {
     const theme = await this.loader.loadTheme()
 
     if (theme) {
-      this.driver().applyTokens(new Map(Object.entries(flattenThemeTokens(theme.groups))))
+      const tokens = Object.entries(flattenThemeTokens(theme.groups))
+
+      this.driver().applyTokens(new Map(tokens.map(([path, value]) => [themeVariableName(path), value])))
       this.driver().applyArtifacts(theme)
     }
   }

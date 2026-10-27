@@ -220,7 +220,7 @@ function scanSource(source: ts.SourceFile, checker: ts.TypeChecker, scan: IScan)
     const docs = ts.displayPartsToString(symbol.getDocumentationComment(checker)).trim()
 
     if (matched.base === QUALIFIER_BASE) {
-      const argType = checker.getTypeArguments(matched.type as ts.TypeReference)[0]
+      const argType = matched.args[0]
       const qualifier: IDiscoveredQualifier = {
         className,
         name: hxName ?? className,
@@ -243,7 +243,7 @@ function scanSource(source: ts.SourceFile, checker: ts.TypeChecker, scan: IScan)
     if (matched.base === COMPONENT_BASE) {
       // A programmatic component's contract is its two type arguments; its
       // tag is the name it declares, like every other framework element.
-      const args = checker.getTypeArguments(matched.type as ts.TypeReference)
+      const args = matched.args
       const component: IDiscoveredComponent = {
         className,
         name: hxName ?? className,
@@ -310,37 +310,66 @@ function isAbstract(node: ts.ClassDeclaration): boolean {
   return node.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.AbstractKeyword) ?? false
 }
 
+interface IBaseType {
+  type: ts.Type
+
+  args: readonly ts.Type[]
+}
+
 function matchBase(
   type: ts.Type,
   checker: ts.TypeChecker,
-): { base: "Converter" | "Action" | "StyleQualifier" | "Component"; type: ts.Type } | undefined {
-  const stack = [...baseTypes(type, checker)]
+): { base: "Converter" | "Action" | "StyleQualifier" | "Component"; args: readonly ts.Type[] } | undefined {
+  const stack = [...baseTypes(type, [], checker)]
   const seen = new Set<ts.Symbol>()
 
   while (stack.length > 0) {
-    const current = stack.pop() as ts.Type
-    const name = current.symbol?.getName()
+    const current = stack.pop() as IBaseType
+    const name = current.type.symbol?.getName()
 
     if (name === "Converter" || name === "Action" || name === QUALIFIER_BASE || name === COMPONENT_BASE) {
-      return { base: name, type: current }
+      return { base: name, args: current.args }
     }
 
-    if (current.symbol) {
-      if (seen.has(current.symbol)) {
+    if (current.type.symbol) {
+      if (seen.has(current.type.symbol)) {
         continue
       }
 
-      seen.add(current.symbol)
+      seen.add(current.type.symbol)
     }
 
-    stack.push(...baseTypes(current, checker))
+    stack.push(...baseTypes(current.type, current.args, checker))
   }
 
   return undefined
 }
 
-function baseTypes(type: ts.Type, checker: ts.TypeChecker): readonly ts.Type[] {
-  return type.isClassOrInterface() ? (checker.getBaseTypes(type) ?? []) : []
+function baseTypes(type: ts.Type, args: readonly ts.Type[], checker: ts.TypeChecker): readonly IBaseType[] {
+  const declared = isTypeReference(type) ? type.target : type
+
+  if (!declared.isClassOrInterface()) {
+    return []
+  }
+
+  const parameters: readonly ts.Type[] = declared.typeParameters ?? []
+
+  const substitute = (arg: ts.Type): ts.Type => {
+    const index = parameters.indexOf(arg)
+
+    return index >= 0 && index < args.length ? args[index] : arg
+  }
+
+  return (checker.getBaseTypes(declared) ?? []).map((base) => ({
+    type: base,
+    args: isTypeReference(base) ? checker.getTypeArguments(base).map(substitute) : [],
+  }))
+}
+
+function isTypeReference(type: ts.Type): type is ts.TypeReference {
+  return (
+    (type.flags & ts.TypeFlags.Object) !== 0 && ((type as ts.ObjectType).objectFlags & ts.ObjectFlags.Reference) !== 0
+  )
 }
 
 function readParams(

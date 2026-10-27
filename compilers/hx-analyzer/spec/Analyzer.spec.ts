@@ -668,6 +668,61 @@ props: { variant?: 'primary' | 'default'; count?: number; active?: boolean }
         expect(card?.file).toContain("Card.ts")
         expect(card?.open).toBe(false)
       })
+
+      describe("when it extends a generic intermediate base", () => {
+        beforeAll(() => {
+          fs.writeFileSync(
+            path.join(root, "customComponentBase.ts"),
+            `import { Component } from "./componentBases"
+             export abstract class CustomComponent<TProps = object, TEvents = object> extends Component<TProps, TEvents> {}`,
+          )
+          fs.writeFileSync(
+            path.join(root, "Panel.ts"),
+            `import { CustomComponent } from "./customComponentBase"
+             interface PanelProps { title?: string; collapsed?: boolean }
+             interface PanelEvents { toggled?: boolean }
+             export class Panel extends CustomComponent<PanelProps, PanelEvents> {
+               static readonly hxName = "Panel"
+             }`,
+          )
+        })
+
+        function panelAnalyzer(attributes: string): Analyzer {
+          const analyzer = new Analyzer()
+
+          analyzer.setTypeProgramHosts(createNodeTypeProgramHosts([root]))
+          analyzer.setFile({
+            path: path.join(root, "Sidebar.hxm"),
+            ext: EXT_TEMPLATE,
+            name: "Sidebar",
+            dimension: {},
+            source: `<Component><Panel ${attributes} /></Component>`,
+          })
+
+          return analyzer
+        }
+
+        it("then accepts the props the base's type arguments declare", async () => {
+          const result = await panelAnalyzer(`title="Filters" collapsed={true}`).analyze()
+
+          expect(result).toEqual([])
+        })
+
+        it("then reports an undeclared prop", async () => {
+          const result = await panelAnalyzer(`bogus={1}`).analyze()
+
+          expect(result.map((entry) => entry.code)).toEqual(["HX_ANALYZER_0103"])
+        })
+
+        it("then exposes the props and events resolved through the base", async () => {
+          const analyzer = panelAnalyzer(`title="Filters"`)
+          await analyzer.analyze()
+
+          const panel = analyzer.components().find((info) => info.name === "Panel")
+
+          expect(panel?.members.map((member) => member.name).sort()).toEqual(["collapsed", "title", "toggled"])
+        })
+      })
     })
 
     describe("when a component's props type declares a function member", () => {

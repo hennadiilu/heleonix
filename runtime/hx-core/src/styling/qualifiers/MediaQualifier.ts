@@ -1,11 +1,11 @@
 import type { IQualifierUsage } from "@heleonix/hx-language"
 import { StyleQualifier } from "./StyleQualifier"
-import type { StyleFragment } from "../StyleFragment"
+import type { StyleCondition } from "../StyleCondition"
 
 export class MediaQualifier extends StyleQualifier {
   public static readonly hxName = "Media"
 
-  public build(usage: IQualifierUsage): StyleFragment {
+  public override build(usage: IQualifierUsage): StyleCondition {
     return { environment: usage.args["query"] ?? "" }
   }
 }

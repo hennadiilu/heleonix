@@ -1,8 +1,9 @@
-import { MediaQualifier, PseudoQualifier } from "@heleonix/hx-core"
+import { MediaQualifier } from "../../../src/styling/qualifiers/MediaQualifier"
+import { PseudoQualifier } from "../../../src/styling/qualifiers/PseudoQualifier"
 import { QualifierProvider } from "../../../src/styling/qualifiers/QualifierProvider"
 
 describe("PseudoQualifier", () => {
-  it("then maps a bare pseudo to a neutral pseudo fragment", () => {
+  it("then maps a bare pseudo to a neutral pseudo condition", () => {
     expect(new PseudoQualifier().build({ name: "Hover", args: {} })).toEqual({ pseudo: "Hover" })
   })
 
@@ -14,7 +15,7 @@ describe("PseudoQualifier", () => {
 })
 
 describe("MediaQualifier", () => {
-  it("then maps a media query to a neutral environment fragment", () => {
+  it("then maps a media query to a neutral environment condition", () => {
     expect(new MediaQualifier().build({ name: "Media", args: { query: "(max-width:600px)" } })).toEqual({
       environment: "(max-width:600px)",
     })

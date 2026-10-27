@@ -1,5 +1,6 @@
-import { DeclarativeComponent, PlatformComponent } from "@heleonix/hx-core"
+import { PlatformComponent } from "@heleonix/hx-core"
 import { ComponentManager } from "../../src/components/ComponentManager"
+import { DeclarativeComponent } from "../../src/components/DeclarativeComponent"
 import type { IComponentContext, IComponentManager } from "@heleonix/hx-core"
 import type { IComponentDefinition, IComponentUsage } from "@heleonix/hx-language"
 

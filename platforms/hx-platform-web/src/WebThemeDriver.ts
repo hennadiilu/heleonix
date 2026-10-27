@@ -3,7 +3,7 @@ import type { IThemeDefinition } from "@heleonix/hx-language"
 import { WebAppHost } from "./WebAppHost"
 import type { StyleSheetElement } from "./styling/DomStyleSheet"
 import { composeThemeArtifacts } from "./styling/composeThemeArtifacts"
-import { mangleVariable } from "./styling/mangleVariable"
+import { interpolateValue } from "./styling/interpolateValue"
 
 export class WebThemeDriver implements IThemeDriver {
   private artifactSheet: StyleSheetElement | undefined
@@ -14,9 +14,11 @@ export class WebThemeDriver implements IThemeDriver {
     this.host = host
   }
 
+  // An alias publishes as a `var()` chain to the token it names, not as that
+  // token's value, so DevTools shows the chain and an overlay swaps one link.
   public applyTokens(tokens: ReadonlyMap<string, string>): void {
-    for (const [path, value] of tokens) {
-      this.host.publishVariable(mangleVariable(path), value)
+    for (const [name, value] of tokens) {
+      this.host.publishVariable(`--${name}`, interpolateValue(value))
     }
   }
 

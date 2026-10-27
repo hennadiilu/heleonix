@@ -1,4 +1,4 @@
-import type { StyleFragment } from "@heleonix/hx-core"
+import type { StyleCondition } from "@heleonix/hx-core"
 
 // CSS pseudo-elements (`::`), distinguished from pseudo-classes (`:`); a rule has
 // at most one, always serialized last.
@@ -18,23 +18,23 @@ const PSEUDO_ELEMENTS = new Set([
   "target-text",
 ])
 
-export function composeSelector(className: string, fragments: readonly StyleFragment[]): string {
+export function composeSelector(className: string, conditions: readonly StyleCondition[]): string {
   let selector = `.${className}`
   let element = ""
 
-  for (const fragment of fragments) {
-    if ("pseudo" in fragment) {
-      const css = pseudoToCss(fragment.pseudo)
+  for (const condition of conditions) {
+    if ("pseudo" in condition) {
+      const css = pseudoToCss(condition.pseudo)
 
       if (css.startsWith("::")) {
         element = css
       } else {
         selector += css
       }
-    } else if ("gate" in fragment) {
+    } else if ("gate" in condition) {
       // The gate id is already an attribute-safe slug (from the qualifier), and
       // must match the `data-hx-<id>` the qualifier's `attach` toggles verbatim.
-      selector += `[data-hx-${fragment.gate}]`
+      selector += `[data-hx-${condition.gate}]`
     }
   }
 

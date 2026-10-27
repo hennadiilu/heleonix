@@ -15,7 +15,6 @@ import { WebPlatformComponent } from "./WebPlatformComponent"
 import { WebScheduler } from "./WebScheduler"
 import { WebThemeDriver } from "./WebThemeDriver"
 import { DomStyleSheet } from "./styling/DomStyleSheet"
-import { RefcountedStyleSheet } from "./styling/RefcountedStyleSheet"
 import { WebStyleDriver } from "./styling/WebStyleDriver"
 
 export class WebApplicationRuntime extends ApplicationRuntime {
@@ -45,7 +44,7 @@ export class WebApplicationRuntime extends ApplicationRuntime {
     // Style writes flush through the application's commit phase, so they land in
     // the same frame as the component property writes they belong with.
     this.webStyleDriver ??= new WebStyleDriver(
-      new RefcountedStyleSheet(new DomStyleSheet(this.host.createSheet())),
+      new DomStyleSheet(this.host.createSheet()),
       (component) => (component as unknown as WebPlatformComponent).roots,
       this.webScheduler,
     )

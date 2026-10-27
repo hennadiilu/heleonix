@@ -1,4 +1,3 @@
-export * from "./styling/SsrStyleHandle"
 export * from "./styling/SsrStyleSheet"
 export * from "./styling/SsrElementState"
 export * from "./styling/SsrStyleEffect"

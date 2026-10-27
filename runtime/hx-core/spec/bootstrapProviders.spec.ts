@@ -1,13 +1,6 @@
-import {
-  Action,
-  Application,
-  ApplicationRuntime,
-  HeleonixError,
-  IfQualifier,
-  Service,
-  StyleQualifier,
-} from "@heleonix/hx-core"
+import { Action, Application, ApplicationRuntime, HeleonixError, Service, StyleQualifier } from "@heleonix/hx-core"
 import { ServiceProvider } from "../src/services/ServiceProvider"
+import { IfQualifier } from "../src/styling/qualifiers/IfQualifier"
 import type {
   IActionContext,
   IActionProvider,
@@ -17,7 +10,7 @@ import type {
   IServiceContext,
   IServiceProvider,
   IStyleDriver,
-  StyleFragment,
+  StyleCondition,
 } from "@heleonix/hx-core"
 import type { QualifierProvider } from "../src/styling/qualifiers/QualifierProvider"
 import type { IThemeDriver } from "@heleonix/hx-core"
@@ -32,7 +25,7 @@ class StubRuntime extends ApplicationRuntime {
   }
 
   public get styleDriver(): IStyleDriver {
-    return { compose: () => ({}) as never, release: () => {}, effectFor: () => ({}) as never }
+    return { insertRule: () => {}, remove: () => {}, effectFor: () => ({}) as never }
   }
 
   public get scheduler(): IScheduler {
@@ -85,7 +78,7 @@ class SubmitAction extends Action {
 class OnRaisingQualifier extends StyleQualifier {
   public static readonly hxName = "OnRaising"
 
-  public build(): StyleFragment {
+  public override build(): StyleCondition {
     return { gate: "raised" }
   }
 }
@@ -93,7 +86,7 @@ class OnRaisingQualifier extends StyleQualifier {
 class MediaQualifier extends StyleQualifier {
   public static readonly hxName = "Media"
 
-  public build(): StyleFragment {
+  public override build(): StyleCondition {
     return { environment: "custom" }
   }
 }

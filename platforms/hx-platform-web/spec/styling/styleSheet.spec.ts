@@ -1,35 +1,4 @@
-import { RefcountedStyleSheet, DomStyleSheet } from "@heleonix/hx-platform-web"
-import type { StyleSheetTarget } from "@heleonix/hx-platform-web"
-
-class FakeTarget implements StyleSheetTarget {
-  public readonly inserted: [string, string][] = []
-  public readonly removed: string[] = []
-
-  public insert(className: string, rule: string): void {
-    this.inserted.push([className, rule])
-  }
-
-  public remove(className: string): void {
-    this.removed.push(className)
-  }
-}
-
-describe("RefcountedStyleSheet", () => {
-  it("then inserts a rule once and removes it only when the last holder drops it", () => {
-    const target = new FakeTarget()
-    const sheet = new RefcountedStyleSheet(target)
-
-    sheet.insert("hx-1", "rule")
-    sheet.insert("hx-1", "rule")
-    expect(target.inserted).toEqual([["hx-1", "rule"]])
-
-    sheet.remove("hx-1")
-    expect(target.removed).toEqual([])
-
-    sheet.remove("hx-1")
-    expect(target.removed).toEqual(["hx-1"])
-  })
-})
+import { DomStyleSheet } from "@heleonix/hx-platform-web"
 
 describe("DomStyleSheet", () => {
   it("then keeps the element text in sync with the inserted rules", () => {

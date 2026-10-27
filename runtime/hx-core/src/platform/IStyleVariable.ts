@@ -1,5 +1,5 @@
 export interface IStyleVariable {
-  readonly source: string
+  readonly name: string
 
   readonly text: boolean
 }

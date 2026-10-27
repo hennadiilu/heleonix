@@ -1,13 +1,8 @@
-import {
-  AggregateDefinitionSource,
-  Application,
-  ApplicationRuntime,
-  BindingEvaluator,
-  DefinitionLoader,
-  LiteralBindingValueSource,
-  StateBindingValueSource,
-} from "@heleonix/hx-core"
+import { AggregateDefinitionSource, Application, ApplicationRuntime, DefinitionLoader } from "@heleonix/hx-core"
+import { BindingEvaluator } from "../src/bindings/BindingEvaluator"
+import { LiteralBindingValueSource } from "../src/bindings/LiteralBindingValueSource"
 import { ConverterProvider } from "../src/converters/ConverterProvider"
+import { StateBindingValueSource } from "../src/state/StateBindingValueSource"
 import { StateManager } from "../src/state/StateManager"
 import type { IApplicationBootstrap, IComponentDriver, IScheduler, IStyleDriver, IThemeDriver } from "@heleonix/hx-core"
 import type { IBindingExpression, IDimension, IThemeDefinition } from "@heleonix/hx-language"
@@ -36,8 +31,8 @@ class StubRuntime extends ApplicationRuntime {
 
   public get styleDriver(): IStyleDriver {
     return {
-      compose: () => ({}) as never,
-      release: () => {},
+      insertRule: () => {},
+      remove: () => {},
       effectFor: () => ({}) as never,
     }
   }

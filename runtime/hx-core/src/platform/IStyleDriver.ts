@@ -1,21 +1,14 @@
 import type { IStyleDeclarations } from "@heleonix/hx-language"
 import type { Component } from "../components/Component"
-import type { IKeyframeScope } from "./IKeyframeScope"
 import type { IStyleEffect } from "./IStyleEffect"
-import type { StyleFragment } from "../styling/StyleFragment"
-import type { StyleHandle } from "./StyleHandle"
+import type { IStyleRule } from "./IStyleRule"
 
 export interface IStyleDriver {
-  compose(
-    signature: string,
-    fragments: readonly StyleFragment[],
-    declarations: Readonly<Record<string, string>>,
-    keyframeScope?: IKeyframeScope,
-  ): StyleHandle
+  insertRule(rule: IStyleRule): void
 
-  composeKeyframe?(scope: string, name: string, frames: Readonly<Record<string, IStyleDeclarations>>): StyleHandle
+  insertKeyframes?(id: string, frames: Readonly<Record<string, IStyleDeclarations>>): void
 
-  release(handle: StyleHandle): void
+  remove(id: string): void
 
   effectFor(component: Component): IStyleEffect
 }

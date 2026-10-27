@@ -348,7 +348,7 @@ Syntax rules:
 - No core qualifier handles events: events are handled in \*.hxm and update properties; styles react to properties via
   `@hx-if` and `{prop}` bindings, so a style stays a pure function of state and merges cleanly across dimensions.
   Event-driven styling is possible as an opt-in custom qualifier like `@hx-on-raising` (see Style qualifiers below).
-- Since CSS cannot concatenate `var()` with a unit, `{someProp}px` compiles to `calc(var(--hx-some-prop) * 1px)`.
+- Since CSS cannot concatenate `var()` with a unit, `{someProp}px` compiles to `calc(var(--hx--some-prop) * 1px)`.
 
 Multiple roots (when a component definition has several root elements or components):
 
@@ -494,7 +494,8 @@ Animations:
 - A timeline is referenced by name from the regular `animation` / `animation-name` declaration:
   `animation: pulse {$Motion.slow} infinite;`. Names resolve against component-local timelines first, then the merged
   theme's shared timelines (see THEMES: `@keyframes` in \*.hxt) - a local timeline shadows a theme timeline of the same
-  name. Compiled names are scoped (`hx-MyComponent-pulse` for local, app-scoped for theme timelines) and references are
+  name. Compiled names are scoped (`hx-MyComponent-pulse-<hash>` for local, the hash taken from the frames so a
+  dimension overlay retuning them gets a timeline of its own; app-scoped for theme timelines) and references are
   rewritten, so names cannot clash across components.
 - State-triggered animations are just `@hx-if` + `animation`: the animation runs while the property is truthy.
   Keyframes merge across dimension overlays per frame, like rules.
@@ -585,10 +586,10 @@ conditions. One qualifier can claim many spellings (the pseudo families each cla
     compiles mechanically, but typos surface at runtime instead of in the editor.
   - The LSP reads these types the way it already reads `hx-compiler-core` - via built dist types / a generated
     manifest; live TS resolution over the project is an optional upgrade.
-- Qualifiers provide behavior in one of two kinds:
-  - Selector qualifiers return the platform's static mapping: on web `Hover` -> `:hover`, `Media(query:...)` ->
+- Qualifiers extend `StyleQualifier<TArgs>` and provide behavior by overriding one or both of its optional hooks:
+  - Selector qualifiers (`build`) return the platform's static mapping: on web `Hover` -> `:hover`, `Media(query:...)` ->
     `@media (...)`; another platform maps the same signatures to its own state/viewport mechanisms.
-  - Runtime qualifiers attach per component instance: they receive the rule's usage, a binding scope that resolves
+  - Runtime qualifiers (`attach`) attach per component instance: they receive the rule's usage, a binding scope that resolves
     and watches any `{...}` source relative to the component, and an apply/remove API (toggle a `data-*` attribute,
     set CSS variables). `@hx-if` is one: it watches the sources its subject and operand read and toggles `data-*`
     attributes. Attaching may be asynchronous (a dictionary loads on first use); the component mounts only once its
@@ -711,13 +712,16 @@ Codegen/runtime:
   declarations. Turning definitions into actual styling (CSS classes, native style objects) is platform codegen in
   `platforms/*`.
 - On web, static values and `{$theme}` references become static CSS classes generated once. Themes publish
-  `--hx-theme-*` CSS variables, so switching a theme or dimension is a variable swap with zero per-component work.
-- `{prop}` references become `var(--hx-<prop>)` set via `style.setProperty` on each of the component's root elements
-  when the property changes - per-instance, no class regeneration. `{@Dict.key}` and `{#Config.path}` work the same way,
-  as per-instance variables under the reserved `--hx--` prefix: they re-resolve under a dimension switch and whenever a
-  property their entry interpolates changes. A source inside a quoted string becomes a CSS-string variable and the
-  literal splits around it (`'Hi, ' var(...)`, which `content` concatenates); an unquoted theme token is the one source
-  read straight from the theme's published variables.
+  `--hx-<token-path>` CSS variables, so switching a theme or dimension is a variable swap with zero per-component work.
+- Every other source is a per-instance variable under the reserved `--hx--` prefix, which no token path can produce,
+  so a property can never shadow a theme token of the same name (`{spacingSm}` and `{$Spacing.sm}` are
+  `--hx--spacing-sm` and `--hx-spacing-sm`). `{prop}` references become `var(--hx--<prop>)` set via
+  `style.setProperty` on each of the component's root elements when the property changes - per-instance, no class
+  regeneration. `{@Dict.key}` and `{#Config.path}` work the same way, named readably plus a content hash after a `--`
+  (`--hx--dict-labels-title--<hash>`), which no property path can produce either: they re-resolve under a dimension
+  switch and whenever a property their entry interpolates changes. A source inside a quoted string becomes a CSS-string
+  variable and the literal splits around it (`'Hi, ' var(...)`, which `content` concatenates); an unquoted theme token
+  is the one source read straight from the theme's published variables.
 - `@hx-if` conditions toggle `data-*` attributes on every root element.
 - Scoped rules (`Style(for:path)`, `Style(for:Component)`) are resolved through the component tree, not through CSS
   descendant/child combinators: each scope group compiles to its own class, and the runtime applies that class to the
@@ -730,9 +734,11 @@ Codegen/runtime:
   declarations (`-webkit-`, `-moz-`, `-ms-`) next to the standard one where needed, driven by a built-in prefix table
   (generated at build time of the package itself, since framework packages are dependency-free). Prefixing happens
   when CSS is generated - never per-update at runtime and never in the compiled definition.
-- SSR: generated class names are deterministic (derived from component name + dimension + rule signature), so the
-  server and the client produce byte-identical CSS and class attributes, and hydration only attaches subscriptions -
-  no style recomputation, no DOM writes. Initial `@hx-if` states render as `data-*` attributes and `{prop}` values as
+- SSR: generated names are deterministic - the runtime core derives every class, keyframe and variable name from
+  what it composes (a rule's resolved conditions and declarations, a timeline's frames, a binding source), and
+  platforms only add their syntax (`.` for a class, `--` for a custom property) - so the server and the client
+  produce byte-identical CSS and class attributes, and hydration only attaches subscriptions - no style recomputation,
+  no DOM writes. Initial `@hx-if` states render as `data-*` attributes and `{prop}` values as
   inline CSS variables directly in the HTML. Selector qualifiers are pure functions and SSR-safe by construction;
   runtime qualifiers must derive their initial state deterministically - from properties and the current dimension's
   dictionaries, configs and theme, which resolve identically on server and client - one more reason core qualifiers

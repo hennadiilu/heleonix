@@ -1,4 +1,4 @@
-import type { StyleFragment } from "@heleonix/hx-core"
+import type { IStyleRule } from "@heleonix/hx-core"
 import { composeSelector } from "./composeSelector"
 import { declarationsToCss } from "./declarationsToCss"
 
@@ -9,16 +9,12 @@ import { declarationsToCss } from "./declarationsToCss"
 // applies, and nothing reaches the sheet.
 const UNSAFE_CONDITION = /[{};]|\/\*|\*\/|<\//
 
-export function composeRule(
-  className: string,
-  fragments: readonly StyleFragment[],
-  declarations: Readonly<Record<string, string>>,
-): string {
-  let rule = `${composeSelector(className, fragments)} { ${declarationsToCss(declarations)} }`
+export function composeRule({ id, conditions, declarations }: IStyleRule): string {
+  let rule = `${composeSelector(id, conditions)} { ${declarationsToCss(declarations)} }`
 
-  for (const fragment of fragments) {
-    if ("environment" in fragment) {
-      rule = `@media ${UNSAFE_CONDITION.test(fragment.environment) ? "not all" : fragment.environment} { ${rule} }`
+  for (const condition of conditions) {
+    if ("environment" in condition) {
+      rule = `@media ${UNSAFE_CONDITION.test(condition.environment) ? "not all" : condition.environment} { ${rule} }`
     }
   }
 

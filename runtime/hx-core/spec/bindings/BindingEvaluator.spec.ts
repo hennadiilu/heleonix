@@ -1,12 +1,10 @@
-import {
-  BindingEvaluator,
-  ConfigBindingValueSource,
-  Converter,
-  DictionaryBindingValueSource,
-  LiteralBindingValueSource,
-  StateBindingValueSource,
-} from "@heleonix/hx-core"
+import { Converter } from "@heleonix/hx-core"
+import { BindingEvaluator } from "../../src/bindings/BindingEvaluator"
+import { LiteralBindingValueSource } from "../../src/bindings/LiteralBindingValueSource"
+import { ConfigBindingValueSource } from "../../src/configs/ConfigBindingValueSource"
 import { ConverterProvider } from "../../src/converters/ConverterProvider"
+import { DictionaryBindingValueSource } from "../../src/dictionaries/DictionaryBindingValueSource"
+import { StateBindingValueSource } from "../../src/state/StateBindingValueSource"
 import { StateManager } from "../../src/state/StateManager"
 import type { ConverterConstructor, IConverterContext } from "@heleonix/hx-core"
 import { joinFQPropertyName } from "@heleonix/hx-language"

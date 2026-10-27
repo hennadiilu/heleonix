@@ -1,6 +1,5 @@
-import type { IScheduler, StyleHandle } from "@heleonix/hx-core"
+import type { IScheduler } from "@heleonix/hx-core"
 import { WebStyleEffect } from "@heleonix/hx-platform-web"
-import type { WebStyleHandle } from "@heleonix/hx-platform-web"
 
 const immediate: IScheduler = {
   scheduleCompute: (job) => void job(),
@@ -37,32 +36,28 @@ class FakeElement {
   }
 }
 
-function handle(className: string): StyleHandle {
-  return { className } as WebStyleHandle as unknown as StyleHandle
-}
-
 describe("WebStyleEffect", () => {
-  it("then mangles a variable key and sets/removes it on every root", () => {
+  it("then sets/removes a variable under its custom property name on every root", () => {
     const a = new FakeElement()
     const b = new FakeElement()
     const effect = new WebStyleEffect([a, b] as unknown as HTMLElement[], immediate)
 
-    effect.setVariable({ source: "someProp", text: false }, "5px")
-    expect(a.style.props.get("--hx-some-prop")).toBe("5px")
-    expect(b.style.props.get("--hx-some-prop")).toBe("5px")
+    effect.setVariable({ name: "hx--some-prop", text: false }, "5px")
+    expect(a.style.props.get("--hx--some-prop")).toBe("5px")
+    expect(b.style.props.get("--hx--some-prop")).toBe("5px")
 
-    effect.removeVariable({ source: "someProp", text: false })
-    expect(a.style.props.has("--hx-some-prop")).toBeFalse()
+    effect.removeVariable({ name: "hx--some-prop", text: false })
+    expect(a.style.props.has("--hx--some-prop")).toBeFalse()
   })
 
-  it("then adds and removes the handle's class on every root", () => {
+  it("then adds and removes a rule's class on every root", () => {
     const root = new FakeElement()
     const effect = new WebStyleEffect([root] as unknown as HTMLElement[], immediate)
 
-    effect.setClass(handle("hx-abc"))
+    effect.addClass("hx-abc")
     expect(root.classes.has("hx-abc")).toBeTrue()
 
-    effect.removeClass(handle("hx-abc"))
+    effect.removeClass("hx-abc")
     expect(root.classes.has("hx-abc")).toBeFalse()
   })
 

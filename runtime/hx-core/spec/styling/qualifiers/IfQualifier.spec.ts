@@ -1,4 +1,4 @@
-import { IfQualifier } from "@heleonix/hx-core"
+import { IfQualifier } from "../../../src/styling/qualifiers/IfQualifier"
 import type { IBindingScope, IStyleEffect } from "@heleonix/hx-core"
 import type { IBindingExpression, IQualifierUsage } from "@heleonix/hx-language"
 
@@ -66,7 +66,7 @@ class FakeEffect implements IStyleEffect {
   }
   public setVariable(): void {}
   public removeVariable(): void {}
-  public setClass(): void {}
+  public addClass(): void {}
   public removeClass(): void {}
   public setProperty(): void {}
   public removeProperty(): void {}

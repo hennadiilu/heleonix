@@ -7,18 +7,22 @@ import type { IDisposable } from "../../common/IDisposable"
 import type { MaybePromise } from "../../common/MaybePromise"
 import { thenMaybe } from "../../common/thenMaybe"
 import type { IStyleEffect } from "../../platform/IStyleEffect"
-import type { StyleFragment } from "../StyleFragment"
+import type { StyleCondition } from "../StyleCondition"
 
 const TRUTHY: IBindingExpression = { type: "literal", value: "true" }
 
 export class IfQualifier extends StyleQualifier<IIfQualifierArgs> {
   public static readonly hxName = "If"
 
-  public build(usage: IQualifierUsage): StyleFragment {
+  public override build(usage: IQualifierUsage): StyleCondition {
     return { gate: this.gateOf(usage) }
   }
 
-  public async attach(usage: IQualifierUsage, scope: IBindingScope, effect: IStyleEffect): Promise<IDisposable> {
+  public override async attach(
+    usage: IQualifierUsage,
+    scope: IBindingScope,
+    effect: IStyleEffect,
+  ): Promise<IDisposable> {
     const attribute = `data-hx-${this.gateOf(usage)}`
     const subject = this.sourceOf(usage.args["value"] ?? "")
     const negated = usage.args["is"] === undefined && usage.args["isNot"] !== undefined

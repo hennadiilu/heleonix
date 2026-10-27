@@ -1,6 +1,5 @@
-import type { StyleFragment } from "@heleonix/hx-core"
+import type { StyleCondition } from "@heleonix/hx-core"
 import {
-  mangleVariable,
   interpolateValue,
   composeSelector,
   composeRule,
@@ -8,30 +7,19 @@ import {
   composeFontFace,
   composeCounterStyle,
   composeThemeArtifacts,
-  scopedKeyframeName,
-  rewriteAnimationRefs,
   vendorPrefixes,
   declarationsToCss,
-  hashClassName,
 } from "@heleonix/hx-platform-web"
-
-describe("mangleVariable", () => {
-  it("then kebab-cases theme paths and state props into --hx- variables", () => {
-    expect(mangleVariable("Colors.Roles.Primary.bg")).toBe("--hx-colors-roles-primary-bg")
-    expect(mangleVariable("someProp")).toBe("--hx-some-prop")
-    expect(mangleVariable("sub.subsub:isInvalid")).toBe("--hx-sub-subsub-is-invalid")
-  })
-})
 
 describe("interpolateValue", () => {
   it("then turns theme and state sources into var() chains, keeping literals", () => {
     expect(interpolateValue("10px {someProp} {$Colors.Roles.Primary.bg}")).toBe(
-      "10px var(--hx-some-prop) var(--hx-colors-roles-primary-bg)",
+      "10px var(--hx--some-prop) var(--hx-colors-roles-primary-bg)",
     )
   })
 
   it("then wraps a source glued to a unit in calc()", () => {
-    expect(interpolateValue("{someProp}px")).toBe("calc(var(--hx-some-prop) * 1px)")
+    expect(interpolateValue("{someProp}px")).toBe("calc(var(--hx--some-prop) * 1px)")
   })
 
   it("then interpolates each source inside a function, preserving punctuation", () => {
@@ -43,11 +31,11 @@ describe("interpolateValue", () => {
 
 describe("composeSelector", () => {
   it("then attaches pseudo-classes and gates, serializing the pseudo-element last", () => {
-    const fragments: StyleFragment[] = [{ pseudo: "Before" }, { pseudo: "Hover" }, { gate: "1a2b" }]
+    const conditions: StyleCondition[] = [{ pseudo: "Before" }, { pseudo: "Hover" }, { gate: "1a2b" }]
 
     // The gate id is used verbatim (it is already an attribute-safe slug that
     // must match what the qualifier's `attach` toggles).
-    expect(composeSelector("hx-abc", fragments)).toBe(".hx-abc:hover[data-hx-1a2b]::before")
+    expect(composeSelector("hx-abc", conditions)).toBe(".hx-abc:hover[data-hx-1a2b]::before")
   })
 
   it("then keeps a functional pseudo's argument", () => {
@@ -57,23 +45,29 @@ describe("composeSelector", () => {
 
 describe("composeRule", () => {
   it("then builds the declaration body with interpolated values", () => {
-    expect(composeRule("hx-abc", [{ pseudo: "Hover" }], { color: "{$Colors.Text.default}", padding: "4px" })).toBe(
-      ".hx-abc:hover { color: var(--hx-colors-text-default); padding: 4px; }",
-    )
+    expect(
+      composeRule({
+        id: "hx-abc",
+        conditions: [{ pseudo: "Hover" }],
+        declarations: { color: "{$Colors.Text.default}", padding: "4px" },
+      }),
+    ).toBe(".hx-abc:hover { color: var(--hx-colors-text-default); padding: 4px; }")
   })
 
-  it("then wraps the rule in @media for an environment fragment, keeping the resolved query", () => {
-    const fragments: StyleFragment[] = [{ environment: "(max-width:600px) and (400px <= height <= 700px)" }]
+  it("then wraps the rule in @media for an environment condition, keeping the resolved query", () => {
+    const conditions: StyleCondition[] = [{ environment: "(max-width:600px) and (400px <= height <= 700px)" }]
 
-    expect(composeRule("hx-abc", fragments, { width: "4px" })).toBe(
+    expect(composeRule({ id: "hx-abc", conditions, declarations: { width: "4px" } })).toBe(
       "@media (max-width:600px) and (400px <= height <= 700px) { .hx-abc { width: 4px; } }",
     )
   })
 
   it("then never applies a query whose source stayed unresolved, rather than emitting var()", () => {
-    const fragments: StyleFragment[] = [{ environment: "(max-width:{$Breakpoints.missing})" }]
+    const conditions: StyleCondition[] = [{ environment: "(max-width:{$Breakpoints.missing})" }]
 
-    expect(composeRule("hx-abc", fragments, { width: "4px" })).toBe("@media not all { .hx-abc { width: 4px; } }")
+    expect(composeRule({ id: "hx-abc", conditions, declarations: { width: "4px" } })).toBe(
+      "@media not all { .hx-abc { width: 4px; } }",
+    )
   })
 
   it("then never lets a resolved value escape the condition into the stylesheet", () => {
@@ -83,7 +77,7 @@ describe("composeRule", () => {
       "(max-width:1px) /* swallow the rest",
       "(max-width:1px) </style><script>",
     ]) {
-      expect(composeRule("hx-abc", [{ environment }], { width: "4px" }))
+      expect(composeRule({ id: "hx-abc", conditions: [{ environment }], declarations: { width: "4px" } }))
         .withContext(environment)
         .toBe("@media not all { .hx-abc { width: 4px; } }")
     }
@@ -98,7 +92,7 @@ describe("composeKeyframes", () => {
     }
 
     expect(composeKeyframes("hx-Button-pulse", frames)).toBe(
-      "@keyframes hx-Button-pulse { from, to { transform: scale(1); } 50% { transform: scale(var(--hx-pulse-scale)); } }",
+      "@keyframes hx-Button-pulse { from, to { transform: scale(1); } 50% { transform: scale(var(--hx--pulse-scale)); } }",
     )
   })
 })
@@ -128,7 +122,7 @@ describe("composeThemeArtifacts", () => {
     })
 
     expect(css).toBe(
-      "@keyframes pulse { 50% { transform: scale(var(--hx-pulse-scale)); } }\n" +
+      "@keyframes pulse { 50% { transform: scale(var(--hx--pulse-scale)); } }\n" +
         '@font-face { font-family: "Inter"; src: url(/inter.woff2); }\n' +
         "@counter-style thumbs { system: cyclic; }",
     )
@@ -136,32 +130,6 @@ describe("composeThemeArtifacts", () => {
 
   it("then yields an empty string when the theme has no artifacts", () => {
     expect(composeThemeArtifacts({})).toBe("")
-  })
-})
-
-describe("scopedKeyframeName", () => {
-  it("then namespaces a style-local timeline by its scope", () => {
-    expect(scopedKeyframeName("Button", "pulse")).toBe("hx-Button-pulse")
-  })
-})
-
-describe("rewriteAnimationRefs", () => {
-  it("then scopes only tokens naming a local keyframe, in name and shorthand", () => {
-    const declarations = {
-      "animation-name": "pulse, spin",
-      animation: "2s ease pulse",
-      color: "pulse",
-    }
-
-    expect(rewriteAnimationRefs(declarations, ["pulse"], "Button")).toEqual({
-      "animation-name": "hx-Button-pulse, spin",
-      animation: "2s ease hx-Button-pulse",
-      color: "pulse",
-    })
-  })
-
-  it("then leaves declarations untouched when the style has no local keyframes", () => {
-    expect(rewriteAnimationRefs({ "animation-name": "pulse" }, [], "Button")).toEqual({ "animation-name": "pulse" })
   })
 })
 
@@ -174,13 +142,5 @@ describe("vendorPrefixes / declarationsToCss", () => {
 
   it("then returns no prefixes for an unprefixed property", () => {
     expect(vendorPrefixes("color")).toEqual([])
-  })
-})
-
-describe("hashClassName", () => {
-  it("then is deterministic and content-sensitive", () => {
-    expect(hashClassName("Hover|{color:red}")).toBe(hashClassName("Hover|{color:red}"))
-    expect(hashClassName("Hover|{color:red}")).not.toBe(hashClassName("Hover|{color:blue}"))
-    expect(hashClassName("Hover|{color:red}")).toMatch(/^hx-[0-9a-z]+$/)
   })
 })

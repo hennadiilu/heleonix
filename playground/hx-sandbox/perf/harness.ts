@@ -1,16 +1,14 @@
 import { performance } from "node:perf_hooks"
-import {
-  BindingEvaluator,
-  ConfigBindingValueSource,
-  Converter,
-  DictionaryBindingValueSource,
-  LiteralBindingValueSource,
-  StateBindingValueSource,
-  isThenable,
-} from "@heleonix/hx-core"
+import { Converter } from "@heleonix/hx-core"
 import type { ConverterConstructor, IConverterContext } from "@heleonix/hx-core"
 import { Binder } from "../../../runtime/hx-core/src/bindings/Binder"
+import { isThenable } from "../../../runtime/hx-core/src/common/isThenable"
+import { BindingEvaluator } from "../../../runtime/hx-core/src/bindings/BindingEvaluator"
+import { LiteralBindingValueSource } from "../../../runtime/hx-core/src/bindings/LiteralBindingValueSource"
+import { ConfigBindingValueSource } from "../../../runtime/hx-core/src/configs/ConfigBindingValueSource"
 import { ConverterProvider } from "../../../runtime/hx-core/src/converters/ConverterProvider"
+import { DictionaryBindingValueSource } from "../../../runtime/hx-core/src/dictionaries/DictionaryBindingValueSource"
+import { StateBindingValueSource } from "../../../runtime/hx-core/src/state/StateBindingValueSource"
 import { StateManager } from "../../../runtime/hx-core/src/state/StateManager"
 import { joinFQPropertyName } from "@heleonix/hx-language"
 import type { IBindingExpression } from "@heleonix/hx-language"

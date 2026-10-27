@@ -1,21 +1,9 @@
-import type {
-  Component,
-  IKeyframeScope,
-  IScheduler,
-  IStyleDriver,
-  IStyleEffect,
-  StyleFragment,
-  StyleHandle,
-} from "@heleonix/hx-core"
+import type { Component, IScheduler, IStyleDriver, IStyleEffect, IStyleRule } from "@heleonix/hx-core"
 import type { IStyleDeclarations } from "@heleonix/hx-language"
 import { composeKeyframes } from "./composeKeyframes"
 import { composeRule } from "./composeRule"
-import { composeClassName } from "./composeClassName"
-import { rewriteAnimationRefs } from "./rewriteAnimationRefs"
-import { scopedKeyframeName } from "./scopedKeyframeName"
 import { WebStyleEffect } from "./WebStyleEffect"
 import type { StyleSheetTarget } from "./StyleSheetTarget"
-import type { WebStyleHandle } from "./WebStyleHandle"
 
 export class WebStyleDriver implements IStyleDriver {
   private readonly sheet: StyleSheetTarget
@@ -34,36 +22,16 @@ export class WebStyleDriver implements IStyleDriver {
     this.scheduler = scheduler
   }
 
-  public compose(
-    signature: string,
-    fragments: readonly StyleFragment[],
-    declarations: Readonly<Record<string, string>>,
-    keyframeScope?: IKeyframeScope,
-  ): StyleHandle {
-    const scoped = keyframeScope
-      ? rewriteAnimationRefs(declarations, keyframeScope.names, keyframeScope.scope)
-      : declarations
-    const className = composeClassName(signature, fragments, scoped)
-
-    this.sheet.insert(className, composeRule(className, fragments, scoped))
-
-    return { className } as WebStyleHandle as unknown as StyleHandle
+  public insertRule(rule: IStyleRule): void {
+    this.sheet.insert(rule.id, composeRule(rule))
   }
 
-  public composeKeyframe(
-    scope: string,
-    name: string,
-    frames: Readonly<Record<string, IStyleDeclarations>>,
-  ): StyleHandle {
-    const scopedName = scopedKeyframeName(scope, name)
-
-    this.sheet.insert(scopedName, composeKeyframes(scopedName, frames))
-
-    return { className: scopedName } as WebStyleHandle as unknown as StyleHandle
+  public insertKeyframes(id: string, frames: Readonly<Record<string, IStyleDeclarations>>): void {
+    this.sheet.insert(id, composeKeyframes(id, frames))
   }
 
-  public release(handle: StyleHandle): void {
-    this.sheet.remove((handle as unknown as WebStyleHandle).className)
+  public remove(id: string): void {
+    this.sheet.remove(id)
   }
 
   public effectFor(component: Component): IStyleEffect {

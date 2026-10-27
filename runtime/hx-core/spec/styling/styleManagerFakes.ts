@@ -1,15 +1,12 @@
-import { BindingEvaluator, LiteralBindingValueSource, StateBindingValueSource } from "@heleonix/hx-core"
+import { BindingEvaluator } from "../../src/bindings/BindingEvaluator"
+import { LiteralBindingValueSource } from "../../src/bindings/LiteralBindingValueSource"
+import type { IBindingValueSource } from "../../src/bindings/IBindingValueSource"
+import { StateBindingValueSource } from "../../src/state/StateBindingValueSource"
 import { QualifierProvider } from "../../src/styling/qualifiers/QualifierProvider"
 import { StyleManager } from "../../src/styling/StyleManager"
 import type { IThemeManager } from "../../src/theming/IThemeManager"
-import type {
-  Component,
-  IConverterProvider,
-  IState,
-  IStyleDriver,
-  IBindingValueSource,
-  StyleDefinitionLoader,
-} from "@heleonix/hx-core"
+import type { IConverterProvider } from "../../src/converters/IConverterProvider"
+import type { Component, IState, IStyleDriver, StyleDefinitionLoader } from "@heleonix/hx-core"
 import type { IStyleDefinition, IThemeDefinition } from "@heleonix/hx-language"
 
 const components = new Map<string, Component>()

@@ -1,7 +1,6 @@
-import type { IStyleEffect, IStyleVariable, StyleHandle } from "@heleonix/hx-core"
-import { cssVariableValue, styleVariableName } from "@heleonix/hx-platform-web"
+import type { IStyleEffect, IStyleVariable } from "@heleonix/hx-core"
+import { cssVariableValue } from "@heleonix/hx-platform-web"
 import type { SsrElementState } from "./SsrElementState"
-import type { SsrStyleHandle } from "./SsrStyleHandle"
 
 export class SsrStyleEffect implements IStyleEffect {
   private readonly state: SsrElementState
@@ -19,7 +18,7 @@ export class SsrStyleEffect implements IStyleEffect {
   }
 
   public setVariable(variable: IStyleVariable, value: string): void {
-    const property = styleVariableName(variable)
+    const property = `--${variable.name}`
     const css = cssVariableValue(variable, value)
 
     if (css === undefined) {
@@ -30,15 +29,15 @@ export class SsrStyleEffect implements IStyleEffect {
   }
 
   public removeVariable(variable: IStyleVariable): void {
-    this.state.styles.delete(styleVariableName(variable))
+    this.state.styles.delete(`--${variable.name}`)
   }
 
-  public setClass(handle: StyleHandle): void {
-    this.state.classes.add((handle as unknown as SsrStyleHandle).className)
+  public addClass(id: string): void {
+    this.state.classes.add(id)
   }
 
-  public removeClass(handle: StyleHandle): void {
-    this.state.classes.delete((handle as unknown as SsrStyleHandle).className)
+  public removeClass(id: string): void {
+    this.state.classes.delete(id)
   }
 
   public setProperty(name: string, value: string): void {

@@ -1,7 +1,5 @@
-import type { IScheduler, IStyleEffect, IStyleVariable, StyleHandle } from "@heleonix/hx-core"
+import type { IScheduler, IStyleEffect, IStyleVariable } from "@heleonix/hx-core"
 import { cssVariableValue } from "./cssVariableValue"
-import { styleVariableName } from "./styleVariableName"
-import type { WebStyleHandle } from "./WebStyleHandle"
 
 export class WebStyleEffect implements IStyleEffect {
   private readonly roots: readonly HTMLElement[]
@@ -30,7 +28,7 @@ export class WebStyleEffect implements IStyleEffect {
   }
 
   public setVariable(variable: IStyleVariable, value: string): void {
-    const property = styleVariableName(variable)
+    const property = `--${variable.name}`
     const css = cssVariableValue(variable, value)
 
     this.scheduler.scheduleCommit(() => {
@@ -45,7 +43,7 @@ export class WebStyleEffect implements IStyleEffect {
   }
 
   public removeVariable(variable: IStyleVariable): void {
-    const property = styleVariableName(variable)
+    const property = `--${variable.name}`
 
     this.scheduler.scheduleCommit(() => {
       for (const root of this.roots) {
@@ -54,22 +52,18 @@ export class WebStyleEffect implements IStyleEffect {
     })
   }
 
-  public setClass(handle: StyleHandle): void {
-    const { className } = handle as unknown as WebStyleHandle
-
+  public addClass(id: string): void {
     this.scheduler.scheduleCommit(() => {
       for (const root of this.roots) {
-        root.classList.add(className)
+        root.classList.add(id)
       }
     })
   }
 
-  public removeClass(handle: StyleHandle): void {
-    const { className } = handle as unknown as WebStyleHandle
-
+  public removeClass(id: string): void {
     this.scheduler.scheduleCommit(() => {
       for (const root of this.roots) {
-        root.classList.remove(className)
+        root.classList.remove(id)
       }
     })
   }

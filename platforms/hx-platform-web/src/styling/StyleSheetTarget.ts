@@ -1,5 +1,5 @@
 export interface StyleSheetTarget {
-  insert(className: string, rule: string): void
+  insert(id: string, rule: string): void
 
-  remove(className: string): void
+  remove(id: string): void
 }

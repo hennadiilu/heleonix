@@ -1,13 +1,13 @@
 import type { IQualifierProvider } from "./IQualifierProvider"
-import type { IStyleQualifier } from "./IStyleQualifier"
+import type { StyleQualifier } from "./StyleQualifier"
 
 export class QualifierProvider implements IQualifierProvider {
   public constructor(
-    private readonly qualifiers: ReadonlyMap<string, IStyleQualifier>,
-    private readonly fallback?: IStyleQualifier,
+    private readonly qualifiers: ReadonlyMap<string, StyleQualifier>,
+    private readonly fallback?: StyleQualifier,
   ) {}
 
-  public get(name: string): IStyleQualifier | undefined {
+  public get(name: string): StyleQualifier | undefined {
     return this.qualifiers.get(name) ?? this.fallback
   }
 }

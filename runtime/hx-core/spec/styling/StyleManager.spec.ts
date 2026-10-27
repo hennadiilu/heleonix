@@ -1,15 +1,10 @@
-import { IfQualifier, MediaQualifier, PseudoQualifier } from "@heleonix/hx-core"
+import { IfQualifier } from "../../src/styling/qualifiers/IfQualifier"
+import { MediaQualifier } from "../../src/styling/qualifiers/MediaQualifier"
+import { PseudoQualifier } from "../../src/styling/qualifiers/PseudoQualifier"
 import { QualifierProvider } from "../../src/styling/qualifiers/QualifierProvider"
 import type { StyleManager } from "../../src/styling/StyleManager"
-import type {
-  Component,
-  IStyleDriver,
-  IStyleEffect,
-  IStyleQualifier,
-  IBindingValueSource,
-  StyleFragment,
-  StyleHandle,
-} from "@heleonix/hx-core"
+import type { Component, IStyleDriver, IStyleEffect, IStyleRule, StyleQualifier } from "@heleonix/hx-core"
+import type { IBindingValueSource } from "../../src/bindings/IBindingValueSource"
 import { parseRuleKey, stringifyRuleKey } from "@heleonix/hx-language"
 import type { IStyleDefinition } from "@heleonix/hx-language"
 import {
@@ -26,8 +21,8 @@ import type { FakeComponent } from "./styleManagerFakes"
 const SCOPE_KEY = stringifyRuleKey([{ name: "Style", args: { for: "body" } }])
 
 class FakeEffect implements IStyleEffect {
-  public readonly classesSet: StyleHandle[] = []
-  public readonly classesRemoved: StyleHandle[] = []
+  public readonly classesSet: string[] = []
+  public readonly classesRemoved: string[] = []
   public readonly attrs = new Set<string>()
   public setAttribute(name: string): void {
     this.attrs.add(name)
@@ -37,53 +32,49 @@ class FakeEffect implements IStyleEffect {
   }
   public setVariable(): void {}
   public removeVariable(): void {}
-  public setClass(handle: StyleHandle): void {
-    this.classesSet.push(handle)
+  public addClass(id: string): void {
+    this.classesSet.push(id)
   }
-  public removeClass(handle: StyleHandle): void {
-    this.classesRemoved.push(handle)
+  public removeClass(id: string): void {
+    this.classesRemoved.push(id)
   }
   public setProperty(): void {}
   public removeProperty(): void {}
 }
 
 class FakeStyleDriver implements IStyleDriver {
-  public readonly composed: string[] = []
+  public readonly rules: IStyleRule[] = []
   public readonly composedDecls: Record<string, string>[] = []
   public readonly environments: string[] = []
   public readonly keyframes: string[] = []
-  public readonly released: StyleHandle[] = []
+  public readonly removed: string[] = []
   public readonly effect = new FakeEffect()
 
-  public compose(
-    signature: string,
-    fragments: readonly StyleFragment[],
-    declarations: Readonly<Record<string, string>>,
-  ): StyleHandle {
-    this.composed.push(signature)
-    this.composedDecls.push({ ...declarations })
+  public insertRule(rule: IStyleRule): void {
+    this.rules.push(rule)
+    this.composedDecls.push({ ...rule.declarations })
 
-    for (const fragment of fragments) {
-      if ("environment" in fragment) {
-        this.environments.push(fragment.environment)
+    for (const condition of rule.conditions) {
+      if ("environment" in condition) {
+        this.environments.push(condition.environment)
       }
     }
-
-    return { signature, fragments } as unknown as StyleHandle
   }
 
-  public composeKeyframe(scope: string, name: string): StyleHandle {
-    this.keyframes.push(`${scope}/${name}`)
-
-    return { keyframe: `${scope}/${name}` } as unknown as StyleHandle
+  public insertKeyframes(id: string): void {
+    this.keyframes.push(id)
   }
 
-  public release(handle: StyleHandle): void {
-    this.released.push(handle)
+  public remove(id: string): void {
+    this.removed.push(id)
   }
 
   public effectFor(): IStyleEffect {
     return this.effect
+  }
+
+  public ruleOf(id: string): IStyleRule {
+    return this.rules.find((rule) => rule.id === id)!
   }
 }
 
@@ -141,7 +132,7 @@ function subject(sources: IBindingValueSource[] = []): {
   }
 
   const qualifiers = new QualifierProvider(
-    new Map<string, IStyleQualifier>([
+    new Map<string, StyleQualifier>([
       ["Media", new MediaQualifier()],
       ["If", new IfQualifier()],
     ]),
@@ -155,11 +146,11 @@ function subject(sources: IBindingValueSource[] = []): {
 
 function conditional(tag: string, args: Record<string, string>): { definition: IStyleDefinition; gate: string } {
   const key = stringifyRuleKey([{ name: "If", args }])
-  const fragment = new IfQualifier().build(parseRuleKey(key)[0]) as { gate: string }
+  const condition = new IfQualifier().build(parseRuleKey(key)[0]) as { gate: string }
 
   return {
     definition: { name: tag, dimension: {}, rules: { [key]: { color: "red" } } },
-    gate: `data-hx-${fragment.gate}`,
+    gate: `data-hx-${condition.gate}`,
   }
 }
 
@@ -169,8 +160,8 @@ describe("StyleManager", () => {
 
     await manager.apply(componentOf("Button"))
 
-    expect(driver.composed).toEqual([""])
-    expect(driver.effect.classesSet.length).toBe(1)
+    expect(driver.rules.map((rule) => rule.declarations)).toEqual([{ color: "red" }])
+    expect(driver.effect.classesSet).toEqual([driver.rules[0].id])
   })
 
   it("then removes the styling on teardown", async () => {
@@ -188,7 +179,7 @@ describe("StyleManager", () => {
 
     await manager.apply(componentOf("Plain"))
 
-    expect(driver.composed).toEqual([])
+    expect(driver.rules).toEqual([])
   })
 
   it("then styles nothing for a component removed while its definition was still loading", async () => {
@@ -199,7 +190,7 @@ describe("StyleManager", () => {
     manager.remove(component)
     await applying
 
-    expect(driver.composed).toEqual([])
+    expect(driver.rules).toEqual([])
   })
 
   describe("@hx-apply", () => {
@@ -246,7 +237,7 @@ describe("StyleManager", () => {
       await manager.apply(componentOf("Animated"))
 
       expect(driver.composedDecls).toEqual([{ color: "red", background: "pink" }])
-      expect(driver.keyframes).toEqual(["Animated/pulse"])
+      expect(driver.keyframes).toEqual([jasmine.stringMatching(/^hx-Animated-pulse-[0-9a-z]+$/)])
     })
   })
 
@@ -255,11 +246,11 @@ describe("StyleManager", () => {
       const { manager, driver } = subject()
 
       await manager.apply(componentOf("Button"))
-      expect(driver.composed).toEqual([""])
+      expect(driver.rules.length).toBe(1)
 
       await manager.reapply()
 
-      expect(driver.composed).toEqual(["", ""])
+      expect(driver.rules.length).toBe(2)
     })
 
     it("then removes a style the new dimension no longer defines", async () => {
@@ -277,12 +268,12 @@ describe("StyleManager", () => {
       const { manager, driver, loader } = subject()
 
       await manager.apply(componentOf("Plain"))
-      expect(driver.composed).toEqual([])
+      expect(driver.rules).toEqual([])
 
       loader.set("Plain", { name: "Plain", dimension: {}, rules: { "": { color: "blue" } } })
       await manager.reapply()
 
-      expect(driver.composed).toEqual([""])
+      expect(driver.rules.map((rule) => rule.declarations)).toEqual([{ color: "blue" }])
     })
   })
 
@@ -307,12 +298,12 @@ describe("StyleManager", () => {
       const parent = componentTree("Scoped")
 
       await manager.apply(asComponent(parent))
-      expect(driver.composed).toEqual([])
+      expect(driver.rules).toEqual([])
 
       const child = componentTree("Child", "body", parent)
       await manager.apply(asComponent(child))
 
-      expect(driver.composed).toContain(SCOPE_KEY)
+      expect(driver.rules.map((rule) => rule.declarations)).toEqual([{ color: "red" }])
     })
 
     it("then does not re-style an unscoped ancestor when a descendant is built", async () => {
@@ -450,7 +441,7 @@ describe("StyleManager", () => {
       await manager.reapply()
 
       expect(driver.environments).toEqual(["(max-width:600px)", "(max-width:720px)"])
-      expect(driver.released.length).toBe(1)
+      expect(driver.removed.length).toBe(1)
     })
 
     it("then never hands a component a sibling's stale query when they share the rule", async () => {
@@ -463,9 +454,9 @@ describe("StyleManager", () => {
       theme.groups = { Breakpoints: { mobile: "720px" } }
       await manager.reapply()
 
-      const applied = driver.effect.classesSet.slice(-2) as unknown as { fragments: { environment: string }[] }[]
+      const applied = driver.effect.classesSet.slice(-2).map((id) => driver.ruleOf(id).conditions[0])
 
-      expect(applied.map((handle) => handle.fragments[0].environment)).toEqual([
+      expect(applied.map((condition) => (condition as { environment: string }).environment)).toEqual([
         "(max-width:720px)",
         "(max-width:720px)",
       ])
@@ -495,7 +486,7 @@ describe("StyleManager", () => {
       release()
       await applying
 
-      expect(driver.composed).toEqual([])
+      expect(driver.rules).toEqual([])
     })
   })
   describe("dictionaries, configs and properties in media queries", () => {
@@ -552,7 +543,7 @@ describe("StyleManager", () => {
 
       expect(driver.environments).toEqual(["(max-width:600px)", "(max-width:720px)"])
       expect(driver.effect.classesRemoved).toEqual([first])
-      expect(driver.released).toEqual([first])
+      expect(driver.removed).toEqual([first])
     })
 
     it("then follows a property a dictionary entry interpolates", async () => {
@@ -574,10 +565,10 @@ describe("StyleManager", () => {
       state.setValue("Card:maxWidth", 600)
       await tick()
 
-      expect(driver.composed.length).toBe(1)
+      expect(driver.rules.length).toBe(1)
       expect(driver.effect.classesSet.length).toBe(1)
       expect(driver.effect.classesRemoved).toEqual([])
-      expect(driver.released).toEqual([])
+      expect(driver.removed).toEqual([])
     })
 
     it("then shares one rule between instances whose queries resolve alike, and splits those that differ", async () => {
@@ -611,7 +602,7 @@ describe("StyleManager", () => {
       state.setValue("Card:maxWidth", 720)
       await tick()
 
-      expect(driver.composed.length).toBe(1)
+      expect(driver.rules.length).toBe(1)
       expect(state.subscriberCount("Card:maxWidth")).toBe(0)
     })
   })

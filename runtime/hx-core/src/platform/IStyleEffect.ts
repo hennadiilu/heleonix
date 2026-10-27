@@ -1,5 +1,4 @@
 import type { IStyleVariable } from "./IStyleVariable"
-import type { StyleHandle } from "./StyleHandle"
 
 export interface IStyleEffect {
   setAttribute(name: string, value: string): void
@@ -10,9 +9,9 @@ export interface IStyleEffect {
 
   removeVariable(variable: IStyleVariable): void
 
-  setClass(handle: StyleHandle): void
+  addClass(id: string): void
 
-  removeClass(handle: StyleHandle): void
+  removeClass(id: string): void
 
   setProperty(name: string, value: string): void
 

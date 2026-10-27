@@ -29,7 +29,7 @@ export class ThemeDefinitionLoader implements IClearable {
         definitions,
         this.dimensions.current,
         this.dimensions.definitions,
-        this.mergeDeeply,
+        (mergeBase, extension) => this.mergeDeeply(mergeBase, extension),
         "extend",
         merged,
       )
@@ -44,7 +44,7 @@ export class ThemeDefinitionLoader implements IClearable {
     this.themes.clear()
   }
 
-  private mergeDeeply = (base: IThemeDefinition | undefined, extension: IThemeDefinition): IThemeDefinition => {
+  protected mergeDeeply(base: IThemeDefinition | undefined, extension: IThemeDefinition): IThemeDefinition {
     const result: IThemeDefinition = base ?? { name: "", dimension: { ...extension.dimension }, groups: {} }
 
     Merger.mergeDeeply(result.groups, extension.groups)

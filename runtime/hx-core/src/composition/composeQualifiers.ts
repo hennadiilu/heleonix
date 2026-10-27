@@ -1,5 +1,5 @@
 import type { IApplicationBootstrap } from "../IApplicationBootstrap"
-import type { IStyleQualifier } from "../styling/qualifiers/IStyleQualifier"
+import type { StyleQualifier } from "../styling/qualifiers/StyleQualifier"
 import { QualifierProvider } from "../styling/qualifiers/QualifierProvider"
 import { PseudoQualifier } from "../styling/qualifiers/PseudoQualifier"
 import { MediaQualifier } from "../styling/qualifiers/MediaQualifier"
@@ -7,7 +7,7 @@ import { IfQualifier } from "../styling/qualifiers/IfQualifier"
 import { hxNameMap } from "./hxNameMap"
 
 export function composeQualifiers(bootstrap: IApplicationBootstrap): QualifierProvider {
-  const byName = new Map<string, IStyleQualifier>([
+  const byName = new Map<string, StyleQualifier>([
     [MediaQualifier.hxName, new MediaQualifier()],
     [IfQualifier.hxName, new IfQualifier()],
   ])

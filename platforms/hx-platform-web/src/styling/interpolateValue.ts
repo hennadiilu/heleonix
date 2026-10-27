@@ -1,7 +1,6 @@
-import { parseBindingExpression, parseStyleValue } from "@heleonix/hx-language"
+import { styleVariableName } from "@heleonix/hx-core"
+import { parseStyleValue } from "@heleonix/hx-language"
 import type { StyleStringPart } from "@heleonix/hx-language"
-import { mangleVariable } from "./mangleVariable"
-import { styleVariableName } from "./styleVariableName"
 
 const UNIT = /^[a-z%]+/i
 
@@ -19,7 +18,7 @@ export function interpolateValue(value: string): string {
     } else if (token.kind === "string") {
       css += quoted(token.quote, token.parts)
     } else {
-      const reference = `var(${rawName(token.source)})`
+      const reference = `var(--${styleVariableName(token.source, false)})`
       const next = tokens[i + 1]
       const unit = next?.kind === "raw" ? UNIT.exec(next.text)?.[0] : undefined
 
@@ -31,14 +30,6 @@ export function interpolateValue(value: string): string {
   return css
 }
 
-// An unquoted theme token reads the variable the theme publishes; every other
-// source reads the per-instance variable the style manager sets.
-function rawName(source: string): string {
-  const binding = parseBindingExpression(source)
-
-  return binding.type === "theme" ? mangleVariable(binding.value) : styleVariableName({ source, text: false })
-}
-
 // A string with sources splits into literal pieces and text variables, which
 // CSS concatenates where it accepts several strings (`content`).
 function quoted(quote: string, parts: readonly StyleStringPart[]): string {
@@ -48,9 +39,7 @@ function quoted(quote: string, parts: readonly StyleStringPart[]): string {
 
   return parts
     .map((part) =>
-      part.kind === "raw"
-        ? `${quote}${part.text}${quote}`
-        : `var(${styleVariableName({ source: part.source, text: true })})`,
+      part.kind === "raw" ? `${quote}${part.text}${quote}` : `var(--${styleVariableName(part.source, true)})`,
     )
     .join(" ")
 }

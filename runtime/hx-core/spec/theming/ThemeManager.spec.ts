@@ -27,14 +27,14 @@ class FakeThemeProvider {
 }
 
 describe("ThemeManager", () => {
-  it("then flattens the theme and publishes it through the platform's theme driver", async () => {
+  it("then flattens the theme and publishes each token under its variable name through the platform's theme driver", async () => {
     const driver = new FakeThemeDriver()
     const manager = new ThemeManager(new FakeThemeProvider() as never, () => driver)
 
     await manager.apply()
 
-    expect(driver.applied?.get("Palette.Blue.t60")).toBe("#0f62fe")
-    expect(driver.applied?.get("Spacing.xs")).toBe("4px")
+    expect(driver.applied?.get("hx-palette-blue-t60")).toBe("#0f62fe")
+    expect(driver.applied?.get("hx-spacing-xs")).toBe("4px")
     expect(driver.artifacts?.keyframes?.pulse).toEqual({ "50%": { transform: "scale(1.1)" } })
   })
 })

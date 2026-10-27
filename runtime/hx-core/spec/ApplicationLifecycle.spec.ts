@@ -4,7 +4,8 @@ import { ComponentManager } from "../src/components/ComponentManager"
 import { ConverterProvider } from "../src/converters/ConverterProvider"
 import { ServiceProvider } from "../src/services/ServiceProvider"
 import { StateManager } from "../src/state/StateManager"
-import { EventEmitter, KeyedEventEmitter } from "@heleonix/hx-core"
+import { EventEmitter } from "../src/common/EventEmitter"
+import { KeyedEventEmitter } from "../src/common/KeyedEventEmitter"
 import type { IActionContext, IConverterContext } from "@heleonix/hx-core"
 
 describe("restart teardown", () => {
