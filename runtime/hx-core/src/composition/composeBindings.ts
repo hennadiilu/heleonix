@@ -1,5 +1,5 @@
 import type { IApplicationBootstrap } from "../IApplicationBootstrap"
-import type { IStateManager } from "../state/IStateManager"
+import type { StateManager } from "../state/StateManager"
 import type { IDimensionProvider } from "../dimensions/IDimensionProvider"
 import type { IConverterContext } from "../converters/IConverterContext"
 import type { ClearableCollection } from "./ClearableCollection"
@@ -12,7 +12,7 @@ import { composeBindingValueSources } from "./composeBindingValueSources"
 
 export function composeBindings(
   bootstrap: IApplicationBootstrap,
-  deps: { dimensions: IDimensionProvider; state: IStateManager; clearables: ClearableCollection },
+  deps: { dimensions: IDimensionProvider; state: StateManager; clearables: ClearableCollection },
 ): { binder: Binder; configs: ConfigProvider; dictionaries: DictionaryProvider; evaluator: BindingEvaluator } {
   const bindingValueSources = composeBindingValueSources(bootstrap, deps)
 

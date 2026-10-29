@@ -1,20 +1,18 @@
 import type { Kind } from "@heleonix/hx-language"
 import { DEFINITION_INTERFACE_NAME } from "./definitionInterfaceName"
-import { DEFINITION_SOURCE_BASE_CLASS } from "./definitionSourceBaseClass"
 
 export function generateDefinitionDeclarations(
   kinds: readonly Kind[],
   sources: Readonly<Record<Kind, { className: string; moduleName: string }>>,
 ): string {
   const blocks = kinds.map((kind) => {
-    const baseClass = DEFINITION_SOURCE_BASE_CLASS[kind]
     const definition = DEFINITION_INTERFACE_NAME[kind]
     const { className, moduleName } = sources[kind]
 
     return `declare module ${JSON.stringify(moduleName)} {
-  import { ${baseClass} } from "@heleonix/hx-core"
+  import { DefinitionSource } from "@heleonix/hx-core"
   import type { ${definition} } from "@heleonix/hx-language"
-  export class ${className} extends ${baseClass}<${definition}> {}
+  export class ${className} extends DefinitionSource<${definition}> {}
 }`
   })
 

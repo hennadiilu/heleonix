@@ -7,7 +7,7 @@ import type { IConfigProvider } from "../configs/IConfigProvider"
 import type { IDictionaryProvider } from "../dictionaries/IDictionaryProvider"
 import type { IActionProvider } from "../actions/IActionProvider"
 import type { ApplicationRuntime } from "../platform/ApplicationRuntime"
-import type { IStyleManager } from "../styling/IStyleManager"
+import type { StyleManager } from "../styling/StyleManager"
 import type { IComponentContext } from "../components/IComponentContext"
 import type { ClearableCollection } from "./ClearableCollection"
 import { ComponentDefinitionLoader } from "../components/ComponentDefinitionLoader"
@@ -27,7 +27,7 @@ export function composeComponents(
     configs: IConfigProvider
     dictionaries: IDictionaryProvider
     actions: IActionProvider
-    styles: IStyleManager | undefined
+    styles: StyleManager | undefined
     clearables: ClearableCollection
   },
 ): { components: ComponentManager; componentContext: IComponentContext; isHeadless: boolean } {

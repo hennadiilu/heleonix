@@ -6,45 +6,10 @@ import { ConfigBindingValueSource } from "../../src/configs/ConfigBindingValueSo
 import { ConverterProvider } from "../../src/converters/ConverterProvider"
 import { DictionaryBindingValueSource } from "../../src/dictionaries/DictionaryBindingValueSource"
 import { StateBindingValueSource } from "../../src/state/StateBindingValueSource"
+import { StateManager } from "../../src/state/StateManager"
 import type { ConverterConstructor, IConverterContext } from "@heleonix/hx-core"
 import { joinFQPropertyName } from "@heleonix/hx-language"
 import type { IBindingExpression } from "@heleonix/hx-language"
-
-class FakeStateManager {
-  public readonly changed = {
-    on: (fq: string, handler: () => void): void => {
-      let set = this.handlers.get(fq)
-
-      if (!set) {
-        this.handlers.set(fq, (set = new Set()))
-      }
-
-      set.add(handler)
-    },
-    off: (fq: string, handler: () => void): void => void this.handlers.get(fq)?.delete(handler),
-  }
-
-  private readonly store = new Map<string, unknown>()
-
-  private readonly handlers = new Map<string, Set<() => void>>()
-
-  public getValue(fq: string): unknown {
-    return this.store.get(fq)
-  }
-
-  public setValue(fq: string, value: unknown): void {
-    this.store.set(fq, value)
-    this.handlers.get(fq)?.forEach((handler) => handler())
-  }
-
-  // A bare state source binds as a symmetric alias; the spec only needs the
-  // seed-on-bind behaviour, so mirror the source value into the target once.
-  public bind(target: string, source: string): void {
-    this.setValue(target, this.getValue(source))
-  }
-
-  public unbind(): void {}
-}
 
 class FakeDictionaryDefinitionLoader {
   public loadDefinition(name: string): Promise<{ entries: Record<string, string> }> {
@@ -96,8 +61,8 @@ class SyncDoubleConverter extends Converter<number, number> {
   }
 }
 
-function binderWith(): { binder: Binder; state: FakeStateManager } {
-  const state = new FakeStateManager()
+function binderWith(): { binder: Binder; state: StateManager } {
+  const state = new StateManager()
   const converterProvider = new ConverterProvider(
     new Map<string, ConverterConstructor>([
       ["Upper", UpperConverter],
@@ -108,13 +73,13 @@ function binderWith(): { binder: Binder; state: FakeStateManager } {
   )
 
   const evaluator = new BindingEvaluator(converterProvider, [
-    new StateBindingValueSource(state as never),
+    new StateBindingValueSource(state),
     new LiteralBindingValueSource(),
     new ConfigBindingValueSource(new FakeConfigDefinitionLoader() as never),
     new DictionaryBindingValueSource(new FakeDictionaryDefinitionLoader() as never),
   ])
 
-  return { binder: new Binder(state as never, evaluator), state }
+  return { binder: new Binder(state, evaluator), state }
 }
 
 const flush = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0))
@@ -186,7 +151,9 @@ describe("Binder", () => {
 
   it("then stops recomputing once unbound", async () => {
     const { binder, state } = binderWith()
+    const titles: unknown[] = []
 
+    state.changed.on("Card:title", (_fq, value) => void titles.push(value))
     state.setValue(joinFQPropertyName("app", "name"), "bob")
     await binder.bind("Card:title", upperOf("name", ["Upper"]), "app")
 
@@ -194,6 +161,7 @@ describe("Binder", () => {
     state.setValue(joinFQPropertyName("app", "name"), "later")
     await flush()
 
+    expect(titles).toEqual(["BOB"])
     expect(state.getValue("Card:title")).toBe("BOB")
   })
 
@@ -232,7 +200,7 @@ describe("Binder", () => {
   })
 
   describe("given a chain a | Double -> b | Double -> c", () => {
-    async function chain(): Promise<FakeStateManager> {
+    async function chain(): Promise<StateManager> {
       const { binder, state } = binderWith()
 
       // b = a | Double ; c = b | Double

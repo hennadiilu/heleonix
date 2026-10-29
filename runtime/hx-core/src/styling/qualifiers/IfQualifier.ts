@@ -1,8 +1,7 @@
 import { isLiteralSource, parseBindingExpression, stringifyQualifierUsage } from "@heleonix/hx-language"
-import type { IBindingExpression, IQualifierUsage } from "@heleonix/hx-language"
+import type { IBindingExpression, IQualifierUsage, PropertyRef } from "@heleonix/hx-language"
 import { StyleQualifier } from "./StyleQualifier"
 import type { IBindingScope } from "./IBindingScope"
-import type { IIfQualifierArgs } from "./IIfQualifierArgs"
 import type { IDisposable } from "../../common/IDisposable"
 import type { MaybePromise } from "../../common/MaybePromise"
 import { thenMaybe } from "../../common/thenMaybe"
@@ -11,7 +10,16 @@ import type { StyleCondition } from "../StyleCondition"
 
 const TRUTHY: IBindingExpression = { type: "literal", value: "true" }
 
-export class IfQualifier extends StyleQualifier<IIfQualifierArgs> {
+export class IfQualifier extends StyleQualifier<{
+  /** The condition subject: a property of the styled component, `{prop}` or `{ctrl.path:prop}`. */
+  value: PropertyRef
+
+  /** Applies while the subject equals this operand; a boolean operand tests truthiness (`{false}` negates). */
+  is?: string | number | boolean
+
+  /** Applies while the subject differs from this operand; a boolean operand tests truthiness. */
+  isNot?: string | number | boolean
+}> {
   public static readonly hxName = "If"
 
   public override build(usage: IQualifierUsage): StyleCondition {

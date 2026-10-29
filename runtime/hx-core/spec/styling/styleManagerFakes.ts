@@ -4,8 +4,10 @@ import type { IBindingValueSource } from "../../src/bindings/IBindingValueSource
 import { StateBindingValueSource } from "../../src/state/StateBindingValueSource"
 import { QualifierProvider } from "../../src/styling/qualifiers/QualifierProvider"
 import { StyleManager } from "../../src/styling/StyleManager"
-import type { IThemeManager } from "../../src/theming/IThemeManager"
-import type { IConverterProvider } from "../../src/converters/IConverterProvider"
+import { ThemeManager } from "../../src/theming/ThemeManager"
+import { ConverterProvider } from "../../src/converters/ConverterProvider"
+import { DimensionManager } from "../../src/dimensions/DimensionManager"
+import { DefinitionSource, ThemeDefinitionLoader } from "@heleonix/hx-core"
 import type { Component, IState, IStyleDriver, StyleDefinitionLoader } from "@heleonix/hx-core"
 import type { IStyleDefinition, IThemeDefinition } from "@heleonix/hx-language"
 
@@ -112,15 +114,29 @@ export class FakeDefinitionLoader {
   }
 }
 
-export class FakeThemeManager implements IThemeManager {
+class ThemeSource extends DefinitionSource<IThemeDefinition> {
   public groups: IThemeDefinition["groups"] = {}
 
-  public getTheme(): Promise<IThemeDefinition> {
-    return Promise.resolve({ name: "", dimension: {}, groups: this.groups })
+  public loadDefinitions(): Promise<readonly IThemeDefinition[]> {
+    return Promise.resolve([{ name: "", dimension: {}, groups: this.groups }])
+  }
+}
+
+export class FakeTheme {
+  public readonly manager: ThemeManager
+
+  private readonly source = new ThemeSource()
+
+  private readonly loader: ThemeDefinitionLoader
+
+  public constructor() {
+    this.loader = new ThemeDefinitionLoader(new DimensionManager([]), [this.source])
+    this.manager = new ThemeManager(this.loader, () => ({ applyTokens: () => {}, applyArtifacts: () => {} }))
   }
 
-  public apply(): Promise<void> {
-    return Promise.resolve()
+  public set groups(groups: IThemeDefinition["groups"]) {
+    this.source.groups = groups
+    this.loader.clear()
   }
 }
 
@@ -128,16 +144,10 @@ export function entrySource(type: "dictionary" | "config", entries: Record<strin
   return { type, get: (path: string) => Promise.resolve(entries[path]) }
 }
 
-const NO_CONVERTERS: IConverterProvider = {
-  get: (name) => {
-    throw new Error(`no converter ${name}`)
-  },
-}
-
 export interface ManagerParts {
   driver: IStyleDriver
   loader?: FakeDefinitionLoader
-  theme?: FakeThemeManager
+  theme?: FakeTheme
   state?: FakeState
   sources?: IBindingValueSource[]
   qualifiers?: QualifierProvider
@@ -149,9 +159,9 @@ export function managerWith(parts: ManagerParts): StyleManager {
   return new StyleManager(
     () => parts.driver,
     (parts.loader ?? new FakeDefinitionLoader()).asLoader(),
-    parts.theme ?? new FakeThemeManager(),
+    (parts.theme ?? new FakeTheme()).manager,
     state,
-    new BindingEvaluator(NO_CONVERTERS, [
+    new BindingEvaluator(new ConverterProvider(new Map(), () => ({}) as never), [
       new StateBindingValueSource(state),
       new LiteralBindingValueSource(),
       ...(parts.sources ?? []),

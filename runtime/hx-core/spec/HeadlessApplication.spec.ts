@@ -1,4 +1,4 @@
-import { AggregateDefinitionSource, Application, ApplicationRuntime, DefinitionLoader } from "@heleonix/hx-core"
+import { Application, ApplicationRuntime, DefinitionLoader, DefinitionSource } from "@heleonix/hx-core"
 import { BindingEvaluator } from "../src/bindings/BindingEvaluator"
 import { LiteralBindingValueSource } from "../src/bindings/LiteralBindingValueSource"
 import { ConverterProvider } from "../src/converters/ConverterProvider"
@@ -60,7 +60,7 @@ class TestApplication extends Application {
   }
 }
 
-class ThemeSource extends AggregateDefinitionSource<IThemeDefinition> {
+class ThemeSource extends DefinitionSource<IThemeDefinition> {
   public loadDefinitions(): Promise<readonly IThemeDefinition[]> {
     return Promise.resolve([{ name: "", dimension: {}, groups: { Spacing: { xs: "4px" } } }])
   }

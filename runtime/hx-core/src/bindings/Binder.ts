@@ -1,6 +1,6 @@
 import { getComponentName, getPropertyName, joinFQPropertyName } from "@heleonix/hx-language"
 import type { FQComponentName, FQPropertyName, IBindingExpression } from "@heleonix/hx-language"
-import type { IStateManager } from "../state/IStateManager"
+import type { StateManager } from "../state/StateManager"
 import type { MaybePromise } from "../common/MaybePromise"
 import { isThenable } from "../common/isThenable"
 import { thenMaybe } from "../common/thenMaybe"
@@ -47,7 +47,7 @@ export class Binder implements IBinder, IClearable {
   private readonly endpointDeactivatedEmitter = new KeyedEventEmitter<FQComponentName, BindingEndpointHandler>()
 
   public constructor(
-    private readonly state: IStateManager,
+    private readonly state: StateManager,
     private readonly evaluator: BindingEvaluator,
   ) {}
 

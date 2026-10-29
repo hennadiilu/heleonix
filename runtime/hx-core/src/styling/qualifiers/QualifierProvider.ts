@@ -1,7 +1,6 @@
-import type { IQualifierProvider } from "./IQualifierProvider"
 import type { StyleQualifier } from "./StyleQualifier"
 
-export class QualifierProvider implements IQualifierProvider {
+export class QualifierProvider {
   public constructor(
     private readonly qualifiers: ReadonlyMap<string, StyleQualifier>,
     private readonly fallback?: StyleQualifier,

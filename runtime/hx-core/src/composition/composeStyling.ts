@@ -3,7 +3,7 @@ import type { IDimensionProvider } from "../dimensions/IDimensionProvider"
 import type { IState } from "../state/IState"
 import type { BindingEvaluator } from "../bindings/BindingEvaluator"
 import type { ApplicationRuntime } from "../platform/ApplicationRuntime"
-import type { IThemeManager } from "../theming/IThemeManager"
+import type { ThemeManager } from "../theming/ThemeManager"
 import type { ClearableCollection } from "./ClearableCollection"
 import { StyleDefinitionLoader } from "../styling/StyleDefinitionLoader"
 import { StyleManager } from "../styling/StyleManager"
@@ -17,7 +17,7 @@ export function composeStyling(
     state: IState
     evaluator: BindingEvaluator
     runtime: ApplicationRuntime
-    themes: IThemeManager | undefined
+    themes: ThemeManager | undefined
     clearables: ClearableCollection
   },
 ): StyleManager | undefined {

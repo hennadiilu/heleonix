@@ -9,8 +9,8 @@ import type { IActionProvider } from "../actions/IActionProvider"
 import type { IServiceProvider } from "../services/IServiceProvider"
 import type { IComponentManager } from "../components/IComponentManager"
 import type { IComponentContext } from "../components/IComponentContext"
-import type { IThemeManager } from "../theming/IThemeManager"
-import type { IStyleManager } from "../styling/IStyleManager"
+import type { ThemeManager } from "../theming/ThemeManager"
+import type { StyleManager } from "../styling/StyleManager"
 
 export interface IApplicationGraph {
   readonly runtime: ApplicationRuntime
@@ -33,9 +33,9 @@ export interface IApplicationGraph {
 
   readonly componentContext: IComponentContext
 
-  readonly themes: IThemeManager | undefined
+  readonly themes: ThemeManager | undefined
 
-  readonly styles: IStyleManager | undefined
+  readonly styles: StyleManager | undefined
 
   readonly isHeadless: boolean
 

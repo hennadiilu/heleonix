@@ -3,12 +3,10 @@ export * from "./IApplicationBootstrap"
 
 export * from "./definitions/DefinitionSource"
 export * from "./definitions/DefinitionSourceConstructor"
-export * from "./definitions/AggregateDefinitionSource"
 export * from "./definitions/DefinitionSelectionStrategy"
 export * from "./IDefinitionSection"
 export * from "./definitions/DefinitionLoader"
 export * from "./definitions/DefinitionLoaderConstructor"
-export * from "./definitions/MergingDefinitionLoader"
 
 export * from "./errors/HeleonixError"
 export * from "./errors/Errors"

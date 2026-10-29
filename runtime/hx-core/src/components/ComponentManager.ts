@@ -13,7 +13,7 @@ import {
   joinFQPropertyName,
 } from "@heleonix/hx-language"
 import type { ComponentConstructor } from "./ComponentConstructor"
-import type { IStyleManager } from "../styling/IStyleManager"
+import type { StyleManager } from "../styling/StyleManager"
 import type { IComponentContext } from "./IComponentContext"
 import type { IDimensionProvider } from "../dimensions/IDimensionProvider"
 import type { BindingEvaluator } from "../bindings/BindingEvaluator"
@@ -46,7 +46,7 @@ export class ComponentManager implements IComponentManager, IClearable {
     // created after the manager. Resolved lazily when a component is first built.
     private readonly context: () => IComponentContext,
     // Absent when the application bootstraps no style definitions.
-    private readonly styles: IStyleManager | undefined,
+    private readonly styles: StyleManager | undefined,
   ) {}
 
   public clear(): void {

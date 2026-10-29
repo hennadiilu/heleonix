@@ -1,8 +1,9 @@
 import { PlatformComponent } from "@heleonix/hx-core"
 import { ComponentManager } from "../../src/components/ComponentManager"
-import type { IStyleManager } from "../../src/styling/IStyleManager"
+import type { StyleManager } from "../../src/styling/StyleManager"
 import type { Component, IComponentContext, IComponentManager } from "@heleonix/hx-core"
 import type { IComponentDefinition } from "@heleonix/hx-language"
+import { managerWith } from "../styling/styleManagerFakes"
 
 const emitter = { on: (): void => {}, off: (): void => {} }
 
@@ -28,29 +29,24 @@ class RecordingElement extends PlatformComponent {
   public override setContent(): void {}
 }
 
-class FakeStyleManager implements IStyleManager {
-  public readonly styled: Component[] = []
+function createStyles(): { styles: StyleManager; applied: jasmine.Spy; removed: jasmine.Spy } {
+  const styles = managerWith({ driver: { insertRule: () => {}, remove: () => {}, effectFor: () => ({}) as never } })
+  const apply = styles.apply.bind(styles)
+  const remove = styles.remove.bind(styles)
 
-  public readonly removed: Component[] = []
-
-  public async apply(component: Component): Promise<void> {
-    await Promise.resolve()
-    await Promise.resolve()
-
-    this.styled.push(component)
+  const applied = spyOn(styles, "apply").and.callFake(async (component: Component) => {
+    await apply(component)
 
     RecordingElement.log.push("styled")
-  }
+  })
 
-  public remove(component: Component): void {
-    this.removed.push(component)
+  const removed = spyOn(styles, "remove").and.callFake((component: Component) => {
+    remove(component)
 
     RecordingElement.log.push("unstyled")
-  }
+  })
 
-  public reapply(): Promise<void> {
-    return Promise.resolve()
-  }
+  return { styles, applied, removed }
 }
 
 function createContext(components: () => IComponentManager): IComponentContext {
@@ -73,7 +69,7 @@ function createContext(components: () => IComponentManager): IComponentContext {
   } as unknown as IComponentContext
 }
 
-function createManager(styles: IStyleManager | undefined): ComponentManager {
+function createManager(styles: StyleManager | undefined): ComponentManager {
   const definition = { tag: "el", type: "RecordingElement" } as IComponentDefinition
 
   const manager = new ComponentManager(
@@ -94,17 +90,17 @@ function createManager(styles: IStyleManager | undefined): ComponentManager {
 
 describe("ComponentManager styling", () => {
   it("then styles a component and awaits it before the component mounts", async () => {
-    const styles = new FakeStyleManager()
+    const { styles, applied } = createStyles()
     const manager = createManager(styles)
 
     const component = await manager.build({ tag: "el" }, undefined, undefined, undefined)
 
-    expect(styles.styled).toEqual([component])
+    expect(applied).toHaveBeenCalledOnceWith(component)
     expect(RecordingElement.log).toEqual(["styled", "mount"])
   })
 
   it("then removes the styling while the component is still intact, before it is destroyed", async () => {
-    const styles = new FakeStyleManager()
+    const { styles, removed } = createStyles()
     const manager = createManager(styles)
 
     const component = await manager.build({ tag: "el" }, undefined, undefined, undefined)
@@ -113,7 +109,7 @@ describe("ComponentManager styling", () => {
 
     manager.destroy(component)
 
-    expect(styles.removed).toEqual([component])
+    expect(removed).toHaveBeenCalledOnceWith(component)
     expect(RecordingElement.log).toEqual(["unmount", "unstyled", "destroy"])
   })
 

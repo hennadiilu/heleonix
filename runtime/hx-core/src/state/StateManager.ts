@@ -6,11 +6,11 @@ import {
   getPropertySegments,
   joinFQPropertyName,
 } from "@heleonix/hx-language"
-import type { IStateManager } from "./IStateManager"
 import { IKeyedEventEmitter } from "../common/IKeyedEventEmitter"
 import { KeyedEventEmitter } from "../common/KeyedEventEmitter"
 import type { IClearable } from "../common/IClearable"
 import { StateChangedHandler } from "./StateChangedHandler"
+import type { IState } from "./IState"
 
 interface InterestNode {
   parent: InterestNode | null
@@ -104,7 +104,7 @@ function deleteAtPath(root: Record<string, unknown>, segments: readonly string[]
   delete current[segments[segments.length - 1]]
 }
 
-export class StateManager implements IStateManager, IClearable {
+export class StateManager implements IState, IClearable {
   private readonly data = new Map<string, Record<string, unknown>>()
 
   private readonly interestRoots = new Map<string, InterestNode>()

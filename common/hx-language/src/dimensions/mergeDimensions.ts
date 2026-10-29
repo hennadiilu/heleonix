@@ -1,6 +1,7 @@
 import type { IDimension } from "./IDimension"
 import type { IDimensionDefinition } from "./IDimensionDefinition"
 import type { DimensionUsage } from "./DimensionUsage"
+import { matchDimension } from "./matchDimension"
 
 export function mergeDimensions<T extends { dimension: IDimension; usage?: DimensionUsage }>(
   definitions: readonly T[],
@@ -13,23 +14,9 @@ export function mergeDimensions<T extends { dimension: IDimension; usage?: Dimen
   const matches: { definition: T; specificity: number }[] = []
 
   for (const definition of definitions) {
-    let specificity = 0
-    let matched = true
+    const specificity = matchDimension(definition.dimension, dimension, dimensionDefinitions)
 
-    for (const { name } of dimensionDefinitions) {
-      // A definition constrained on a dimension only applies when the current dimension
-      // has that exact value; with the value unset, only unconstrained definitions apply.
-      if (name in definition.dimension) {
-        if (definition.dimension[name] !== dimension[name]) {
-          matched = false
-          break
-        }
-
-        specificity++
-      }
-    }
-
-    if (matched) {
+    if (specificity !== undefined) {
       matches.push({ definition, specificity })
     }
   }

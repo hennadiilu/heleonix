@@ -19,7 +19,6 @@ import {
   CompiledAssets,
   PackageValidation,
   PackageMetaBuilder,
-  DEFINITION_SOURCE_BASE_CLASS,
   type IAssetFile,
   type IHxBuildSettings,
 } from "@heleonix/hx-plugin-core"
@@ -340,7 +339,9 @@ export class HxWebpackPlugin {
     for (const kind of this.kinds) {
       emittedClassNames[kind] =
         this.explicitClassNames[kind] ??
-        (classPrefix ? `${classPrefix}${DEFINITION_SOURCE_BASE_CLASS[kind]}` : this.sources[kind].className)
+        (classPrefix
+          ? `${classPrefix}${kind.charAt(0).toUpperCase()}${kind.slice(1)}DefinitionSource`
+          : this.sources[kind].className)
       dsFileNames[kind] = toPosix(ds?.fileName?.(kind) ?? `${this.sources[kind].moduleName}.js`)
     }
 

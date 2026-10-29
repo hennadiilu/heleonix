@@ -11,7 +11,6 @@ import type { ApplicationRuntimeConstructor } from "./platform/ApplicationRuntim
 import { ComponentDefinitionLoader } from "./components/ComponentDefinitionLoader"
 import { DictionaryDefinitionLoader } from "./dictionaries/DictionaryDefinitionLoader"
 import { ConfigDefinitionLoader } from "./configs/ConfigDefinitionLoader"
-import { AggregateDefinitionSource } from "./definitions/AggregateDefinitionSource"
 import { DefinitionSource } from "./definitions/DefinitionSource"
 import type { IDefinitionSection } from "./IDefinitionSection"
 import { StyleDefinitionLoader } from "./styling/StyleDefinitionLoader"
@@ -32,10 +31,7 @@ export interface IApplicationBootstrap {
 
   styleDefinition?: IDefinitionSection<DefinitionSource<IStyleDefinition>, StyleDefinitionLoader>
 
-  themeDefinition?: Omit<
-    IDefinitionSection<AggregateDefinitionSource<IThemeDefinition>, ThemeDefinitionLoader>,
-    "selectionStrategy"
-  >
+  themeDefinition?: IDefinitionSection<DefinitionSource<IThemeDefinition>, ThemeDefinitionLoader>
 
   dimensions?: IDimensionDefinition[]
 

@@ -1,8 +1,8 @@
 import type { DimensionUsage, IDictionaryDefinition } from "@heleonix/hx-language"
 import { Merger } from "@heleonix/hx-utils"
-import { MergingDefinitionLoader } from "../definitions/MergingDefinitionLoader"
+import { DefinitionLoader } from "../definitions/DefinitionLoader"
 
-export class DictionaryDefinitionLoader extends MergingDefinitionLoader<IDictionaryDefinition> {
+export class DictionaryDefinitionLoader extends DefinitionLoader<IDictionaryDefinition> {
   protected readonly defaultUsage: DimensionUsage = "override"
 
   protected mergeDeeply(

@@ -1,8 +1,8 @@
 import type { DimensionUsage, IStyleDefinition } from "@heleonix/hx-language"
 import { Merger } from "@heleonix/hx-utils"
-import { MergingDefinitionLoader } from "../definitions/MergingDefinitionLoader"
+import { DefinitionLoader } from "../definitions/DefinitionLoader"
 
-export class StyleDefinitionLoader extends MergingDefinitionLoader<IStyleDefinition> {
+export class StyleDefinitionLoader extends DefinitionLoader<IStyleDefinition> {
   protected readonly defaultUsage: DimensionUsage = "extend"
 
   protected mergeDeeply(base: IStyleDefinition | undefined, extension: IStyleDefinition): IStyleDefinition {

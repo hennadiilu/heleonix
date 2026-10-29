@@ -9,7 +9,7 @@ import type { BindingType, FQComponentName, FQPropertyName, IBindingExpression }
 import type { MaybePromise } from "../common/MaybePromise"
 import { isThenable } from "../common/isThenable"
 import { thenMaybe } from "../common/thenMaybe"
-import type { IConverterProvider } from "../converters/IConverterProvider"
+import type { ConverterProvider } from "../converters/ConverterProvider"
 import type { IBindingValueSource } from "./IBindingValueSource"
 
 const EXPRESSION_REGEX = new RegExp(EXPRESSION_PATTERN, "g")
@@ -26,7 +26,7 @@ export class BindingEvaluator {
   private readonly argEntries = new WeakMap<ConverterCall, [string, IBindingExpression][]>()
 
   public constructor(
-    private readonly converters: IConverterProvider,
+    private readonly converters: ConverterProvider,
     sources: readonly IBindingValueSource[],
   ) {
     this.sources = new Map(sources.map((source) => [source.type, source]))

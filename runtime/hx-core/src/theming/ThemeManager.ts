@@ -3,9 +3,8 @@ import type { IThemeDefinition } from "@heleonix/hx-language"
 import type { IThemeDriver } from "../platform/IThemeDriver"
 import { themeVariableName } from "./themeVariableName"
 import { ThemeDefinitionLoader } from "./ThemeDefinitionLoader"
-import type { IThemeManager } from "./IThemeManager"
 
-export class ThemeManager implements IThemeManager {
+export class ThemeManager {
   public constructor(
     private readonly loader: ThemeDefinitionLoader,
     // A thunk for the same reason the style manager takes one: a runtime may

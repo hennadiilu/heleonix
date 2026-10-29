@@ -1,47 +1,13 @@
-import type { IThemeDefinition } from "@heleonix/hx-language"
-import { mergeDimensions } from "@heleonix/hx-language"
+import type { DimensionUsage, IThemeDefinition } from "@heleonix/hx-language"
+import { THEME_DEFINITION_NAME } from "@heleonix/hx-language"
 import { Merger } from "@heleonix/hx-utils"
-import { AggregateDefinitionSource } from "../definitions/AggregateDefinitionSource"
-import type { IDimensionProvider } from "../dimensions/IDimensionProvider"
-import type { IClearable } from "../common/IClearable"
+import { DefinitionLoader } from "../definitions/DefinitionLoader"
 
-export class ThemeDefinitionLoader implements IClearable {
-  protected readonly themes = new Map<string, IThemeDefinition | undefined>()
+export class ThemeDefinitionLoader extends DefinitionLoader<IThemeDefinition> {
+  protected readonly defaultUsage: DimensionUsage = "extend"
 
-  public constructor(
-    protected readonly dimensions: IDimensionProvider,
-    protected readonly sources: readonly AggregateDefinitionSource<IThemeDefinition>[],
-  ) {}
-
-  public async loadTheme(): Promise<IThemeDefinition | undefined> {
-    const key = this.dimensions.currentKey
-
-    if (this.themes.has(key)) {
-      return this.themes.get(key)
-    }
-
-    let merged: IThemeDefinition | undefined
-
-    for (const source of this.sources) {
-      const definitions = await source.loadDefinitions(this.dimensions.current)
-
-      merged = mergeDimensions(
-        definitions,
-        this.dimensions.current,
-        this.dimensions.definitions,
-        (mergeBase, extension) => this.mergeDeeply(mergeBase, extension),
-        "extend",
-        merged,
-      )
-    }
-
-    this.themes.set(key, merged)
-
-    return merged
-  }
-
-  public clear(): void {
-    this.themes.clear()
+  public loadTheme(): Promise<IThemeDefinition | undefined> {
+    return this.loadDefinition(THEME_DEFINITION_NAME)
   }
 
   protected mergeDeeply(base: IThemeDefinition | undefined, extension: IThemeDefinition): IThemeDefinition {

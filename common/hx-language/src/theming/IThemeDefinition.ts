@@ -1,5 +1,5 @@
 import type { IThemeGroup } from "./IThemeGroup"
-import type { IStyleDeclarations } from "../styles/IStyleDeclarations"
+import type { IStyleDeclarations } from "../styling/IStyleDeclarations"
 import type { IDimension } from "../dimensions/IDimension"
 import type { DimensionUsage } from "../dimensions/DimensionUsage"
 

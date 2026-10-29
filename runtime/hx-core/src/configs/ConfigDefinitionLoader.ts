@@ -1,8 +1,8 @@
 import type { DimensionUsage, IConfigDefinition } from "@heleonix/hx-language"
 import { Merger } from "@heleonix/hx-utils"
-import { MergingDefinitionLoader } from "../definitions/MergingDefinitionLoader"
+import { DefinitionLoader } from "../definitions/DefinitionLoader"
 
-export class ConfigDefinitionLoader extends MergingDefinitionLoader<IConfigDefinition> {
+export class ConfigDefinitionLoader extends DefinitionLoader<IConfigDefinition> {
   protected readonly defaultUsage: DimensionUsage = "extend"
 
   protected mergeDeeply(base: IConfigDefinition | undefined, extension: IConfigDefinition): IConfigDefinition {

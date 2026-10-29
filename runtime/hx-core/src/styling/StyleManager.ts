@@ -15,14 +15,13 @@ import type { IBindingScope } from "./qualifiers/IBindingScope"
 import type { IStyleDriver } from "../platform/IStyleDriver"
 import type { IStyleEffect } from "../platform/IStyleEffect"
 import type { IStyleVariable } from "../platform/IStyleVariable"
-import type { IQualifierProvider } from "./qualifiers/IQualifierProvider"
+import type { QualifierProvider } from "./qualifiers/QualifierProvider"
 import { StyleDefinitionLoader } from "./StyleDefinitionLoader"
 import type { StyleCondition } from "./StyleCondition"
 import { hashStyleKey } from "./hashStyleKey"
 import { styleVariableName } from "./styleVariableName"
-import type { IThemeManager } from "../theming/IThemeManager"
+import type { ThemeManager } from "../theming/ThemeManager"
 import type { IClearable } from "../common/IClearable"
-import type { IStyleManager } from "./IStyleManager"
 import type { IDisposable } from "../common/IDisposable"
 import type { MaybePromise } from "../common/MaybePromise"
 import { isThenable } from "../common/isThenable"
@@ -54,7 +53,7 @@ interface Applied {
   disposers: (() => void)[]
 }
 
-export class StyleManager implements IStyleManager, IClearable {
+export class StyleManager implements IClearable {
   private readonly refs = new Map<string, number>()
 
   private readonly applied = new Map<Component, Applied>()
@@ -69,10 +68,10 @@ export class StyleManager implements IStyleManager, IClearable {
     // resolved per use rather than captured once at composition time.
     private readonly driver: () => IStyleDriver,
     private readonly loader: StyleDefinitionLoader,
-    private readonly themes: IThemeManager,
+    private readonly themes: ThemeManager,
     private readonly state: IState,
     private readonly evaluator: BindingEvaluator,
-    private readonly qualifiers: IQualifierProvider,
+    private readonly qualifiers: QualifierProvider,
   ) {}
 
   public async apply(component: Component): Promise<void> {

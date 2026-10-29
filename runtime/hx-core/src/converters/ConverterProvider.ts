@@ -1,12 +1,11 @@
 import type { Converter } from "./Converter"
 import type { IConverterContext } from "./IConverterContext"
-import type { IConverterProvider } from "./IConverterProvider"
 import type { ConverterConstructor } from "./ConverterConstructor"
 import { HeleonixError } from "../errors/HeleonixError"
 import { Errors } from "../errors/Errors"
 import type { IClearable } from "../common/IClearable"
 
-export class ConverterProvider implements IConverterProvider, IClearable {
+export class ConverterProvider implements IClearable {
   private readonly instances = new Map<string, Converter>()
 
   public constructor(

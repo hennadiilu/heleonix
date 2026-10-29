@@ -63,7 +63,6 @@ describe("buildMeta", () => {
         { name: "If", args: [{ name: "value", optional: false, kind: "boolean" as const, isFunction: false }] },
         {
           name: "OnRaising",
-          diName: "OnRaisingQualifier",
           args: [
             {
               name: "event",
@@ -93,7 +92,7 @@ describe("buildMeta", () => {
         }
 
         expect(shipped.themeTokens["Colors.Bg.canvas"]).toBe("light-dark({$Palette.Neutral.t0}, {$Palette.Blue.t60})")
-        expect(shipped.qualifiers.find((q) => q.name === "OnRaising")?.diName).toBe("OnRaisingQualifier")
+        expect(shipped.qualifiers).toEqual(input.qualifiers)
       })
     })
   })

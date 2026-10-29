@@ -10,7 +10,7 @@ import type { IStyleDefinition } from "@heleonix/hx-language"
 import {
   FakeDefinitionLoader,
   FakeState,
-  FakeThemeManager,
+  FakeTheme,
   asComponent,
   componentTree,
   entrySource,
@@ -117,12 +117,12 @@ function subject(sources: IBindingValueSource[] = []): {
   manager: StyleManager
   driver: FakeStyleDriver
   loader: FakeDefinitionLoader
-  theme: FakeThemeManager
+  theme: FakeTheme
   state: FakeState
 } {
   const driver = new FakeStyleDriver()
   const loader = new FakeDefinitionLoader(definitions())
-  const theme = new FakeThemeManager()
+  const theme = new FakeTheme()
   const state = new FakeState()
 
   theme.groups = {
@@ -464,7 +464,7 @@ describe("StyleManager", () => {
 
     it("then does not wait for the theme when no query uses a token", async () => {
       const { manager, driver, theme } = subject()
-      const getTheme = spyOn(theme, "getTheme").and.callThrough()
+      const getTheme = spyOn(theme.manager, "getTheme").and.callThrough()
 
       await manager.applyDefinition(componentOf("Card"), media("(max-width:600px)"))
 
@@ -476,7 +476,7 @@ describe("StyleManager", () => {
       const { manager, driver, theme } = subject()
       let release!: () => void
       const gate = new Promise<void>((r) => (release = r))
-      spyOn(theme, "getTheme").and.returnValue(
+      spyOn(theme.manager, "getTheme").and.returnValue(
         gate.then(() => ({ name: "", dimension: {}, groups: { Breakpoints: { mobile: "600px" } } })),
       )
       const component = componentOf("Card")
