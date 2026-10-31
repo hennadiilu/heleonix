@@ -1,9 +1,9 @@
 import type { IThemeDriver } from "@heleonix/hx-core"
 import type { IThemeDefinition } from "@heleonix/hx-language"
-import { WebAppHost } from "./WebAppHost"
-import type { StyleSheetElement } from "./styling/DomStyleSheet"
-import { composeThemeArtifacts } from "./styling/composeThemeArtifacts"
-import { interpolateValue } from "./styling/interpolateValue"
+import { WebAppHost } from "../host/WebAppHost"
+import type { StyleSheetElement } from "../host/StyleSheetElement"
+import { composeThemeArtifacts } from "./composeThemeArtifacts"
+import { interpolateValue } from "../styling/interpolateValue"
 
 export class WebThemeDriver implements IThemeDriver {
   private artifactSheet: StyleSheetElement | undefined

@@ -1,8 +1,5 @@
+import type { StyleSheetElement } from "../host/StyleSheetElement"
 import type { StyleSheetTarget } from "./StyleSheetTarget"
-
-export interface StyleSheetElement {
-  textContent: string | null
-}
 
 export class DomStyleSheet implements StyleSheetTarget {
   private readonly rules = new Map<string, string>()

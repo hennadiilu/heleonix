@@ -1,5 +1,5 @@
 import type { IComponentContext, IComponentDriver, PlatformComponent } from "@heleonix/hx-core"
-import { WebAppHost } from "./WebAppHost"
+import { WebAppHost } from "../host/WebAppHost"
 import { WebPlatformComponent } from "./WebPlatformComponent"
 
 export class WebComponentDriver implements IComponentDriver {

@@ -8,12 +8,12 @@ import type {
   IStyleDriver,
   IThemeDriver,
 } from "@heleonix/hx-core"
-import { WebAppHost } from "./WebAppHost"
-import { WebComponentDefinitionSource } from "./WebComponentDefinitionSource"
-import { WebComponentDriver } from "./WebComponentDriver"
-import { WebPlatformComponent } from "./WebPlatformComponent"
+import { WebAppHost } from "./host/WebAppHost"
+import { WebComponentDefinitionSource } from "./components/WebComponentDefinitionSource"
+import { WebComponentDriver } from "./components/WebComponentDriver"
+import { WebPlatformComponent } from "./components/WebPlatformComponent"
 import { WebScheduler } from "./WebScheduler"
-import { WebThemeDriver } from "./WebThemeDriver"
+import { WebThemeDriver } from "./theming/WebThemeDriver"
 import { DomStyleSheet } from "./styling/DomStyleSheet"
 import { WebStyleDriver } from "./styling/WebStyleDriver"
 

@@ -25,7 +25,7 @@ export abstract class PlatformComponent extends Component {
     this.context.binder.endpointDeactivated.on(this.fqName, this.handleEndpointDeactivated)
 
     for (const localPath of this.context.binder.getActiveEndpoints(this.fqName)) {
-      this.activateBinding(localPath)
+      this.activateEndpoint(localPath)
     }
 
     await this.applyBindings(usage.properties)
@@ -57,10 +57,10 @@ export abstract class PlatformComponent extends Component {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  public activateBinding(localPath: string): void {}
+  public activateEndpoint(localPath: string): void {}
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  public deactivateBinding(localPath: string): void {}
+  public deactivateEndpoint(localPath: string): void {}
 
   private applyBindings(properties: IComponentProperty[] | undefined): MaybePromise<void> {
     let chain: MaybePromise<void> = undefined
@@ -111,11 +111,11 @@ export abstract class PlatformComponent extends Component {
   }
 
   private readonly handleEndpointActivated: BindingEndpointHandler = (_fqComponentName, localPath) => {
-    this.activateBinding(localPath)
+    this.activateEndpoint(localPath)
   }
 
   private readonly handleEndpointDeactivated: BindingEndpointHandler = (_fqComponentName, localPath) => {
-    this.deactivateBinding(localPath)
+    this.deactivateEndpoint(localPath)
   }
 
   private handleStateChanged: StateChangedHandler = (fqPropertyName, newValue) => {

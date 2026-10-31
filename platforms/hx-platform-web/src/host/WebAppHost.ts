@@ -1,5 +1,5 @@
-import { LazyStyleElement } from "./styling/LazyStyleElement"
-import type { StyleSheetElement } from "./styling/DomStyleSheet"
+import { LazyStyleElement } from "./LazyStyleElement"
+import type { StyleSheetElement } from "./StyleSheetElement"
 
 export class WebAppHost {
   private root: HTMLElement | undefined

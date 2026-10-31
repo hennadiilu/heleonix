@@ -1,4 +1,4 @@
-import type { StyleSheetElement } from "./DomStyleSheet"
+import type { StyleSheetElement } from "./StyleSheetElement"
 
 export class LazyStyleElement implements StyleSheetElement {
   private element: StyleSheetElement | undefined

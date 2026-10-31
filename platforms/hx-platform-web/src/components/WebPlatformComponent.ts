@@ -101,14 +101,14 @@ export class WebPlatformComponent extends PlatformComponent {
     this.pendingProperties.clear()
   }
 
-  public override activateBinding(sourceLocalPath: string): void {
-    const kind = this.classify(sourceLocalPath)
+  public override activateEndpoint(localPath: string): void {
+    const kind = this.classify(localPath)
 
     switch (kind) {
       case "event": {
-        const sepIdx = sourceLocalPath.indexOf(PROPERTY_NAME_SEGMENT_SEPARATOR)
-        const eventName = sepIdx >= 0 ? sourceLocalPath.slice(0, sepIdx) : sourceLocalPath
-        const subPath = sepIdx >= 0 ? sourceLocalPath.slice(sepIdx + 1) : ""
+        const sepIdx = localPath.indexOf(PROPERTY_NAME_SEGMENT_SEPARATOR)
+        const eventName = sepIdx >= 0 ? localPath.slice(0, sepIdx) : localPath
+        const subPath = sepIdx >= 0 ? localPath.slice(sepIdx + 1) : ""
 
         this.acquireEventSource(eventName, subPath)
 
@@ -124,14 +124,14 @@ export class WebPlatformComponent extends PlatformComponent {
     }
   }
 
-  public override deactivateBinding(sourceLocalPath: string): void {
-    const kind = this.classify(sourceLocalPath)
+  public override deactivateEndpoint(localPath: string): void {
+    const kind = this.classify(localPath)
 
     switch (kind) {
       case "event": {
-        const sepIdx = sourceLocalPath.indexOf(PROPERTY_NAME_SEGMENT_SEPARATOR)
-        const eventName = sepIdx >= 0 ? sourceLocalPath.slice(0, sepIdx) : sourceLocalPath
-        const subPath = sepIdx >= 0 ? sourceLocalPath.slice(sepIdx + 1) : ""
+        const sepIdx = localPath.indexOf(PROPERTY_NAME_SEGMENT_SEPARATOR)
+        const eventName = sepIdx >= 0 ? localPath.slice(0, sepIdx) : localPath
+        const subPath = sepIdx >= 0 ? localPath.slice(sepIdx + 1) : ""
 
         this.releaseEventSource(eventName, subPath)
 

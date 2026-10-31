@@ -1,5 +1,5 @@
 import type { IThemeDefinition } from "@heleonix/hx-language"
-import { composeKeyframes } from "./composeKeyframes"
+import { composeKeyframes } from "../styling/composeKeyframes"
 import { composeFontFace } from "./composeFontFace"
 import { composeCounterStyle } from "./composeCounterStyle"
 
